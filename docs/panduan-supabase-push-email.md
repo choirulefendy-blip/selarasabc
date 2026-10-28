@@ -1,3 +1,5 @@
+> **Catatan:** repo ini sekarang memakai **GitHub Pages** (bukan Netlify). Bagian panduan yang menyebut Netlify (mis. "Langkah 3") digantikan oleh `README.md` bagian 1; langkah Supabase, push, dan email di bawah tetap berlaku.
+
 # ABC Selaras — Panduan Deploy
 
 Paket ini berisi:

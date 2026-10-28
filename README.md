@@ -1,28 +1,29 @@
 # ABC Selaras — HR & Penggajian ABC Hospitality Group
 
 Aplikasi web (PWA) untuk absensi, jadwal, cuti, lembur, KPI, penggajian, **banner**, **To-Do List**, dan **notifikasi**,
-dengan backend Supabase, hosting Netlify, dan **paket APK Android** (Capacitor) yang dibuild otomatis oleh GitHub Actions.
+dengan backend Supabase, hosting GitHub Pages, dan **paket APK Android** (Capacitor) yang dibuild otomatis oleh GitHub Actions.
 
 ```
 abc-selaras/
-├─ web/                 ← aplikasi (index.html, sw.js, manifest.json, ikon) — ini yang di-deploy Netlify
+├─ web/                 ← aplikasi (index.html, sw.js, manifest.json, ikon) — ini yang di-deploy ke GitHub Pages
 ├─ supabase/            ← schema.sql + Edge Functions (send-push, send-email)
 ├─ mobile/              ← proyek Android (Capacitor) → APK
 ├─ test/                ← tes otomatis (jsdom), jalan juga di GitHub Actions
 ├─ docs/                ← panduan lengkap Supabase/Push/Email
-├─ netlify.toml
-└─ .github/workflows/   ← android-apk.yml (build APK) dan test.yml
+└─ .github/workflows/   ← pages.yml (situs), android-apk.yml (APK), test.yml (tes)
 ```
 
-## 1. Deploy lewat GitHub → Netlify
+## 1. Hosting situs lewat GitHub Pages (tanpa Netlify)
 
-1. Buat repo **private** di GitHub, lalu upload isi folder ini (atau `git init && git remote add origin … && git push`).
-2. Netlify → **Add new site → Import an existing project → GitHub** → pilih repo.
-3. Isi: **Build command**: *(kosongkan)* · **Publish directory**: `web` (sudah diatur di `netlify.toml`) → **Deploy**.
-4. Setiap `git push` ke `main` otomatis memperbarui situs. Tidak ada langkah build.
+Situs di-deploy otomatis oleh GitHub Actions (`.github/workflows/pages.yml`) dari folder `web/`.
 
-> Konfigurasi Supabase (`SUPABASE_URL` dan `SUPABASE_ANON_KEY`) ada di bagian atas `web/index.html`. Anon key memang
-> dirancang publik, tetapi tetap gunakan repo **private**. **Jangan** pernah memasukkan `service_role` key atau
+1. Di repo: **Settings → Pages → Build and deployment → Source: GitHub Actions** (cukup sekali).
+2. Setiap `git push` ke `main` yang mengubah `web/` otomatis memperbarui situs. Atau jalankan manual di tab **Actions → Deploy Situs → Run workflow**.
+3. Alamat situs: `https://<username>.github.io/<nama-repo>/` (lihat di Settings → Pages).
+
+> GitHub Pages gratis untuk repo **public**; untuk repo **private** butuh paket GitHub berbayar. Konfigurasi Supabase
+> (`SUPABASE_URL` dan `SUPABASE_ANON_KEY`) ada di bagian atas `web/index.html`. Anon key memang dirancang publik, tetapi
+> keamanannya bergantung pada aturan RLS di Supabase. **Jangan** pernah memasukkan `service_role` key atau
 > `VAPID_PRIVATE_KEY` ke repo — keduanya hanya boleh jadi *secret* di Supabase.
 
 ### Supabase
