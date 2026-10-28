@@ -3197,8 +3197,7 @@ function renderSlipPage(empId, editable){
     '</tr>';
   }).join('');
 
-  var lateDetail = p.summary.totals.telat + ' hari telat, total ' + p.summary.totals.totalLateMinutes + ' menit'+
-    (DB.settings.lateDeductionCap>0 ? ' (dibatasi maks. '+rupiah(DB.settings.lateDeductionCap)+'/bulan)' : '');
+  var lateDetail = p.summary.totals.telat + ' hari telat, total ' + p.summary.totals.totalLateMinutes + ' menit';
 
   var backBtn = editable ? '<button class="btn btn-secondary no-print" data-action="nav" data-view="payroll">&larr; Kembali ke Penggajian</button>' : '';
 
