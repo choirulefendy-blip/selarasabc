@@ -174,7 +174,7 @@
   .topbar h2{font-family:var(--font-serif);font-weight:500;font-size:21px;margin:0;}
   .topbar-right{display:flex;align-items:center;gap:10px;}
   .month-input{padding:9px 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface-container-low);font-weight:600;}
-  .hamburger{display:none;background:var(--surface-container-low);border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;}
+  .hamburger{display:inline-flex;align-items:center;justify-content:center;background:var(--surface-container-low);border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;}
   .content{padding:26px 28px 60px;max-width:1180px;width:100%;}
 
   /* ---------- Generic components ---------- */
@@ -430,7 +430,58 @@
   .m3-switch.on{background:var(--primary);border-color:var(--primary);}
   .m3-switch.on .m3-switch-knob{left:24px;width:22px;height:22px;background:#fff;}
   .m3-switch:disabled{opacity:.45;cursor:not-allowed;}
-</style>
+
+  /* ---- Avatar / foto profil ---- */
+  .avatar{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:var(--primary-container);color:var(--on-primary-container);font-weight:700;overflow:hidden;flex-shrink:0;line-height:1;}
+  .avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+  .avatar-hr{background:var(--gold-container);color:var(--on-gold-container);}
+  .dash-profile-avatar{border:0;padding:0;color:inherit;cursor:pointer;overflow:hidden;}
+  .dash-profile-avatar img{width:100%;height:100%;object-fit:cover;display:block;}
+  .nav-badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--danger);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;}
+  @media(min-width:861px){.shell.sidebar-collapsed .sidebar{display:none;}}
+  /* ---- Chat ---- */
+  .chat-wrap{display:grid;grid-template-columns:320px 1fr;background:var(--surface-container-low);border-radius:var(--radius);overflow:hidden;height:calc(100vh - 190px);min-height:420px;}
+  .chat-list-pane{border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;}
+  .chat-search{padding:12px;}
+  .chat-search input{width:100%;box-sizing:border-box;}
+  .chat-list{overflow-y:auto;flex:1;}
+  .chat-item{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:10px 14px;cursor:pointer;color:inherit;font:inherit;}
+  .chat-item:hover{background:var(--surface-container);}
+  .chat-item.active{background:var(--primary-container);color:var(--on-primary-container);}
+  .chat-item-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .chat-item-top{display:flex;justify-content:space-between;gap:8px;}
+  .chat-item-name{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .chat-item-time{font-size:11px;color:var(--text-muted);flex-shrink:0;}
+  .chat-item-prev{font-size:12.5px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .chat-item-prev.unread{color:var(--text);font-weight:700;}
+  .chat-unread{background:var(--primary);color:var(--surface);min-width:20px;height:20px;border-radius:10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;}
+  .chat-thread-pane{display:flex;flex-direction:column;min-height:0;min-width:0;}
+  .chat-head{display:flex;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .chat-head-name{font-weight:700;font-size:14.5px;}
+  .chat-head-sub{font-size:12px;color:var(--text-muted);}
+  .chat-back{display:none;}
+  .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:6px;}
+  .chat-msg{max-width:78%;display:flex;flex-direction:column;}
+  .chat-msg.mine{align-self:flex-end;align-items:flex-end;}
+  .chat-msg.theirs{align-self:flex-start;}
+  .chat-bubble{padding:9px 14px;border-radius:18px;font-size:14px;white-space:pre-wrap;word-break:break-word;}
+  .chat-msg.mine .chat-bubble{background:var(--primary-container);color:var(--on-primary-container);border-bottom-right-radius:6px;}
+  .chat-msg.theirs .chat-bubble{background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:6px;}
+  .chat-msg-time{font-size:10.5px;color:var(--text-muted);margin-top:2px;}
+  .chat-day{align-self:center;font-size:11.5px;color:var(--text-muted);background:var(--surface-container);padding:3px 12px;border-radius:999px;margin:10px 0 4px;}
+  .chat-compose{display:flex;gap:10px;padding:12px;border-top:1px solid var(--border);background:var(--surface);align-items:flex-end;}
+  .chat-compose textarea{flex:1;resize:none;max-height:120px;border-radius:20px;padding:10px 16px;font:inherit;border:1px solid var(--border);background:var(--surface-container-low);color:var(--text);}
+  .chat-empty{margin:auto;text-align:center;color:var(--text-muted);display:flex;flex-direction:column;gap:10px;align-items:center;}
+  @media(max-width:860px){
+    .chat-wrap{grid-template-columns:1fr;height:calc(100vh - 170px);}
+    .chat-wrap .chat-thread-pane{display:none;}
+    .chat-wrap.has-thread .chat-list-pane{display:none;}
+    .chat-wrap.has-thread .chat-thread-pane{display:flex;}
+    .chat-back{display:inline-flex;}
+  }
+.chat-search input{width:100%;box-sizing:border-box;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:10px 16px;font:inherit;font-size:14px;outline:none;}
+  .chat-search input:focus{border-color:var(--primary);}
+  </style>
 </head>
 <body>
 <div id="app"></div>
@@ -1858,6 +1909,12 @@ function renderLoadErrorScreen(){
 
 function afterRender(){
   hydrateBannerImages();
+  hydrateAvatars();
+  if(SESSION.role){
+    if(STATE.view==='chat') chatScrollToEnd();
+    if(STATE.loaded && !CHAT.loaded) chatPoll();
+    updateNavChatBadge();
+  }
   var onCheckin = SESSION.role && STATE.view==='checkin';
   if(!onCheckin){
     stopCameraStream();
@@ -1946,6 +2003,8 @@ var ICONS = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
   moon: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
   mapPin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
+  chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
   listCheck: '<path d="M9 6h12M9 12h12M9 18h12"/><path d="M3 6l1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/>',
   clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/>'
@@ -1962,7 +2021,7 @@ var NAV_ICON_MAP = {
   'form-request':'fileText', 'form-approval':'fileText', announcements:'megaphone', payroll:'banknote',
   'my-payslip':'banknote', 'my-schedule':'calendar', 'my-attendance':'clock', 'activity-log':'history', settings:'settings',
   'overtime-request':'clock', 'overtime-approval':'clock',
-  banners:'image', todo:'listCheck', 'my-activity':'history', 'notif-settings':'bell'
+  banners:'image', todo:'listCheck', 'my-activity':'history', 'notif-settings':'bell', chat:'chat', 'my-profile':'user'
 };
 
 function navItemsFor(role){
@@ -1978,6 +2037,7 @@ function navItemsFor(role){
       {v:'form-approval', label:'Form & Approval'},
       {v:'announcements', label:'Pengumuman'},
       {v:'payroll', label:'Penggajian'},
+      {v:'chat', label:'Chat'},
       {v:'banners', label:'Banner'},
       {v:'todo', label:'To-Do & Pantauan'},
       {v:'activity-log', label:'Riwayat Aktivitas'},
@@ -1998,6 +2058,8 @@ function navItemsFor(role){
       {v:'announcements', label:'Pengumuman'},
       {v:'my-payslip', label:'Slip Gaji Saya'},
       {v:'todo', label:'To-Do List'},
+      {v:'chat', label:'Chat'},
+      {v:'my-profile', label:'Profil Saya'},
       {v:'my-activity', label:'Aktivitas Saya'},
       {v:'notif-settings', label:'Notifikasi'}
     ];
@@ -2013,6 +2075,8 @@ function navItemsFor(role){
     {v:'announcements', label:'Pengumuman'},
     {v:'my-payslip', label:'Slip Gaji'},
     {v:'todo', label:'To-Do List'},
+    {v:'chat', label:'Chat'},
+    {v:'my-profile', label:'Profil Saya'},
     {v:'my-activity', label:'Aktivitas Saya'},
     {v:'notif-settings', label:'Notifikasi'}
   ];
@@ -2029,7 +2093,7 @@ function viewTitle(v){
     'schedule-approval':'Persetujuan Jadwal', 'hod-attendance':'Absensi Tim',
     'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI',
     'overtime-request':'Pengajuan Lembur', 'overtime-approval':'Pengajuan Lembur',
-    banners:'Banner', todo:'To-Do List', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
+    banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'To-Do List', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
   };
   return map[v] || 'Sistem HR';
 }
@@ -2044,7 +2108,8 @@ function renderShell(){
   var navHtml = items.map(function(it){
     var active = (STATE.view===it.v) || (STATE.view==='payroll-detail' && it.v==='payroll');
     var iconName = NAV_ICON_MAP[it.v] || 'grid';
-    return '<button class="nav-item '+(active?'active':'')+'" data-action="nav" data-view="'+it.v+'"><span class="nav-icon">'+iconSvg(iconName,18)+'</span>'+it.label+'</button>';
+    var navBadge = (it.v==='chat' && chatUnreadTotal()>0) ? '<span class="nav-badge">'+(chatUnreadTotal()>99?'99+':chatUnreadTotal())+'</span>' : '';
+    return '<button class="nav-item '+(active?'active':'')+'" data-action="nav" data-view="'+it.v+'"><span class="nav-icon">'+iconSvg(iconName,18)+'</span>'+it.label+navBadge+'</button>';
   }).join('');
 
   var who, whoSub;
@@ -2071,6 +2136,7 @@ function renderShell(){
     else if(STATE.view==='payroll-detail') body = renderSlipPage(STATE.payrollDetailEmp, true);
     else if(STATE.view==='activity-log') body = renderActivityLogPage();
     else if(STATE.view==='banners') body = renderBannersPage();
+    else if(STATE.view==='chat') body = renderChatPage();
     else if(STATE.view==='todo') body = renderTodoPage();
     else if(STATE.view==='notif-settings') body = renderNotifSettingsPage();
     else if(STATE.view==='settings') body = renderSettingsPage();
@@ -2088,6 +2154,8 @@ function renderShell(){
     else if(STATE.view==='my-payslip') body = renderSlipPage(SESSION.empId, false);
     else if(STATE.view==='todo') body = renderTodoPage();
     else if(STATE.view==='my-activity') body = renderMyActivityPage();
+    else if(STATE.view==='chat') body = renderChatPage();
+    else if(STATE.view==='my-profile') body = renderMyProfilePage();
     else if(STATE.view==='notif-settings') body = renderNotifSettingsPage();
     else body = renderHodDashboard();
   } else {
@@ -2102,12 +2170,14 @@ function renderShell(){
     else if(STATE.view==='my-payslip') body = renderSlipPage(SESSION.empId, false);
     else if(STATE.view==='todo') body = renderTodoPage();
     else if(STATE.view==='my-activity') body = renderMyActivityPage();
+    else if(STATE.view==='chat') body = renderChatPage();
+    else if(STATE.view==='my-profile') body = renderMyProfilePage();
     else if(STATE.view==='notif-settings') body = renderNotifSettingsPage();
     else body = renderStaffDashboard();
   }
 
   return ''+
-  '<div class="shell">'+
+  '<div class="shell'+(STATE.sidebarHidden?' sidebar-collapsed':'')+'">'+
     '<div class="sidebar '+(STATE.sidebarOpen?'open':'')+'">'+
       '<div class="sidebar-brand">'+
         '<div style="display:flex;align-items:center;gap:10px;">'+
@@ -2119,7 +2189,7 @@ function renderShell(){
       '</div>'+
       navHtml+
       '<div class="sidebar-foot">'+
-        '<div class="sidebar-user"><strong>'+escapeHtml(who||'')+'</strong>'+escapeHtml(whoSub||'')+'</div>'+
+        '<div class="sidebar-user" style="display:flex;gap:10px;align-items:center;">'+avatarHtml(role==='hr' ? null : getEmployee(SESSION.empId), 38)+'<div style="min-width:0;"><strong>'+escapeHtml(who||'')+'</strong>'+escapeHtml(whoSub||'')+'</div></div>'+
         '<button class="btn btn-secondary btn-block btn-sm" data-action="logout">Keluar</button>'+
       '</div>'+
     '</div>'+
@@ -2136,7 +2206,7 @@ function renderShell(){
           (needsMonthPicker(STATE.view) ? '<input type="month" class="month-input" id="topbarMonth" value="'+STATE.currentMonth+'">' : '')+
         '</div>'+
       '</div>'+
-      '<div class="content">'+body+'</div>'+
+      '<div class="content">'+body+'<input type="file" id="photoFile" accept="image/*" style="display:none;"></div>'+
       '<div class="app-footer no-print">'+neotoneCreditHtml()+'</div>'+
     '</div>'+
   '</div>';
@@ -2277,7 +2347,7 @@ function renderEmployees(){
     var hodBadge = isHod ? ' <span class="badge badge-info" title="HOD: '+escapeHtml(hodDepts.join(', '))+'">HOD'+(hodDepts.length>1?' ('+hodDepts.length+')':': '+escapeHtml(hodDepts[0]))+'</span>' : '';
     var propsTxt = (e.properties && e.properties.length) ? e.properties.join(', ') : '<span class="muted">&mdash;</span>';
     return '<tr>'+
-      '<td><strong>'+escapeHtml(e.name)+'</strong>'+hodBadge+'<div class="muted" style="font-size:11.5px;">@'+escapeHtml(e.username)+'</div></td>'+
+      '<td><div style="display:flex;gap:10px;align-items:center;">'+avatarHtml(e,36)+'<div><strong>'+escapeHtml(e.name)+'</strong>'+hodBadge+'<div class="muted" style="font-size:11.5px;">@'+escapeHtml(e.username)+'</div></div></div></td>'+
       '<td style="font-size:12px;font-family:monospace;">'+escapeHtml(e.empCode||'-')+'</td>'+
       '<td>'+escapeHtml(e.position)+'</td>'+
       '<td>'+escapeHtml(e.department)+'</td>'+
@@ -2285,6 +2355,8 @@ function renderEmployees(){
       '<td class="num">'+rupiah(e.baseSalary)+'</td>'+
       '<td>'+(e.active ? '<span class="badge badge-success">Aktif</span>' : '<span class="badge badge-neutral">Nonaktif</span>')+'</td>'+
       '<td>'+
+        '<button class="btn btn-ghost btn-sm" data-action="choose-photo" data-emp="'+e.id+'">Foto</button> '+
+        ((e.photoKey||e.photoUrl) ? '<button class="btn btn-ghost btn-sm" data-action="remove-photo" data-emp="'+e.id+'">Hapus Foto</button> ' : '')+
         '<button class="btn btn-ghost btn-sm" data-action="view-employee-profile" data-id="'+e.id+'">Lihat Profil</button> '+
         '<button class="btn btn-ghost btn-sm" data-action="edit-employee" data-id="'+e.id+'">Edit</button> '+
         '<button class="btn btn-ghost btn-sm" data-action="manage-hod" data-id="'+e.id+'">Kelola HOD</button> '+
@@ -3422,7 +3494,7 @@ function renderDashboardHeader(emp, includeKpi){
 
   var profileCard = ''+
   '<div class="dash-profile-card">'+
-    '<div class="dash-profile-avatar">'+escapeHtml((emp.name||'?').charAt(0).toUpperCase())+'</div>'+
+    avatarDashHtml(emp)+
     '<div><div class="dash-profile-name">'+escapeHtml(emp.name)+'</div>'+
     '<div class="dash-profile-sub">'+escapeHtml(emp.position)+' &middot; '+escapeHtml(emp.empCode||emp.id)+'</div></div>'+
   '</div>';
@@ -5010,10 +5082,12 @@ var NOTIF_CATS_HR = [
   {k:'late', label:'Karyawan absen telat', sub:'Pemberitahuan langsung saat ada yang absen masuk melewati jam jadwal.'},
   {k:'outOfRange', label:'Absen di luar jangkauan', sub:'Saat absen dilakukan di luar radius lokasi kantor atau GPS tidak terdeteksi.'},
   {k:'todo', label:'Aktivitas To-Do karyawan', sub:'Tugas baru dibuat atau diselesaikan oleh karyawan.'},
+  {k:'chat', label:'Pesan chat', sub:'Pesan baru dari karyawan lain.'},
   {k:'general', label:'Pengajuan & lainnya', sub:'Pengajuan cuti, lembur, form, KPI, dan pemberitahuan sistem lain.'}
 ];
 var NOTIF_CATS_EMP = [
   {k:'todo', label:'Tugas To-Do', sub:'Tugas baru dari HR/HOD dan pembaruan tugasmu.'},
+  {k:'chat', label:'Pesan chat', sub:'Pesan baru dari HR dan rekan kerja.'},
   {k:'general', label:'Pengajuan, pengumuman & lainnya', sub:'Status persetujuan, pengumuman HR, dan pemberitahuan sistem lain.'}
 ];
 
@@ -5232,6 +5306,7 @@ function startLiveSync(){
   window.__liveSyncStarted = true;
   setInterval(function(){ refreshLiveData(); }, 30000);
   setInterval(advanceBannerTrack, 5500);
+  setInterval(chatPoll, 6000);
   document.addEventListener('scroll', function(e){
     if(e.target && e.target.id==='bannerTrack') updateBannerDots(e.target);
   }, true);
@@ -5278,6 +5353,443 @@ function setTodoStatus(t, newStatus){
   } else if(newStatus==='doing'){
     logActivity('Mulai mengerjakan tugas "'+t.title+'".');
   }
+}
+
+/* ====================================================================
+   FOTO PROFIL, SIDEBAR BISA DISEMBUNYIKAN, DAN CHAT
+   ==================================================================== */
+
+/* ---------------------------- FOTO PROFIL ---------------------------- */
+var AVATAR_CACHE = {};
+
+function nameInitial(name){
+  var parts = String(name||'?').trim().split(/\s+/);
+  var a = parts[0] ? parts[0].charAt(0) : '?';
+  var b = parts.length>1 ? parts[parts.length-1].charAt(0) : '';
+  return (a+b).toUpperCase();
+}
+
+function avatarImgTag(src){
+  return '<img src="'+escapeHtml(String(src).replace(/"/g,'%22'))+'" alt="">';
+}
+
+/* isi dalam lingkaran avatar: foto kalau ada, kalau tidak inisial */
+function avatarInner(emp){
+  if(emp && emp.photoUrl) return avatarImgTag(emp.photoUrl);
+  if(emp && emp.photoKey && AVATAR_CACHE[emp.photoKey]) return avatarImgTag(AVATAR_CACHE[emp.photoKey]);
+  return escapeHtml(nameInitial(emp ? emp.name : 'HR'));
+}
+function avatarKeyAttr(emp){
+  return (emp && !emp.photoUrl && emp.photoKey && !AVATAR_CACHE[emp.photoKey]) ? ' data-avatar-key="'+escapeHtml(emp.photoKey)+'"' : '';
+}
+/* emp = objek karyawan; null/undefined = HR */
+function avatarHtml(emp, size){
+  var s = size || 36;
+  var inner = emp ? avatarInner(emp) : 'HR';
+  return '<span class="avatar'+(emp?'':' avatar-hr')+'" style="width:'+s+'px;height:'+s+'px;font-size:'+Math.round(s*0.38)+'px;"'+avatarKeyAttr(emp)+'>'+inner+'</span>';
+}
+function avatarDashHtml(emp){
+  return '<button type="button" class="dash-profile-avatar" data-action="nav" data-view="my-profile" aria-label="Foto profil"'+avatarKeyAttr(emp)+'>'+avatarInner(emp)+'</button>';
+}
+
+function hydrateAvatars(){
+  var nodes = document.querySelectorAll('[data-avatar-key]');
+  Array.prototype.forEach.call(nodes, function(node){
+    var key = node.getAttribute('data-avatar-key');
+    if(AVATAR_CACHE[key]){ node.innerHTML = avatarImgTag(AVATAR_CACHE[key]); node.removeAttribute('data-avatar-key'); return; }
+    resolveAttachmentSrc(key, null).then(function(src){
+      if(!src) return;
+      AVATAR_CACHE[key] = src;
+      node.innerHTML = avatarImgTag(src);
+      node.removeAttribute('data-avatar-key');
+    }).catch(function(){});
+  });
+}
+
+/* potong tengah jadi persegi lalu kecilkan -> foto profil ringan */
+function compressSquare(file, size, quality){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var img = new Image();
+      img.onload = function(){
+        var side = Math.min(img.width, img.height);
+        var sx = Math.round((img.width-side)/2), sy = Math.round((img.height-side)/2);
+        var canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        canvas.getContext('2d').drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/jpeg', quality||0.82));
+      };
+      img.onerror = function(){ reject(new Error('Gagal memuat gambar.')); };
+      img.src = e.target.result;
+    };
+    reader.onerror = function(){ reject(new Error('Gagal membaca file.')); };
+    reader.readAsDataURL(file);
+  });
+}
+
+function canEditPhotoOf(empId){
+  return SESSION.role==='hr' || (SESSION.empId && SESSION.empId===empId);
+}
+
+function setEmployeePhotoFromFile(empId, file){
+  var emp = getEmployee(empId);
+  if(!emp || !canEditPhotoOf(empId)) return Promise.resolve(false);
+  if(!file || !file.type || file.type.indexOf('image/')!==0){ toast('Pilih file gambar (JPG/PNG).'); return Promise.resolve(false); }
+  if(file.size > 8*1024*1024){ toast('Ukuran foto terlalu besar (maks. 8MB).'); return Promise.resolve(false); }
+  toast('Mengunggah foto profil...');
+  return compressSquare(file, 320, 0.82).then(function(dataUrl){
+    return uploadAttachment('avatar_'+empId+'_'+Date.now()+'.jpg', dataUrl, 'image/jpeg');
+  }).then(function(res){
+    emp.photoKey = res.key; emp.photoUrl = res.url || null;
+    logActivity('Mengubah foto profil '+(SESSION.role==='hr' ? emp.name : 'sendiri')+'.');
+    return saveDB();
+  }).then(function(){ toast('Foto profil diperbarui.'); render(); return true; })
+  .catch(function(err){ console.error('setEmployeePhoto error', err); toast('Gagal mengunggah foto profil.'); return false; });
+}
+
+function renderMyProfilePage(){
+  var emp = getEmployee(SESSION.empId);
+  if(!emp) return '<div class="card"><div class="empty-state">Profil tidak ditemukan.</div></div>';
+  var hasPhoto = !!(emp.photoUrl || emp.photoKey);
+  return ''+
+  '<div class="card" style="text-align:center;">'+
+    '<div style="display:flex;justify-content:center;margin:6px 0 14px;">'+avatarHtml(emp, 120)+'</div>'+
+    '<div class="card-title" style="margin-bottom:2px;">'+escapeHtml(emp.name)+'</div>'+
+    '<div class="card-sub">'+escapeHtml(emp.position||'')+' &middot; '+escapeHtml(emp.department||'')+'</div>'+
+    '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'+
+      '<button class="btn btn-primary" data-action="choose-photo" data-emp="'+emp.id+'">'+(hasPhoto?'Ganti Foto':'Tambah Foto')+'</button>'+
+      (hasPhoto ? '<button class="btn btn-secondary" data-action="remove-photo" data-emp="'+emp.id+'">Hapus Foto</button>' : '')+
+    '</div>'+
+    '<div class="card-sub" style="margin-top:14px;">Foto dipotong persegi otomatis dan tampil di dashboard, menu samping, serta chat.</div>'+
+  '</div>'+
+  '<div class="card">'+
+    '<div class="card-title">Data Diri</div>'+
+    '<div class="table-wrap"><table><tbody>'+
+      '<tr><td class="muted">ID Karyawan</td><td>'+escapeHtml(emp.empCode||emp.id)+'</td></tr>'+
+      '<tr><td class="muted">Username</td><td>@'+escapeHtml(emp.username||'')+'</td></tr>'+
+      '<tr><td class="muted">Bergabung</td><td>'+(emp.joinDate ? formatDateID(emp.joinDate) : '&mdash;')+'</td></tr>'+
+    '</tbody></table></div>'+
+  '</div>';
+}
+
+/* ---------------------------- SIDEBAR BISA DISEMBUNYIKAN ---------------------------- */
+function loadSidebarHiddenPref(){
+  try{ STATE.sidebarHidden = window.localStorage.getItem('abcSelarasSidebarHidden')==='1'; }catch(e){ STATE.sidebarHidden = false; }
+}
+function saveSidebarHiddenPref(){
+  try{ window.localStorage.setItem('abcSelarasSidebarHidden', STATE.sidebarHidden ? '1' : '0'); }catch(e){}
+}
+function isDesktopWidth(){ return (window.innerWidth || 1024) > 860; }
+
+/* ---------------------------- CHAT ---------------------------- */
+var CHAT = {me:null, msgs:[], lastId:0, loaded:false, error:'', busy:false, readMap:{}, draft:'', search:'', lastSend:0};
+var CHAT_TABLE_MISSING = 'Fitur chat belum aktif di server. Minta admin menjalankan file supabase/chat.sql di Supabase (SQL Editor).';
+
+function chatMe(){ return SESSION.role==='hr' ? 'hr' : SESSION.empId; }
+function chatRemote(){ return BACKEND==='supabase' && hasRemoteStorage(); }
+function chatAudience(id){ return id==='hr' ? {type:'hr'} : {type:'emp', empId:id}; }
+function chatPeerName(id){ if(id==='hr') return 'HR'; var e = getEmployee(id); return e ? e.name : '(karyawan dihapus)'; }
+function chatPeerEmp(id){ return id==='hr' ? null : getEmployee(id); }
+
+function chatReadKey(me){ return 'abcChatRead_'+me; }
+function chatLoadReadMap(me){
+  try{ CHAT.readMap = JSON.parse(window.localStorage.getItem(chatReadKey(me)) || '{}') || {}; }catch(e){ CHAT.readMap = {}; }
+}
+function chatSaveReadMap(me){
+  try{ window.localStorage.setItem(chatReadKey(me), JSON.stringify(CHAT.readMap)); }catch(e){}
+}
+
+function chatReset(){
+  CHAT = {me:null, msgs:[], lastId:0, loaded:false, error:'', busy:false, readMap:{}, draft:'', search:'', lastSend:0};
+  STATE.chatWith = null;
+}
+
+function chatEnsureIdentity(){
+  var me = chatMe();
+  if(!me){ return false; }
+  if(CHAT.me !== me){
+    var keepSearch = '';
+    chatReset();
+    CHAT.me = me;
+    chatLoadReadMap(me);
+  }
+  return true;
+}
+
+/* ---- penyimpanan: tabel Supabase (chat_messages) atau localStorage (mode lokal) ---- */
+function chatLocalAll(){
+  try{ return JSON.parse(window.localStorage.getItem('abcChatLocal') || '[]') || []; }catch(e){ return []; }
+}
+function chatFetchRemote(me, afterId){
+  var url = SUPABASE_URL+'/rest/v1/chat_messages?select=id,sender,recipient,body,created_at'+
+    '&or='+encodeURIComponent('(sender.eq.'+me+',recipient.eq.'+me+')')+
+    '&id=gt.'+afterId+'&order=id.asc&limit=500';
+  return fetch(url, {method:'GET', headers: supabaseHeaders()}).then(function(res){
+    if(res.status===404){ var err = new Error('chat_table_missing'); err.code = 'missing'; throw err; }
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    return res.json();
+  });
+}
+function chatSendRemote(me, to, body){
+  return fetch(SUPABASE_URL+'/rest/v1/chat_messages', {
+    method:'POST',
+    headers: supabaseHeaders({'Content-Type':'application/json','Prefer':'return=representation'}),
+    body: JSON.stringify([{sender:me, recipient:to, body:body}])
+  }).then(function(res){
+    if(res.status===404){ var err = new Error('chat_table_missing'); err.code = 'missing'; throw err; }
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    return res.json();
+  }).then(function(rows){ return rows && rows[0]; });
+}
+function chatFetch(me, afterId){
+  if(chatRemote()) return chatFetchRemote(me, afterId);
+  return Promise.resolve(chatLocalAll().filter(function(m){ return m.id>afterId && (m.sender===me || m.recipient===me); }));
+}
+function chatSendStore(me, to, body){
+  if(chatRemote()) return chatSendRemote(me, to, body);
+  var all = chatLocalAll();
+  var nextId = all.reduce(function(mx, m){ return Math.max(mx, m.id); }, 0) + 1;
+  var row = {id:nextId, sender:me, recipient:to, body:body, created_at:new Date().toISOString()};
+  all.push(row);
+  try{ window.localStorage.setItem('abcChatLocal', JSON.stringify(all.slice(-2000))); }catch(e){ return Promise.reject(e); }
+  return Promise.resolve(row);
+}
+
+function chatMergeRows(rows){
+  var seen = {};
+  CHAT.msgs.forEach(function(m){ seen[m.id] = true; });
+  var added = [];
+  (rows||[]).forEach(function(r){
+    if(seen[r.id]) return;
+    seen[r.id] = true;
+    CHAT.msgs.push(r);
+    added.push(r);
+    if(r.id > CHAT.lastId) CHAT.lastId = r.id;
+  });
+  CHAT.msgs.sort(function(a,b){ return a.id - b.id; });
+  return added;
+}
+
+function chatConvOf(m, me){ return m.sender===me ? m.recipient : m.sender; }
+
+function chatUnreadFor(peerId){
+  var me = CHAT.me;
+  var lastRead = CHAT.readMap[peerId] || 0;
+  return CHAT.msgs.filter(function(m){ return m.sender===peerId && m.recipient===me && m.id>lastRead; }).length;
+}
+function chatUnreadTotal(){
+  if(!CHAT.me) return 0;
+  var peers = {};
+  CHAT.msgs.forEach(function(m){ if(m.recipient===CHAT.me) peers[m.sender] = true; });
+  return Object.keys(peers).reduce(function(sum, p){ return sum + chatUnreadFor(p); }, 0);
+}
+function chatMarkRead(peerId){
+  var maxId = 0;
+  CHAT.msgs.forEach(function(m){ if(m.sender===peerId && m.recipient===CHAT.me && m.id>maxId) maxId = m.id; });
+  if(maxId > (CHAT.readMap[peerId]||0)){
+    CHAT.readMap[peerId] = maxId;
+    chatSaveReadMap(CHAT.me);
+  }
+}
+
+function chatPeers(){
+  var me = chatMe();
+  var peers = [];
+  if(me!=='hr') peers.push({id:'hr', name:'HR', emp:null, sub:'Tim HR'});
+  activeEmployees().forEach(function(e){
+    if(e.id!==me) peers.push({id:e.id, name:e.name, emp:e, sub:(e.position||'')+(e.department ? ' · '+e.department : '')});
+  });
+  /* percakapan dengan karyawan yang sudah nonaktif tetap muncul */
+  CHAT.msgs.forEach(function(m){
+    var pid = chatConvOf(m, me);
+    if(pid!=='hr' && !peers.some(function(p){ return p.id===pid; })){
+      var e = getEmployee(pid);
+      if(e) peers.push({id:pid, name:e.name, emp:e, sub:'Nonaktif'});
+    }
+  });
+  return peers;
+}
+
+function chatLastMsgWith(peerId){
+  for(var i=CHAT.msgs.length-1;i>=0;i--){
+    var m = CHAT.msgs[i];
+    if(m.sender===peerId || m.recipient===peerId) return m;
+  }
+  return null;
+}
+
+function chatTimeLabel(iso){
+  var d = new Date(iso);
+  if(isNaN(d.getTime())) return '';
+  var now = new Date();
+  var same = d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+  return same ? pad2(d.getHours())+':'+pad2(d.getMinutes()) : d.getDate()+' '+MONTHS_ID[d.getMonth()].slice(0,3);
+}
+
+function chatListHtml(){
+  var q = (CHAT.search||'').trim().toLowerCase();
+  var rows = chatPeers().filter(function(p){ return !q || p.name.toLowerCase().indexOf(q)!==-1; }).map(function(p){
+    var last = chatLastMsgWith(p.id);
+    return {p:p, last:last, unread:chatUnreadFor(p.id)};
+  });
+  rows.sort(function(a,b){
+    var at = a.last ? a.last.id : 0, bt = b.last ? b.last.id : 0;
+    if(at!==bt) return bt - at;
+    return a.p.name.localeCompare(b.p.name);
+  });
+  return rows.map(function(r){
+    var preview = r.last ? ((r.last.sender===CHAT.me ? 'Kamu: ' : '')+r.last.body) : r.p.sub;
+    return '<button type="button" class="chat-item'+(STATE.chatWith===r.p.id?' active':'')+'" data-action="chat-open" data-peer="'+escapeHtml(r.p.id)+'">'+
+      avatarHtml(r.p.emp, 44)+
+      '<span class="chat-item-body">'+
+        '<span class="chat-item-top"><span class="chat-item-name">'+escapeHtml(r.p.name)+'</span>'+(r.last?'<span class="chat-item-time">'+chatTimeLabel(r.last.created_at)+'</span>':'')+'</span>'+
+        '<span class="chat-item-prev'+(r.unread?' unread':'')+'">'+escapeHtml(preview.length>60 ? preview.slice(0,60)+'…' : preview)+'</span>'+
+      '</span>'+
+      (r.unread ? '<span class="chat-unread">'+(r.unread>99?'99+':r.unread)+'</span>' : '')+
+    '</button>';
+  }).join('') || '<div class="empty-state">Tidak ada kontak.</div>';
+}
+
+function chatMessagesHtml(){
+  var peer = STATE.chatWith;
+  var me = CHAT.me;
+  var list = CHAT.msgs.filter(function(m){ return (m.sender===me && m.recipient===peer) || (m.sender===peer && m.recipient===me); });
+  if(!list.length) return '<div class="empty-state">Belum ada pesan. Sapa '+escapeHtml(chatPeerName(peer))+' di bawah ini.</div>';
+  var lastDay = '';
+  return list.map(function(m){
+    var d = new Date(m.created_at);
+    var dayIso = d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
+    var head = '';
+    if(dayIso!==lastDay){ lastDay = dayIso; head = '<div class="chat-day">'+(dayIso===todayISO()?'Hari ini':formatDateID(dayIso))+'</div>'; }
+    return head+'<div class="chat-msg '+(m.sender===me?'mine':'theirs')+'"><div class="chat-bubble">'+escapeHtml(m.body)+'</div>'+
+      '<div class="chat-msg-time">'+pad2(d.getHours())+':'+pad2(d.getMinutes())+'</div></div>';
+  }).join('');
+}
+
+function renderChatPage(){
+  chatEnsureIdentity();
+  var peer = STATE.chatWith;
+  var peerOk = peer && chatPeers().some(function(p){ return p.id===peer; });
+  if(!peerOk){ peer = STATE.chatWith = null; }
+  var threadHtml;
+  if(peer){
+    var pe = chatPeerEmp(peer);
+    threadHtml = ''+
+    '<div class="chat-head">'+
+      '<button type="button" class="btn btn-ghost btn-sm chat-back" data-action="chat-back" aria-label="Kembali">&larr;</button>'+
+      avatarHtml(pe, 40)+
+      '<div><div class="chat-head-name">'+escapeHtml(chatPeerName(peer))+'</div><div class="chat-head-sub">'+escapeHtml(pe ? (pe.position||'') : 'Tim HR')+'</div></div>'+
+    '</div>'+
+    '<div class="chat-messages" id="chatMessages">'+chatMessagesHtml()+'</div>'+
+    '<div class="chat-compose">'+
+      '<textarea id="chatInput" rows="1" maxlength="1000" placeholder="Tulis pesan..." data-role="chat-input">'+escapeHtml(CHAT.draft||'')+'</textarea>'+
+      '<button type="button" class="btn btn-primary" data-action="chat-send">Kirim</button>'+
+    '</div>';
+  } else {
+    threadHtml = '<div class="chat-empty">'+iconSvg('chat',40)+'<div>Pilih kontak untuk mulai chat.</div></div>';
+  }
+  return ''+
+  (CHAT.error ? '<div class="card" style="background:var(--warning-bg);color:var(--warning);margin-bottom:12px;">'+escapeHtml(CHAT.error)+'</div>' : '')+
+  '<div class="chat-wrap'+(peer?' has-thread':'')+'">'+
+    '<div class="chat-list-pane">'+
+      '<div class="chat-search"><input id="chatSearch" placeholder="Cari nama..." value="'+escapeHtml(CHAT.search||'')+'" data-role="chat-search"></div>'+
+      '<div class="chat-list" id="chatList">'+chatListHtml()+'</div>'+
+    '</div>'+
+    '<div class="chat-thread-pane">'+threadHtml+'</div>'+
+  '</div>';
+}
+
+/* perbarui bagian chat tanpa render ulang seluruh halaman (supaya ketikan tidak hilang) */
+function updateChatDom(){
+  var list = document.getElementById('chatList');
+  if(list) list.innerHTML = chatListHtml();
+  var box = document.getElementById('chatMessages');
+  if(box){
+    var nearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 80;
+    box.innerHTML = chatMessagesHtml();
+    if(nearBottom) box.scrollTop = box.scrollHeight;
+  }
+  updateNavChatBadge();
+}
+function updateNavChatBadge(){
+  var btn = document.querySelector('.nav-item[data-view="chat"]');
+  if(!btn) return;
+  var n = chatUnreadTotal();
+  var badge = btn.querySelector('.nav-badge');
+  if(n>0){
+    if(!badge){ badge = document.createElement('span'); badge.className = 'nav-badge'; btn.appendChild(badge); }
+    badge.textContent = n>99 ? '99+' : String(n);
+  } else if(badge){ btn.removeChild(badge); }
+}
+function chatScrollToEnd(){
+  var box = document.getElementById('chatMessages');
+  if(box) box.scrollTop = box.scrollHeight;
+}
+
+function chatPoll(){
+  if(!STATE.loaded || STATE.loadError || !SESSION.role) return Promise.resolve(false);
+  if(!chatEnsureIdentity()) return Promise.resolve(false);
+  if(CHAT.busy || CHAT.error===CHAT_TABLE_MISSING) return Promise.resolve(false);
+  CHAT.busy = true;
+  var me = CHAT.me;
+  var wasLoaded = CHAT.loaded;
+  return chatFetch(me, CHAT.lastId).then(function(rows){
+    CHAT.busy = false;
+    if(CHAT.me!==me) return false;
+    CHAT.error = '';
+    var added = chatMergeRows(rows);
+    CHAT.loaded = true;
+    var incoming = added.filter(function(m){ return m.recipient===me && m.sender!==me; });
+    var viewing = STATE.view==='chat' ? STATE.chatWith : null;
+    if(viewing && !document.hidden) chatMarkRead(viewing);
+    if(wasLoaded && incoming.length){
+      var aud = chatAudience(me);
+      var fresh = incoming.filter(function(m){ return !(m.sender===viewing && !document.hidden); });
+      if(fresh.length && notifAllowed(aud, 'chat')){
+        var m0 = fresh[fresh.length-1];
+        var nm = chatPeerName(m0.sender);
+        systemNotify(nm, m0.body);
+        if(STATE.view!=='chat') toast('Pesan baru dari '+nm+': '+(m0.body.length>50 ? m0.body.slice(0,50)+'…' : m0.body));
+      }
+    }
+    if(added.length || !wasLoaded) updateChatDom();
+    return true;
+  }).catch(function(err){
+    CHAT.busy = false;
+    if(err && err.code==='missing'){ CHAT.error = CHAT_TABLE_MISSING; if(STATE.view==='chat') render(); }
+    return false;
+  });
+}
+
+function chatSend(){
+  if(!chatEnsureIdentity()) return Promise.resolve(false);
+  var peer = STATE.chatWith;
+  var input = document.getElementById('chatInput');
+  var body = (input ? input.value : CHAT.draft || '').trim();
+  if(!peer || !body) return Promise.resolve(false);
+  if(body.length > 1000){ toast('Pesan terlalu panjang (maks. 1000 karakter).'); return Promise.resolve(false); }
+  if(Date.now() - CHAT.lastSend < 400) return Promise.resolve(false);
+  CHAT.lastSend = Date.now();
+  var me = CHAT.me;
+  return chatSendStore(me, peer, body).then(function(row){
+    if(CHAT.me!==me) return false;
+    chatMergeRows([row]);
+    CHAT.draft = '';
+    if(input) input.value = '';
+    chatMarkRead(peer);
+    updateChatDom();
+    chatScrollToEnd();
+    var aud = chatAudience(peer);
+    if(notifAllowed(aud, 'chat')){
+      triggerPush(aud, 'Pesan dari '+chatPeerName(me)+': '+(body.length>80 ? body.slice(0,80)+'…' : body), 'chat');
+    }
+    return true;
+  }).catch(function(err){
+    if(err && err.code==='missing'){ CHAT.error = CHAT_TABLE_MISSING; render(); }
+    else toast('Pesan gagal terkirim. Periksa koneksi lalu coba lagi.');
+    return false;
+  });
 }
 
 function openModal(html){
@@ -5421,7 +5933,31 @@ document.addEventListener('click', function(e){
     var npOn = getNotifPrefs(npAud)[npKey] !== false;
     setNotifPref(npAud, npKey, !npOn);
     saveDB().then(function(){ render(); });
+  } else if(action==='choose-photo'){
+    STATE.photoTarget = el.getAttribute('data-emp');
+    var pfInput = document.getElementById('photoFile');
+    if(pfInput){ pfInput.value = ''; pfInput.click(); }
+  } else if(action==='remove-photo'){
+    var rpEmp = getEmployee(el.getAttribute('data-emp'));
+    if(!rpEmp || !canEditPhotoOf(rpEmp.id)) return;
+    if(confirm('Hapus foto profil '+rpEmp.name+'?')){
+      rpEmp.photoKey = null; rpEmp.photoUrl = null;
+      logActivity('Menghapus foto profil '+(SESSION.role==='hr' ? rpEmp.name : 'sendiri')+'.');
+      saveDB().then(function(){ toast('Foto profil dihapus.'); render(); });
+    }
+  } else if(action==='chat-open'){
+    chatEnsureIdentity();
+    STATE.chatWith = el.getAttribute('data-peer');
+    chatMarkRead(STATE.chatWith);
+    render();
+    chatScrollToEnd();
+  } else if(action==='chat-back'){
+    STATE.chatWith = null;
+    render();
+  } else if(action==='chat-send'){
+    chatSend();
   } else if(action==='logout'){
+    chatReset();
     SESSION = {role:null, empId:null};
     STATE.view = 'dashboard';
     STATE.loginError = '';
@@ -5436,7 +5972,8 @@ document.addEventListener('click', function(e){
     STATE.notifPanelOpen = false;
     render();
   } else if(action==='toggle-sidebar'){
-    STATE.sidebarOpen = !STATE.sidebarOpen;
+    if(isDesktopWidth()){ STATE.sidebarHidden = !STATE.sidebarHidden; saveSidebarHiddenPref(); }
+    else { STATE.sidebarOpen = !STATE.sidebarOpen; }
     render();
   } else if(action==='retry-load'){
     STATE.loadError = false;
@@ -6545,6 +7082,8 @@ document.addEventListener('click', function(e){
 
 document.addEventListener('input', function(e){
   var t = e.target;
+  if(t.getAttribute && t.getAttribute('data-role')==='chat-input'){ CHAT.draft = t.value; }
+  if(t.id==='chatSearch'){ CHAT.search = t.value; var chatListEl = document.getElementById('chatList'); if(chatListEl) chatListEl.innerHTML = chatListHtml(); }
   if(t.getAttribute && t.getAttribute('data-role')==='ann-search'){
     var cursorPos = t.selectionStart;
     getAnnouncementDraft().nameSearch = t.value;
@@ -6582,6 +7121,11 @@ document.addEventListener('input', function(e){
 
 document.addEventListener('change', function(e){
   var t = e.target;
+  if(t.id==='photoFile'){
+    var pfFile = t.files && t.files[0];
+    if(pfFile && STATE.photoTarget) setEmployeePhotoFromFile(STATE.photoTarget, pfFile);
+    return;
+  }
   if(t.id==='todoFilterDept'){ STATE.todoFilterDept = t.value; STATE.todoFilterEmp = ''; render(); return; }
   if(t.id==='todoFilterEmp'){ STATE.todoFilterEmp = t.value; render(); return; }
   if(t.id==='todoFilterStatus'){ STATE.todoFilterStatus = t.value; render(); return; }
@@ -6824,6 +7368,7 @@ function doStaffLogin(){
 }
 
 document.addEventListener('keydown', function(e){
+  if(e.key==='Enter' && !e.shiftKey && e.target && e.target.id==='chatInput'){ e.preventDefault(); chatSend(); return; }
   if(e.key !== 'Enter') return;
   var t = e.target;
   if(t && t.getAttribute && t.getAttribute('data-enter-action')){
@@ -6860,6 +7405,7 @@ try{
   render();
 }
 
+loadSidebarHiddenPref();
 startLiveSync();
 (function initNativeNotif(){
   var ln = nativeLocalNotif();

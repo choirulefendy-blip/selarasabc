@@ -42,6 +42,10 @@ sistem selama aplikasi/tab terbuka (lihat bagian 4).
 | **Peringatan absen** | Saat absen masuk **telat**, atau absen masuk/pulang **di luar radius kantor / GPS tidak terdeteksi**, HR langsung dapat notifikasi. Dashboard HR juga punya kartu *Peringatan Absen Hari Ini*. |
 | **Pengaturan Notifikasi** | Menu **Notifikasi** di semua akun: saklar utama + per kategori (HR: telat, luar jangkauan, To-Do, pengajuan; Staff: To-Do, pengajuan). Kategori yang dimatikan tidak dikirim sama sekali. Pengaturan HR berlaku untuk semua akun HR. Tombol *Aktifkan Notifikasi Perangkat* mengatur izin di perangkat. |
 | **Sinkronisasi live** | Tiap 30 detik aplikasi menarik notifikasi, tugas, dan absen baru dari server tanpa perlu muat ulang. |
+- **Foto profil** — setiap akun bisa menambah/mengganti/menghapus foto lewat menu *Profil Saya* (Staff & HOD). HR bisa mengatur foto semua karyawan dari menu *Karyawan*. Foto dipotong persegi otomatis dan tampil di dashboard, menu samping, daftar karyawan, dan chat.
+- **Sembunyikan sidebar** — tombol ☰ di pojok kiri atas menyembunyikan/menampilkan menu samping di desktop (pilihan diingat per perangkat). Di HP tetap berupa laci geser.
+- **Chat 1-lawan-1** — menu *Chat* untuk HR, HOD, dan Staff; bisa chat ke semua karyawan aktif dan HR (semua akun HR berbagi satu kotak masuk "HR"). Teks saja, ada badge belum dibaca, pencarian nama, dan notifikasi (bisa dimatikan di *Notifikasi → Pesan chat*).
+  **Wajib:** jalankan `supabase/chat.sql` sekali di Supabase → SQL Editor. Tanpa itu menu Chat menampilkan "Fitur chat belum aktif". Catatan keamanan: karena aplikasi tidak memakai Supabase Auth, pemegang kunci anon secara teknis bisa membaca semua pesan lewat API; jangan kirim data sangat rahasia lewat chat.
 
 ## 3. Paket APK Android
 
