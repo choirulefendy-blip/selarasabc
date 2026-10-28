@@ -1187,11 +1187,19 @@ function supabaseSet(key, value){
   return fetch(url, {
     method:'POST',
     headers: supabaseHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}),
-    body: JSON.stringify({key:key, value:value})
+    body: JSON.stringify({key:key, value:value, updated_at:new Date().toISOString()})
   }).then(function(res){
     if(!res.ok) throw new Error('HTTP '+res.status);
     return {key:key, value:value};
   });
+}
+
+function supabaseStamp(key){
+  var url = SUPABASE_URL+'/rest/v1/kv_store?key=eq.'+encodeURIComponent(key)+'&select=updated_at';
+  return fetch(url, {method:'GET', headers: supabaseHeaders()}).then(function(res){
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    return res.json();
+  }).then(function(rows){ return (rows && rows.length) ? String(rows[0].updated_at||'') : ''; });
 }
 
 function appsScriptGet(key){
@@ -5410,6 +5418,7 @@ function raiseAttendanceAlerts(empId, ym, day, type, time, loc, geo){
 
 /* ---------------------------- SINKRONISASI LIVE ---------------------------- */
 var LIVE_POLL_BUSY = false;
+var LIVE_STAMP_SEEN = null, LIVE_STAMP_PENDING = null, LIVE_TICKS = 0;
 
 function mergeById(localArr, remoteArr, stampOf){
   var map = {};
@@ -5471,6 +5480,11 @@ function updateBellBadge(){
   if(!btn) return;
   var n = unreadNotifCount();
   var badge = btn.querySelector('.notif-badge');
+  if(STATE.notifPanelOpen && btn.parentNode){
+    /* panel terbuka: segarkan daftar langsung */
+    btn.parentNode.outerHTML = renderNotifBell();
+    return;
+  }
   if(n>0){
     if(!badge){ badge = document.createElement('span'); badge.className = 'notif-badge'; btn.appendChild(badge); }
     badge.textContent = n>99 ? '99+' : String(n);
@@ -5488,6 +5502,7 @@ function refreshLiveData(){
     if(!res || !res.value || !SESSION.role) return false;
     var remote;
     try{ remote = JSON.parse(res.value); }catch(e){ return false; }
+    LIVE_STAMP_SEEN = LIVE_STAMP_PENDING;
     var before = {};
     myNotifications().forEach(function(n){ before[n.id] = true; });
     mergeLiveData(remote);
@@ -5505,10 +5520,28 @@ function refreshLiveData(){
   });
 }
 
+/* Cek ringan (hanya updated_at) tiap ~5 detik; tarik data penuh hanya bila berubah.
+   Setiap 6 putaran (~30 dtk) tetap tarik penuh sebagai jaring pengaman. */
+function liveTick(force){
+  if(!STATE.loaded || STATE.loadError || !SESSION.role || LIVE_POLL_BUSY) return Promise.resolve(false);
+  if(document.hidden && !force) return Promise.resolve(false);
+  LIVE_TICKS++;
+  var full = force || LIVE_TICKS % 6 === 0 || !(hasRemoteStorage() && BACKEND==='supabase');
+  if(full){ LIVE_STAMP_PENDING = null; return refreshLiveData(); }
+  return supabaseStamp('hrdb').then(function(st){
+    if(st && st === LIVE_STAMP_SEEN) return false;
+    LIVE_STAMP_PENDING = st;
+    return refreshLiveData();
+  }).catch(function(){ return false; });
+}
+
 function startLiveSync(){
   if(window.__liveSyncStarted) return;
   window.__liveSyncStarted = true;
-  setInterval(function(){ refreshLiveData(); }, 30000);
+  setInterval(function(){ liveTick(false); }, 5000);
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden){ liveTick(true); chatPoll(); } });
+  window.addEventListener('focus', function(){ liveTick(true); });
+  window.addEventListener('online', function(){ liveTick(true); });
   setInterval(advanceBannerTrack, 5500);
   setInterval(chatPoll, 6000);
   document.addEventListener('scroll', function(e){
