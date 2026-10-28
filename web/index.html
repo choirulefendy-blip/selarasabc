@@ -508,6 +508,20 @@
   .img-viewer{background:rgba(0,0,0,.85);flex-direction:column;gap:14px;}
   .img-viewer img{max-width:100%;max-height:78vh;border-radius:8px;}
   @media(max-width:860px){.chat-fab{right:16px;bottom:16px;}}
+
+  /* ---- Menu samping berkelompok ---- */
+  .nav-item{padding:10px 18px;}
+  .nav-group{margin-top:4px;}
+  .nav-group-head{display:flex;align-items:center;gap:8px;width:calc(100% - 24px);margin:0 12px;padding:9px 18px;background:none;border:0;color:rgba(255,255,255,.58);font:inherit;font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;border-radius:999px;text-align:left;}
+  .nav-group-head:hover{color:#fff;background:rgba(255,255,255,.07);}
+  .nav-group.has-active .nav-group-head{color:#fff;}
+  .nav-group-label{flex:1;}
+  .nav-group-chev{display:inline-flex;transition:transform .2s;opacity:.8;}
+  .nav-group.open .nav-group-chev{transform:rotate(180deg);}
+  .nav-group-items{display:none;}
+  .nav-group.open .nav-group-items{display:block;}
+  .nav-group.open .nav-group-badge{display:none;}
+  .nav-group-badge{margin-left:0;}
 </style>
 </head>
 <body>
@@ -2038,6 +2052,7 @@ var ICONS = {
   mapPin: '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>',
   chat: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
   user: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  chevronDown: '<path d="M6 9l6 6 6-6"/>',
   image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
   listCheck: '<path d="M9 6h12M9 12h12M9 18h12"/><path d="M3 6l1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/>',
   clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/>'
@@ -2115,6 +2130,80 @@ function navItemsFor(role){
   ];
 }
 
+/* Pengelompokan menu samping. "top" = selalu tampil; tiap grup bisa dibuka/ditutup. */
+function navGroupsFor(role){
+  if(role==='hr'){
+    return {top:['dashboard'], groups:[
+      {id:'sdm', label:'SDM', views:['employees','attendance','payroll']},
+      {id:'persetujuan', label:'Persetujuan', views:['schedule-approval','kpi-approval','leave-approval','overtime-approval','form-approval']},
+      {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','banners']},
+      {id:'tugas', label:'Tugas & Aktivitas', views:['todo','activity-log']},
+      {id:'sistem', label:'Sistem', views:['notif-settings','settings']}
+    ]};
+  }
+  if(role==='hod'){
+    return {top:['dashboard','checkin'], groups:[
+      {id:'tim', label:'Tim Saya', views:['hod-attendance','schedule','kpi']},
+      {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request']},
+      {id:'komunikasi', label:'Komunikasi', views:['chat','announcements']},
+      {id:'tugas', label:'Tugas & Aktivitas', views:['todo','my-activity']},
+      {id:'akun', label:'Akun Saya', views:['my-payslip','my-profile','notif-settings']}
+    ]};
+  }
+  return {top:['dashboard','checkin'], groups:[
+    {id:'jadwal', label:'Jadwal & Absensi', views:['my-schedule','my-attendance']},
+    {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request']},
+    {id:'komunikasi', label:'Komunikasi', views:['chat','announcements']},
+    {id:'tugas', label:'Tugas & Aktivitas', views:['todo','my-activity']},
+    {id:'akun', label:'Akun Saya', views:['my-payslip','my-profile','notif-settings']}
+  ]};
+}
+function navOpenMap(role){
+  STATE.navOpenMap = STATE.navOpenMap || {};
+  if(!STATE.navOpenMap[role]){
+    try{ STATE.navOpenMap[role] = JSON.parse(window.localStorage.getItem('abcSelarasNavOpen_'+role) || '{}') || {}; }
+    catch(e){ STATE.navOpenMap[role] = {}; }
+  }
+  return STATE.navOpenMap[role];
+}
+function navOpenSave(role){
+  try{ window.localStorage.setItem('abcSelarasNavOpen_'+role, JSON.stringify(navOpenMap(role))); }catch(e){}
+}
+function navItemHtml(it){
+  var active = (STATE.view===it.v) || (STATE.view==='payroll-detail' && it.v==='payroll');
+  var iconName = NAV_ICON_MAP[it.v] || 'grid';
+  var n = it.v==='chat' ? chatUnreadTotal() : 0;
+  var navBadge = n>0 ? '<span class="nav-badge">'+(n>99?'99+':n)+'</span>' : '';
+  return '<button class="nav-item '+(active?'active':'')+'" data-action="nav" data-view="'+it.v+'"><span class="nav-icon">'+iconSvg(iconName,18)+'</span>'+it.label+navBadge+'</button>';
+}
+function navHtmlFor(role){
+  var items = navItemsFor(role), byView = {};
+  items.forEach(function(it){ byView[it.v] = it; });
+  var cfg = navGroupsFor(role);
+  var activeView = STATE.view==='payroll-detail' ? 'payroll' : STATE.view;
+  var openMap = navOpenMap(role);
+  var activeGroup = null;
+  cfg.groups.forEach(function(g){ if(g.views.indexOf(activeView)!==-1) activeGroup = g.id; });
+  /* pindah halaman -> grup yang berisi halaman itu otomatis terbuka */
+  if(STATE.navSeenView!==STATE.view){
+    STATE.navSeenView = STATE.view;
+    if(activeGroup && openMap[activeGroup]!==true){ openMap[activeGroup] = true; navOpenSave(role); }
+  }
+  var unread = chatUnreadTotal();
+  var html = cfg.top.map(function(v){ return byView[v] ? navItemHtml(byView[v]) : ''; }).join('');
+  cfg.groups.forEach(function(g){
+    var open = openMap[g.id]===true;
+    var inner = g.views.map(function(v){ return byView[v] ? navItemHtml(byView[v]) : ''; }).join('');
+    if(!inner) return;
+    var gb = (g.views.indexOf('chat')!==-1 && unread>0) ? '<span class="nav-badge nav-group-badge">'+(unread>99?'99+':unread)+'</span>' : '';
+    html += '<div class="nav-group'+(open?' open':'')+(activeGroup===g.id?' has-active':'')+'" data-group="'+g.id+'">'+
+      '<button type="button" class="nav-group-head" data-action="toggle-nav-group" data-group="'+g.id+'" aria-expanded="'+(open?'true':'false')+'">'+
+        '<span class="nav-group-label">'+g.label+'</span>'+gb+'<span class="nav-group-chev">'+iconSvg('chevronDown',16)+'</span></button>'+
+      '<div class="nav-group-items">'+inner+'</div></div>';
+  });
+  return html;
+}
+
 function viewTitle(v){
   var map = {
     dashboard:'Dashboard', employees:'Data Karyawan', schedule:'Pengaturan Jadwal',
@@ -2137,13 +2226,7 @@ function needsMonthPicker(v){
 
 function renderShell(){
   var role = SESSION.role;
-  var items = navItemsFor(role);
-  var navHtml = items.map(function(it){
-    var active = (STATE.view===it.v) || (STATE.view==='payroll-detail' && it.v==='payroll');
-    var iconName = NAV_ICON_MAP[it.v] || 'grid';
-    var navBadge = (it.v==='chat' && chatUnreadTotal()>0) ? '<span class="nav-badge">'+(chatUnreadTotal()>99?'99+':chatUnreadTotal())+'</span>' : '';
-    return '<button class="nav-item '+(active?'active':'')+'" data-action="nav" data-view="'+it.v+'"><span class="nav-icon">'+iconSvg(iconName,18)+'</span>'+it.label+navBadge+'</button>';
-  }).join('');
+  var navHtml = navHtmlFor(role);
 
   var who, whoSub;
   if(role==='hr'){
@@ -5940,6 +6023,15 @@ function updateNavChatBadge(){
       if(!badge){ badge = document.createElement('span'); badge.className = 'nav-badge'; btn.appendChild(badge); }
       badge.textContent = n>99 ? '99+' : String(n);
     } else if(badge){ btn.removeChild(badge); }
+    var grp = btn.closest ? btn.closest('.nav-group') : null;
+    if(grp){
+      var head = grp.querySelector('.nav-group-head');
+      var gbadge = head.querySelector('.nav-group-badge');
+      if(n>0){
+        if(!gbadge){ gbadge = document.createElement('span'); gbadge.className = 'nav-badge nav-group-badge'; head.insertBefore(gbadge, head.querySelector('.nav-group-chev')); }
+        gbadge.textContent = n>99 ? '99+' : String(n);
+      } else if(gbadge){ head.removeChild(gbadge); }
+    }
   }
   var fb = document.querySelector('.chat-fab .chat-fab-badge');
   if(fb){ fb.textContent = n>99 ? '99+' : String(n); fb.style.display = n>0 ? '' : 'none'; }
@@ -6301,6 +6393,13 @@ document.addEventListener('click', function(e){
     render();
   } else if(action==='toggle-dark-mode'){
     toggleDarkMode();
+  } else if(action==='toggle-nav-group'){
+    var ngId = el.getAttribute('data-group');
+    var ngEl = el.closest('.nav-group');
+    var ngOpen = !(ngEl && ngEl.classList.contains('open'));
+    navOpenMap(SESSION.role)[ngId] = ngOpen;
+    navOpenSave(SESSION.role);
+    if(ngEl){ ngEl.classList.toggle('open', ngOpen); el.setAttribute('aria-expanded', ngOpen ? 'true' : 'false'); }
   } else if(action==='nav'){
     STATE.view = el.getAttribute('data-view');
     STATE.sidebarOpen = false;
