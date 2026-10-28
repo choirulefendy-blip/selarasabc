@@ -522,6 +522,12 @@
   .nav-group.open .nav-group-items{display:block;}
   .nav-group.open .nav-group-badge{display:none;}
   .nav-group-badge{margin-left:0;}
+
+  /* panel notifikasi tidak boleh keluar layar di HP */
+  .notif-list{max-height:min(340px,55vh);}
+  @media(max-width:860px){
+    .notif-panel{position:fixed;left:12px;right:12px;width:auto;max-width:none;}
+  }
 </style>
 </head>
 <body>
@@ -852,7 +858,14 @@ function timeAgoID(iso){
 }
 
 /* audience: {type:'hr'} atau {type:'emp', empId:'...'} */
+/* teks notifikasi lama/baru kadang berisi entitas HTML mentah (mis. &mdash;) -> jadikan karakter biasa */
+function fixEntities(str){
+  return String(str==null ? '' : str).replace(/&mdash;/g,'\u2014').replace(/&ndash;/g,'\u2013').replace(/&middot;/g,'\u00B7')
+    .replace(/&nbsp;/g,' ').replace(/&hellip;/g,'\u2026').replace(/&amp;/g,'&');
+}
+
 function addNotification(audience, message, link, category){
+  message = fixEntities(message);
   if(!notifAllowed(audience, category || 'general')) return;
   DB.notifications = DB.notifications || [];
   DB.notifications.unshift({
@@ -1554,6 +1567,7 @@ function loadDB(){
       console.error('Gagal memuat data dari server -- TIDAK menyimpan apa pun supaya data asli di server tidak tertimpa.', err);
       STATE.loaded = false;
       STATE.loadError = true;
+      STATE.loadErrorDetail = String((err && err.message) || err || '');
     });
   }
   return fallbackGet('hrdb').then(function(res){
@@ -1948,11 +1962,17 @@ function renderLoadErrorScreen(){
     '<div style="font-size:42px;">&#9888;&#65039;</div>'+
     '<div style="font-weight:700;font-size:17px;">Tidak Bisa Memuat Data</div>'+
     '<div class="muted" style="max-width:380px;font-size:13.5px;line-height:1.6;">Aplikasi gagal terhubung ke server. Supaya data yang sudah tersimpan tidak tertimpa/hilang, aplikasi berhenti di sini dan tidak akan menyimpan apa pun sampai koneksi berhasil dipulihkan. Periksa koneksi internet, lalu coba lagi.</div>'+
+    (STATE.loadErrorDetail ? '<div class="muted" style="font-size:11.5px;opacity:.8;">Detail teknis: '+escapeHtml(STATE.loadErrorDetail)+'</div>' : '')+
     '<button class="btn btn-primary" data-action="retry-load">Coba Lagi</button>'+
   '</div>';
 }
 
 function afterRender(){
+  var npanel = document.querySelector('.notif-panel');
+  if(npanel && window.innerWidth<=860){
+    var nbell = document.querySelector('.notif-bell-btn');
+    if(nbell){ npanel.style.top = Math.round(nbell.getBoundingClientRect().bottom + 10)+'px'; }
+  }
   if(SESSION.role && fcmAvailable()){ if(!STATE.fcmInited) fcmInit(); else fcmSyncRecipient(); }
   hydrateBannerImages();
   hydrateAvatars();
@@ -2335,7 +2355,7 @@ function renderNotifBell(){
   var unread = list.filter(function(n){ return !n.read; }).length;
   var itemsHtml = list.slice(0,30).map(function(n){
     return '<div class="notif-item '+(!n.read?'unread':'')+'" data-action="open-notification" data-id="'+n.id+'">'+
-      '<div class="notif-msg">'+escapeHtml(n.message)+'</div>'+
+      '<div class="notif-msg">'+escapeHtml(fixEntities(n.message))+'</div>'+
       '<div class="notif-time">'+timeAgoID(n.createdAt)+'</div>'+
     '</div>';
   }).join('');

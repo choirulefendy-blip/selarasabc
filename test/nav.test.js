@@ -54,6 +54,18 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   /* navigasi tetap berfungsi */
   await click('.nav-item[data-view="todo"]');
   ok(w.STATE.view==='todo', 'klik item menu tetap berpindah halaman');
+  console.log('\n[Panel notifikasi]');
+  ok(w.fixEntities('A &mdash; B &amp; C')==='A \u2014 B & C', 'fixEntities mengubah &mdash; dan &amp; menjadi karakter biasa');
+  login('staff');
+  w.DB.notifications = [{id:'N1', audience:{type:'emp',empId:'E1'}, message:'Budi mengajukan Cuti (1 Okt) &mdash; perlu persetujuan Anda.', link:null, createdAt:new Date().toISOString(), read:false}];
+  w.STATE.notifPanelOpen = true; w.render();
+  var nm = d.querySelector('.notif-msg').textContent;
+  ok(nm.indexOf('\u2014')!==-1 && nm.indexOf('&mdash;')===-1, 'notifikasi lama dengan &mdash; tampil sebagai tanda pisah, bukan teks mentah');
+  w.addNotification({type:'hr'}, 'Tes &mdash; baru', null, 'general');
+  ok(w.DB.notifications[0].message==='Tes \u2014 baru', 'notifikasi baru dibersihkan saat dibuat');
+  w.innerWidth = 390; w.render();
+  ok(/px$/.test(d.querySelector('.notif-panel').style.top), 'HP: panel notifikasi diposisikan di bawah ikon lonceng');
+  w.STATE.notifPanelOpen = false; w.innerWidth = 1280;
   console.log('\nHASIL: '+pass+' lulus, '+fail+' gagal');
   process.exit(fail?1:0);
 })().catch(function(e){ console.error('TES CRASH', e); process.exit(2); });
