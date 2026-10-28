@@ -29,7 +29,7 @@ function mkEmp(id, name, dept, user){
 }
 function login(w, who){
   w.SESSION = who==='hr' ? {role:'hr', empId:null, hrAccountId:null} : {role: who==='E2' ? 'hod' : 'staff', empId:who};
-  w.STATE.view = 'dashboard'; w.STATE.chatWith = null; w.render(); return sleep(80);
+  w.STATE.view = 'dashboard'; w.STATE.chatWith = null; w.STATE.chatNew = false; w.STATE.chatEdit = false; w.render(); return sleep(80);
 }
 function typeInto(w, id, v){ var e = w.document.getElementById(id); e.value = v; e.dispatchEvent(new w.Event('input', {bubbles:true})); }
 
@@ -89,8 +89,14 @@ function typeInto(w, id, v){ var e = w.document.getElementById(id); e.value = v;
   w.innerWidth = 1280; w.STATE.sidebarOpen = false;
 
   console.log('\n[Chat]');
-  await login(w, 'E1'); await click(w, 'nav', {view:'chat'});
-  ok(text(w).indexOf('Sari HOD')!==-1 && text(w).indexOf('Dewi Front')!==-1 && w.document.querySelector('[data-peer="hr"]'), 'Staff: daftar kontak = HR + semua karyawan');
+  await login(w, 'E1');
+  var fab = w.document.querySelector('.chat-fab');
+  ok(!!fab && fab.getAttribute('data-view')==='chat', 'ikon chat melayang tampil di dashboard');
+  await click(w, 'nav', {view:'chat'});
+  ok(!w.document.querySelector('.chat-fab'), 'ikon melayang disembunyikan di halaman Chat');
+  ok(!w.document.querySelector('.chat-item') && text(w).indexOf('Belum ada percakapan')!==-1, 'daftar chat awalnya kosong');
+  await click(w, 'chat-new');
+  ok(text(w).indexOf('Sari HOD')!==-1 && text(w).indexOf('Dewi Front')!==-1 && w.document.querySelector('[data-peer="hr"]'), 'Chat baru: daftar kontak = HR + semua karyawan');
   ok(!w.document.querySelector('[data-peer="E1"]'), 'tidak bisa chat dengan diri sendiri');
   await click(w, 'chat-open', {peer:'E3'});
   typeInto(w, 'chatInput', 'Halo Dewi, jadwal besok aman?');
@@ -119,6 +125,7 @@ function typeInto(w, id, v){ var e = w.document.getElementById(id); e.value = v;
   ok(w.CHAT.msgs.length===0, 'pihak ketiga (HOD) tidak menerima pesan percakapan orang lain');
   /* HR ke staf */
   await login(w, 'hr'); await click(w, 'nav', {view:'chat'});
+  await click(w, 'chat-new');
   ok(!w.document.querySelector('[data-peer="hr"]') && w.document.querySelector('[data-peer="E1"]'), 'HR: kontak = semua karyawan');
   await click(w, 'chat-open', {peer:'E1'});
   typeInto(w, 'chatInput', 'Bud, tolong kirim laporan.'); await sleep(450);
@@ -166,6 +173,130 @@ function typeInto(w, id, v){ var e = w.document.getElementById(id); e.value = v;
   w.STATE.view = 'chat'; w.render(); await sleep(150);
   await w.chatPoll(); await sleep(100);
   ok(text(w).indexOf('Fitur chat belum aktif')!==-1, 'tabel belum ada -> pesan jelas untuk admin');
+
+  console.log('\n[Chat v2: hapus pesan, foto, tugas, hapus percakapan]');
+  w.chatRemote = function(){ return false; }; w.chatReset();
+  w.uploadAttachment = function(p, d){ return Promise.resolve({key:p, url:d}); };
+  w.compressImageFile = function(){ return Promise.resolve('data:image/jpeg;base64,/9j/BBBB'); };
+  function setFile(id, name, type, size){
+    var input = w.document.getElementById(id);
+    var f = new w.File(['x'], name, {type:type||'image/jpeg'});
+    Object.defineProperty(f, 'size', {value:size||1000});
+    Object.defineProperty(input, 'files', {value:[f], configurable:true});
+    input.dispatchEvent(new w.Event('change', {bubbles:true}));
+    return sleep(200);
+  }
+  /* hapus pesan */
+  await login(w, 'E1'); await click(w, 'nav', {view:'chat'}); await click(w, 'chat-open', {peer:'E3'});
+  typeInto(w, 'chatInput', 'Pesan yang akan dihapus'); await sleep(450); await click(w, 'chat-send'); await sleep(150);
+  ok(!w.document.querySelector('.chat-del'), 'tombol Hapus tersembunyi di mode biasa');
+  await click(w, 'chat-edit');
+  var dels = w.document.querySelectorAll('.chat-del');
+  var mineCount = w.document.querySelectorAll('.chat-msg.mine').length;
+  ok(dels.length===mineCount && mineCount>=2, 'mode Edit: tombol Hapus hanya pada pesan milik sendiri');
+  var victim = Array.prototype.filter.call(w.document.querySelectorAll('.chat-msg.mine'), function(n){ return n.textContent.indexOf('Pesan yang akan dihapus')!==-1; })[0];
+  victim.querySelector('.chat-del').dispatchEvent(new w.MouseEvent('click', {bubbles:true})); await sleep(150);
+  ok(text(w).indexOf('Pesan yang akan dihapus')===-1, 'pesan hilang dari layar pengirim setelah dihapus');
+  await login(w, 'E3'); await w.chatPoll(); await sleep(50);
+  w.STATE.view='chat'; w.STATE.chatWith='E1'; w.render(); await sleep(80);
+  ok(text(w).indexOf('Pesan yang akan dihapus')===-1 && text(w).indexOf('Halo Dewi, jadwal besok aman?')!==-1, 'penerima juga tidak melihat pesan yang dihapus (pesan lain tetap)');
+  /* penanda hapus palsu dari orang lain diabaikan */
+  var before = w.chatVisible().length;
+  var target = w.CHAT.msgs.filter(function(m){ return m.sender==='E1' && m.kind==='msg'; })[0];
+  w.chatMergeRows([{id:w.CHAT.lastId+1, sender:'E3', recipient:'E1', body:'', kind:'del', ref_id:target.id, created_at:new Date().toISOString()}]);
+  ok(w.chatVisible().length===before, 'penanda hapus dari bukan pengirim asli diabaikan');
+  w.CHAT.msgs = w.CHAT.msgs.filter(function(m){ return m.kind!=='del' || m.sender!=='E3'; }); w.CHAT.lastId = w.CHAT.msgs.reduce(function(a,m){ return Math.max(a,m.id); }, 0);
+  /* hapus percakapan di perangkat sendiri */
+  await w.chatPoll();
+  w.STATE.chatEdit = true; w.render();
+  await click(w, 'chat-clear'); await sleep(80);
+  ok(!w.document.querySelector('.chat-item[data-peer="E1"]'), 'hapus percakapan: hilang dari daftar pemilik');
+  await login(w, 'E1'); await w.chatPoll(); w.STATE.view='chat'; w.render(); await sleep(50);
+  ok(!!w.document.querySelector('.chat-item[data-peer="E3"]'), 'lawan bicara tetap menyimpan percakapan');
+  /* foto di chat */
+  await click(w, 'chat-open', {peer:'E3'});
+  await click(w, 'chat-attach');
+  await setFile('chatImgFile', 'a.jpg', 'image/jpeg');
+  ok(!!w.document.querySelector('.chat-pending img'), 'pratinjau foto muncul sebelum dikirim');
+  await click(w, 'chat-attach-remove');
+  ok(!w.document.querySelector('.chat-pending'), 'foto bisa dibatalkan');
+  await setFile('chatImgFile', 'a.pdf', 'application/pdf');
+  ok(!w.document.querySelector('.chat-pending'), 'file bukan gambar ditolak');
+  await setFile('chatImgFile', 'big.jpg', 'image/jpeg', 20*1024*1024);
+  ok(!w.document.querySelector('.chat-pending'), 'foto > 8MB ditolak');
+  await setFile('chatImgFile', 'a.jpg', 'image/jpeg');
+  await sleep(450); await click(w, 'chat-send'); await sleep(250);
+  ok(!!w.document.querySelector('.chat-msg.mine img.chat-img') && !w.document.querySelector('.chat-pending'), 'pesan hanya-foto (tanpa teks) terkirim dan tampil');
+  var imgMsg = w.CHAT.msgs[w.CHAT.msgs.length-1];
+  ok(imgMsg.image_url && imgMsg.body==='', 'data foto tersimpan pada pesan');
+  w.document.querySelector('img.chat-img').dispatchEvent(new w.MouseEvent('click', {bubbles:true})); await sleep(60);
+  ok(!!w.document.querySelector('.img-viewer img#imgViewerImg'), 'ketuk foto membuka tampilan besar');
+  await click(w, 'close-modal');
+  await login(w, 'E3'); await sleep(150); await w.chatPoll(); await sleep(50); w.STATE.view='chat'; w.STATE.chatWith='E1'; w.render(); await sleep(60);
+  ok(!!w.document.querySelector('.chat-msg.theirs img.chat-img'), 'penerima melihat foto');
+  /* pesan tugas dari HOD */
+  w.DB.employees.filter(function(e){ return e.id==='E1'; })[0].department = 'Marketing Communication';
+  await login(w, 'E2'); await click(w, 'nav', {view:'todo'});
+  await click(w, 'todo-tab', {tab:'monitor'});
+  var ta = w.document.getElementById('ta_owner'); ta.value = 'E1';
+  w.document.getElementById('ta_title').value = 'Siapkan konten Reels';
+  w.document.getElementById('ta_note').value = 'Pakai referensi terlampir';
+  w.document.getElementById('ta_due').value = '2026-12-01';
+  await setFile('ta_photo', 'ref.jpg', 'image/jpeg');
+  await click(w, 'assign-todo'); await sleep(350);
+  var td = w.DB.todos.filter(function(t){ return t.title==='Siapkan konten Reels'; })[0];
+  ok(td && td.photoKey && td.ownerId==='E1', 'To-Do: foto tersimpan pada tugas');
+  ok(!!w.document.querySelector('.todo-photo'), 'To-Do: foto tampil di daftar tugas');
+  var tm = w.chatLocalAll().filter(function(m){ return m.kind==='task' && m.sender==='E2' && m.recipient==='E1'; })[0];
+  ok(tm && tm.body.indexOf('Siapkan konten Reels')===0 && tm.body.indexOf('Tenggat')!==-1 && tm.image_url, 'tugas dari HOD ikut terkirim ke chat penerima (dengan foto)');
+  await login(w, 'E1'); await w.chatPoll(); await sleep(50);
+  w.STATE.view='chat'; w.STATE.chatWith='E2'; w.render(); await sleep(60);
+  ok(!!w.document.querySelector('.chat-bubble.is-task') && text(w).indexOf('Tugas baru')!==-1 && !!w.document.querySelector('.chat-bubble.is-task img.chat-img'), 'penerima melihat kartu tugas + foto di chat');
+  await login(w, 'hr'); await click(w, 'nav', {view:'todo'});
+  /* tugas sendiri tidak masuk chat */
+  var nBefore = w.chatLocalAll().length;
+  await login(w, 'E1'); await click(w, 'nav', {view:'todo'});
+  w.document.getElementById('td_title').value = 'Tugas pribadi';
+  await click(w, 'add-todo'); await sleep(200);
+  ok(w.chatLocalAll().length===nBefore, 'tugas untuk diri sendiri tidak dikirim ke chat');
+  /* To-Do tanpa foto tetap jalan */
+  ok(w.DB.todos.some(function(t){ return t.title==='Tugas pribadi' && !t.photoKey; }), 'To-Do tanpa foto tetap tersimpan');
+  /* FAB badge */
+  await login(w, 'E3'); await sleep(50);
+  w.render(); 
+  ok(!!w.document.querySelector('.chat-fab'), 'FAB tampil di halaman lain');
+
+  console.log('\n[Chat v2 ke server (fetch tiruan)]');
+  var rcalls = [], rstore = [], rid = 1;
+  w.fetch = function(url, opts){
+    var u = String(url); rcalls.push({url:u, method:(opts&&opts.method)||'GET', body:opts&&opts.body});
+    if(opts && opts.method==='POST'){
+      var rows = JSON.parse(opts.body).map(function(r){ r.id = rid++; r.created_at = new Date().toISOString(); rstore.push(r); return r; });
+      return Promise.resolve({ok:true, status:201, json:function(){ return Promise.resolve(rows); }});
+    }
+    return Promise.resolve({ok:true, status:200, json:function(){ return Promise.resolve(rstore.filter(function(r){ return r.id > parseInt(/id=gt\.(\d+)/.exec(u)[1],10); })); }});
+  };
+  w.SUPABASE_URL = 'https://x.supabase.co'; w.SUPABASE_ANON_KEY = 'anon'; w.chatRemote = function(){ return true; };
+  await login(w, 'E1'); w.chatReset();
+  w.STATE.view='chat'; w.STATE.chatWith='E3'; w.render(); await sleep(50);
+  await setFile('chatImgFile', 'a.jpg', 'image/jpeg'); await sleep(450);
+  await click(w, 'chat-send'); await sleep(250);
+  var rp = rcalls.filter(function(c){ return c.method==='POST'; })[0];
+  var rb = rp && JSON.parse(rp.body)[0];
+  ok(rb && rb.image_key && rb.image_url && rb.body==='' && rb.recipient==='E3', 'server: kirim foto menyertakan image_key/image_url');
+  var sent = w.CHAT.msgs[w.CHAT.msgs.length-1];
+  w.STATE.chatEdit = true; w.render();
+  await click(w, 'chat-del', {id:String(sent.id)}); await sleep(200);
+  var dp = rcalls.filter(function(c){ return c.method==='POST'; })[1];
+  var db = dp && JSON.parse(dp.body)[0];
+  ok(db && db.kind==='del' && db.ref_id===sent.id, 'server: hapus pesan = menambah baris penanda kind=del');
+  w.fetch = function(){ return Promise.resolve({ok:false, status:400}); };
+  w.chatReset(); w.CHAT.me = null; w.STATE.view='chat'; w.render(); await sleep(100);
+  await w.chatPoll(); await sleep(100);
+  ok(text(w).indexOf('menjalankan ulang file supabase/chat.sql')!==-1, 'skema lama (400) -> pesan agar admin menjalankan ulang chat.sql');
+  var sql = fs.readFileSync(path.join(__dirname, '..', 'supabase', 'chat.sql'), 'utf8');
+  ok(/add column if not exists image_url/.test(sql) && /kind in \('msg','task','del'\)/.test(sql) && /drop constraint if exists chat_messages_body_check/.test(sql), 'chat.sql: migrasi aman untuk tabel lama');
+
 
   console.log('\n[Smoke semua halaman]');
   w.chatRemote = function(){ return false; }; w.chatReset();
