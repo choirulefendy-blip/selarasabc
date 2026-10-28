@@ -216,10 +216,10 @@ Spreadsheet, tergantung yang dipakai), jadi tetap muncul walau ganti perangkat.
 
 - Logo ABC Selaras ditampilkan di layar login, sidebar aplikasi, dan
   sebagai favicon (ikon tab browser).
-- Teks "Aplikasi ini diproduksi dan dikembangkan oleh Neotone Creative"
+- Teks "Aplikasi ini diproduksi dan dikembangkan oleh Artivora Creative"
   ditampilkan di layar login dan di bagian bawah setiap halaman aplikasi,
-  lengkap dengan logo Neotone dan tautan WhatsApp (wa.me/6285155499204)
-  pada tulisan "Neotone Creative".
+  lengkap dengan logo Artivora dan tautan WhatsApp (artivora.my.id)
+  pada tulisan "Artivora Creative".
 
 ### Departemen & Properti
 
