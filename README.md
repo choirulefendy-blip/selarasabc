@@ -20,6 +20,7 @@ Situs di-deploy otomatis oleh GitHub Actions (`.github/workflows/pages.yml`) dar
 1. Di repo: **Settings → Pages → Build and deployment → Source: GitHub Actions** (cukup sekali).
 2. Setiap `git push` ke `main` yang mengubah `web/` otomatis memperbarui situs. Atau jalankan manual di tab **Actions → Deploy Situs → Run workflow**.
 3. Alamat situs: `https://<username>.github.io/<nama-repo>/` (lihat di Settings → Pages).
+4. **Domain sendiri (`abcselaras.my.id`):** file `CNAME` sudah ada. Di DNS Indodomains buat 4 record **A** untuk `@` → `185.199.108.153`, `185.199.109.153`, `185.199.110.153`, `185.199.111.153`, dan 1 record **CNAME** untuk `www` → `choirulefendy-blip.github.io`. Lalu di Settings → Pages isi **Custom domain** = `abcselaras.my.id`, tunggu centang DNS hijau, aktifkan **Enforce HTTPS**.
 
 > GitHub Pages gratis untuk repo **public**; untuk repo **private** butuh paket GitHub berbayar. Konfigurasi Supabase
 > (`SUPABASE_URL` dan `SUPABASE_ANON_KEY`) ada di bagian atas `web/index.html`. Anon key memang dirancang publik, tetapi
