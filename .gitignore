@@ -1,0 +1,18 @@
+node_modules/
+.DS_Store
+*.log
+# Android
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/app/src/main/assets/public/
+mobile/android/app/src/main/assets/capacitor.config.json
+mobile/android/app/src/main/assets/capacitor.plugins.json
+mobile/android/local.properties
+mobile/android/capacitor-cordova-android-plugins/
+# Kunci penandatangan APK & rahasia -- JANGAN PERNAH di-commit
+*.jks
+*.keystore
+keystore.properties
+.env
+.env.*

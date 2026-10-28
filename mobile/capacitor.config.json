@@ -1,0 +1,14 @@
+{
+  "appId": "id.abchospitality.selaras",
+  "appName": "ABC Selaras",
+  "webDir": "../web",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_selaras",
+      "iconColor": "#146B5E"
+    }
+  }
+}

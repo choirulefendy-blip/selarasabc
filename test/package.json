@@ -1,0 +1,6 @@
+{
+  "name": "abc-selaras-tests",
+  "private": true,
+  "scripts": { "test": "node features.test.js" },
+  "devDependencies": { "jsdom": "^24.0.0" }
+}
