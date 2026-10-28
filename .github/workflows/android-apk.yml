@@ -112,6 +112,17 @@ jobs:
           name: ABC-Selaras-release-apk
           path: mobile/android/app/build/outputs/apk/release/*.apk
 
+      - name: Terbitkan APK terbaru ke halaman Releases
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-terbaru
+          name: ABC Selaras - APK terbaru
+          body: "APK debug hasil build otomatis dari commit ${{ github.sha }}. Unduh `app-debug.apk` di bawah, lalu pasang di HP Android."
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: mobile/android/app/build/outputs/apk/debug/*.apk
+
       - name: Lampirkan ke GitHub Release (saat tag v*)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
