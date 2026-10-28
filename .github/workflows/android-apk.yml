@@ -36,9 +36,30 @@ jobs:
         working-directory: mobile
         run: npm ci
 
+      - name: Pasang konfigurasi Firebase (FCM)
+        id: fcm
+        env:
+          GSJ: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GSJ" ]; then
+            printf '%s' "$GSJ" > mobile/android/app/google-services.json
+            python3 -c "import json;d=json.load(open('mobile/android/app/google-services.json'));assert 'id.abchospitality.selaras' in json.dumps(d), 'package_name di google-services.json harus id.abchospitality.selaras'"
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Secret GOOGLE_SERVICES_JSON belum diisi - APK dibuat TANPA notifikasi FCM (app tertutup)."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Sinkronkan aset web ke proyek Android
         working-directory: mobile
         run: npx cap sync android
+
+      - name: Aktifkan FCM di build Android
+        if: steps.fcm.outputs.enabled == 'true'
+        run: |
+          F=mobile/android/app/src/main/assets/public/index.html
+          grep -q "var FCM_ENABLED = false;" "$F"
+          sed -i "s/var FCM_ENABLED = false;/var FCM_ENABLED = true;/" "$F"
 
       - name: Build APK debug (bisa langsung dipasang, tanpa keystore)
         working-directory: mobile/android

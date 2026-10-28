@@ -911,6 +911,7 @@ function savePushSubscription(recipient, subscriptionJson){
 function enablePushNotifications(){
   if(isNativeApp()){
     requestNativeNotifPermission().then(function(ok){
+      if(ok && fcmAvailable()) fcmInit();
       toast(ok ? 'Notifikasi aplikasi diaktifkan.' : 'Izin notifikasi ditolak. Aktifkan lewat Pengaturan Android.');
       render();
     });
@@ -1090,6 +1091,9 @@ var SUPABASE_BUCKET = 'attachments';
    (lihat README bagian "Notifikasi Push ke Perangkat"). Kosongkan
    PUSH_FUNCTION_URL untuk menonaktifkan fitur ini sepenuhnya. */
 var VAPID_PUBLIC_KEY = 'BMPhKJL68Parug2W_JsJRztuIQjDxd6Pd-OLngatqOWeaxLCj4qkr40_FDyUxsaukvqNTl6YgabVLLHwevtx6rg';
+/* FCM (notifikasi Android saat app tertutup). Biarkan false di sini: workflow APK
+   otomatis mengubahnya jadi true hanya di build Android, jika secret GOOGLE_SERVICES_JSON diisi. */
+var FCM_ENABLED = false;
 var PUSH_FUNCTION_URL = '';   /* contoh: https://xxxxxxxx.supabase.co/functions/v1/send-push */
 
 /* --- Konfigurasi Notifikasi Email (opsional, butuh BACKEND='supabase') ---
@@ -1908,6 +1912,7 @@ function renderLoadErrorScreen(){
 }
 
 function afterRender(){
+  if(SESSION.role && fcmAvailable()){ if(!STATE.fcmInited) fcmInit(); else fcmSyncRecipient(); }
   hydrateBannerImages();
   hydrateAvatars();
   if(SESSION.role){
@@ -5136,6 +5141,71 @@ function systemNotify(title, body){
     try{ new Notification(title, {body:body}); }catch(e){}
   }
 }
+function nativePush(){
+  try{ return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) || null; }catch(e){ return null; }
+}
+function fcmAvailable(){
+  return FCM_ENABLED && isNativeApp() && !!nativePush() && BACKEND==='supabase' && !!SUPABASE_URL && !!SUPABASE_ANON_KEY;
+}
+function fcmRpc(name, args){
+  return fetch(SUPABASE_URL+'/rest/v1/rpc/'+name, {
+    method:'POST',
+    headers: supabaseHeaders({'Content-Type':'application/json'}),
+    body: JSON.stringify(args)
+  });
+}
+function fcmSyncRecipient(){
+  if(!fcmAvailable() || !STATE.fcmToken || !SESSION.role) return;
+  var rcpt = currentPushRecipient();
+  if(!rcpt || STATE.fcmRecipient===rcpt || STATE.fcmSyncing===rcpt) return;
+  STATE.fcmSyncing = rcpt;
+  fcmRpc('register_fcm_token', {p_token: STATE.fcmToken, p_recipient: rcpt}).then(function(r){
+    STATE.fcmSyncing = null;
+    if(r && r.ok) STATE.fcmRecipient = rcpt; else console.error('register_fcm_token gagal', r && r.status);
+  }).catch(function(err){ STATE.fcmSyncing = null; console.error('register_fcm_token error', err); });
+}
+function fcmUnregister(){
+  if(!fcmAvailable() || !STATE.fcmToken) return;
+  STATE.fcmRecipient = null;
+  fcmRpc('unregister_fcm_token', {p_token: STATE.fcmToken}).catch(function(){});
+}
+function fcmHandleLink(url){
+  if(!SESSION.role) return;
+  var link = String(url||'').replace(/^#/, '');
+  var items = navItemsFor(SESSION.role).map(function(it){ return it.v; });
+  if(link && items.indexOf(link)!==-1){ STATE.view = link; STATE.chatWith = null; render(); }
+}
+function fcmRegister(){
+  var pn = nativePush();
+  if(!pn) return Promise.resolve(false);
+  return pn.checkPermissions().then(function(r){
+    if(r && (r.receive==='prompt' || r.receive==='prompt-with-rationale')) return pn.requestPermissions();
+    return r;
+  }).then(function(r){
+    if(r && r.receive==='granted'){
+      STATE.nativeNotifGranted = true;
+      return pn.register().then(function(){ return true; });
+    }
+    return false;
+  }).catch(function(err){ console.error('FCM register error', err); return false; });
+}
+function fcmInit(){
+  if(!fcmAvailable()) return Promise.resolve(false);
+  if(STATE.fcmInited) return fcmRegister();
+  STATE.fcmInited = true;
+  var pn = nativePush();
+  try{
+    pn.addListener('registration', function(t){ STATE.fcmToken = t && t.value; STATE.fcmRecipient = null; fcmSyncRecipient(); });
+    pn.addListener('registrationError', function(err){ console.error('FCM registrationError', err); });
+    pn.addListener('pushNotificationActionPerformed', function(a){
+      var d = a && a.notification && a.notification.data;
+      fcmHandleLink(d && d.url);
+    });
+    pn.addListener('pushNotificationReceived', function(){ try{ refreshLiveData(); chatPoll(); }catch(e){} });
+    if(pn.createChannel) pn.createChannel({id:'selaras_default', name:'Notifikasi ABC Selaras', description:'Tugas, absen, pengajuan, dan chat', importance:5, visibility:1, vibration:true});
+  }catch(e){ console.error('FCM listener error', e); }
+  return fcmRegister();
+}
 function requestNativeNotifPermission(){
   var ln = nativeLocalNotif();
   if(!ln) return Promise.resolve(false);
@@ -5957,6 +6027,7 @@ document.addEventListener('click', function(e){
   } else if(action==='chat-send'){
     chatSend();
   } else if(action==='logout'){
+    fcmUnregister();
     chatReset();
     SESSION = {role:null, empId:null};
     STATE.view = 'dashboard';

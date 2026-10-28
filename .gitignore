@@ -16,3 +16,6 @@ mobile/android/capacitor-cordova-android-plugins/
 keystore.properties
 .env
 .env.*
+mobile/android/app/google-services.json
+*-firebase-adminsdk-*.json
+serviceAccount*.json

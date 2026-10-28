@@ -66,9 +66,9 @@ Ubah aplikasi → push → APK baru dibuild. Untuk membuka di Android Studio: `c
 
 ## 4. Catatan notifikasi di APK & browser
 
-- **Aplikasi Android:** notifikasi tampil di bilah Android saat aplikasi berjalan (terbuka atau sebentar di latar belakang); data ditarik
-  tiap 30 detik. WebView Android **tidak mendukung Web Push**, jadi notifikasi saat aplikasi benar-benar ditutup belum ada. Itu
-  butuh Firebase Cloud Messaging (proyek Firebase + `google-services.json`) — bisa ditambahkan sebagai tahap lanjutan.
+- **Aplikasi Android:** tanpa FCM, notifikasi tampil di bilah Android hanya saat aplikasi berjalan (data ditarik tiap 30 detik). Dengan **FCM** (sudah tersedia),
+  notifikasi masuk **walau aplikasi ditutup**. Setup satu kali (Firebase, secret `GOOGLE_SERVICES_JSON`, secret `FCM_SERVICE_ACCOUNT`, `supabase/fcm.sql`,
+  deploy ulang `send-push`): ikuti **[docs/panduan-fcm.md](docs/panduan-fcm.md)**. Selama belum disetup, APK tetap jadi dan berfungsi seperti sebelumnya.
 - **Browser/PWA:** dengan Edge Function `send-push` ter-deploy, push masuk walau situs ditutup. Tanpa itu, notifikasi muncul selama tab/PWA terbuka.
 
 ## 5. Tes
