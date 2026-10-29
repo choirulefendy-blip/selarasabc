@@ -332,6 +332,12 @@
     .cal-tag{font-size:7.5px;padding:1px 2px;border-radius:6px;text-align:center;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
   }
 
+  .work-timer{margin-top:14px;padding:14px 16px;border-radius:16px;background:var(--surface-container);}
+  .wt-label{font-size:12px;color:var(--text-muted);margin-bottom:6px;}
+  .wt-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .wt-dur{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.2px;}
+  .wt-msg{font-size:13px;margin-top:6px;color:var(--text);}
+  .wt-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;}
   .notif-bell-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;border:none;background:var(--surface-container-low);color:var(--text);cursor:pointer;flex-shrink:0;transition:background .12s;}
   .notif-bell-btn:hover{background:var(--surface-container-high);}
   .theme-toggle-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;border:none;background:var(--surface-container-low);color:var(--text);cursor:pointer;flex-shrink:0;transition:background .12s;}
@@ -1982,7 +1988,18 @@ function renderLoadErrorScreen(){
   '</div>';
 }
 
+function applyOtPrefill(){
+  var pf = STATE.otPrefill; if(!pf) return;
+  var d = document.getElementById('ot_date'); if(!d) return;
+  STATE.otPrefill = null;
+  d.value = pf.date;
+  var a = document.getElementById('ot_start'), b = document.getElementById('ot_end');
+  if(a) a.value = pf.start; if(b) b.value = pf.end;
+  var ds = document.getElementById('ot_desc'); if(ds) ds.focus();
+}
+
 function afterRender(){
+  applyOtPrefill();
   var npanel = document.querySelector('.notif-panel');
   if(npanel && window.innerWidth<=860){
     var nbell = document.querySelector('.notif-bell-btn');
@@ -3680,7 +3697,87 @@ function renderDashboardHeader(emp, includeKpi){
 
   var scheduleNote = !isWorkDay ? '<div class="card-sub" style="margin:-6px 0 16px;">Hari ini bukan jadwal kerja.</div>' : '';
 
-  return renderBannerCarousel() + profileCard + statusRow + scheduleNote + actionsHtml + renderTodoWidget();
+  var timerHtml = hasIn ? '<div style="margin:0 0 16px;">'+workTimerHtml(m.att, t.iso, false)+'</div>' : '';
+  return renderBannerCarousel() + profileCard + statusRow + timerHtml + scheduleNote + actionsHtml + renderTodoWidget();
+}
+
+/* ---------- Durasi kerja berjalan (sejak absen masuk) ---------- */
+var WORK_TARGET_MIN = 8*60, WORK_OT_MIN = 9*60;
+function hmToMin(hm){ var a=String(hm||'').split(':'); return a.length>=2 ? (parseInt(a[0],10)*60+parseInt(a[1],10)) : null; }
+function minToHm(m){ m=((m%1440)+1440)%1440; return pad2(Math.floor(m/60))+':'+pad2(m%60); }
+function fmtDur(totalSec){
+  totalSec = Math.max(0, Math.floor(totalSec));
+  var h = Math.floor(totalSec/3600), m = Math.floor((totalSec%3600)/60), sc = totalSec%60;
+  return h+'j '+pad2(m)+'m '+pad2(sc)+'d';
+}
+function fmtDurShort(totalSec){
+  totalSec = Math.max(0, Math.floor(totalSec));
+  return Math.floor(totalSec/3600)+'j '+pad2(Math.floor((totalSec%3600)/60))+'m';
+}
+/* hasil: {sec, running, phase:'work'|'target'|'overtime'} atau null bila belum absen masuk */
+function workTimerState(inHm, outHm){
+  var inMin = hmToMin(inHm); if(inMin===null) return null;
+  var now = new Date();
+  var nowSec = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+  var endSec, running = !outHm;
+  if(outHm){ var o = hmToMin(outHm); endSec = (o===null ? nowSec : o*60); if(endSec < inMin*60) endSec += 86400; }
+  else endSec = nowSec;
+  var sec = Math.max(0, endSec - inMin*60);
+  var phase = sec >= WORK_OT_MIN*60 ? 'overtime' : (sec >= WORK_TARGET_MIN*60 ? 'target' : 'work');
+  return {sec:sec, running:running, phase:phase, inMin:inMin};
+}
+function overtimeRequestedFor(empId, iso){
+  return (DB.overtimeRequests||[]).some(function(r){ return r.empId===empId && r.date===iso && r.status!=='rejected' && r.status!=='withdrawn'; });
+}
+function workTimerBodyHtml(st, inHm, outHm, iso, hideOut){
+  var badge, msg, btns = '';
+  var otSec = Math.max(0, st.sec - WORK_OT_MIN*60);
+  if(st.phase==='work'){
+    badge = '<span class="badge badge-info">'+(st.running?'Sedang bekerja':'Selesai')+'</span>';
+    msg = st.running ? 'Sisa <strong data-wt="left">'+fmtDurShort(WORK_TARGET_MIN*60-st.sec)+'</strong> menuju 8 jam kerja.' : 'Durasi kerja belum mencapai 8 jam.';
+  } else if(st.phase==='target'){
+    badge = '<span class="badge badge-success">'+(st.running?'8 jam tercapai':'Selesai')+'</span>';
+    msg = st.running ? 'Jam kerja 8 jam sudah terpenuhi &mdash; kamu bisa menyelesaikan pekerjaan dan absen pulang.' : 'Jam kerja 8 jam terpenuhi.';
+  } else {
+    badge = '<span class="badge badge-warning">Lembur</span>';
+    msg = 'Lembur <strong data-wt="ot">+'+fmtDurShort(otSec)+'</strong> (lewat 9 jam kerja).';
+  }
+  if(st.running && st.phase!=='work' && !hideOut) btns += '<button class="btn btn-primary btn-sm" data-action="nav" data-view="checkin">Absen Pulang</button>';
+  if(st.phase==='overtime'){
+    if(SESSION.empId && overtimeRequestedFor(SESSION.empId, iso)) btns += '<span class="badge badge-neutral">Lembur sudah diajukan</span>';
+    else btns += '<button class="btn btn-secondary btn-sm" data-action="ot-from-timer" data-in="'+inHm+'" data-out="'+(outHm||'')+'" data-date="'+iso+'">Ajukan Lembur</button>';
+  }
+  return '<div class="wt-top"><div class="wt-dur" data-wt="dur">'+fmtDur(st.sec)+'</div>'+badge+'</div>'+
+    '<div class="wt-msg">'+msg+'</div>'+
+    (btns ? '<div class="wt-actions">'+btns+'</div>' : '');
+}
+function workTimerHtml(att, iso, hideOut){
+  if(!att || !att.checkIn) return '';
+  var st = workTimerState(att.checkIn, att.checkOut || '');
+  if(!st) return '';
+  return '<div class="work-timer" data-wt-in="'+att.checkIn+'" data-wt-out="'+(att.checkOut||'')+'" data-wt-date="'+iso+'" data-wt-hideout="'+(hideOut?1:0)+'" data-wt-phase="'+st.phase+st.running+'">'+
+    '<div class="wt-label">Durasi kerja &middot; masuk '+att.checkIn+(att.checkOut?' &middot; pulang '+att.checkOut:'')+'</div>'+
+    '<div class="wt-body">'+workTimerBodyHtml(st, att.checkIn, att.checkOut||'', iso, hideOut)+'</div>'+
+  '</div>';
+}
+function tickWorkTimers(){
+  var els = document.querySelectorAll('.work-timer');
+  for(var i=0;i<els.length;i++){
+    var el = els[i];
+    var inHm = el.getAttribute('data-wt-in'), outHm = el.getAttribute('data-wt-out');
+    var st = workTimerState(inHm, outHm);
+    if(!st) continue;
+    var key = st.phase+st.running;
+    var body = el.querySelector('.wt-body');
+    if(el.getAttribute('data-wt-phase') !== key){
+      el.setAttribute('data-wt-phase', key);
+      body.innerHTML = workTimerBodyHtml(st, inHm, outHm, el.getAttribute('data-wt-date'), el.getAttribute('data-wt-hideout')==='1');
+      continue;
+    }
+    var d = el.querySelector('[data-wt="dur"]'); if(d) d.textContent = fmtDur(st.sec);
+    var l = el.querySelector('[data-wt="left"]'); if(l) l.textContent = fmtDurShort(WORK_TARGET_MIN*60 - st.sec);
+    var o = el.querySelector('[data-wt="ot"]'); if(o) o.textContent = '+'+fmtDurShort(st.sec - WORK_OT_MIN*60);
+  }
 }
 
 function renderTodayCheckinCard(empId){
@@ -3710,6 +3807,7 @@ function renderTodayCheckinCard(empId){
       '</div>'+
       '<div>'+actionHtml+'</div>'+
     '</div>'+
+    (hasIn ? workTimerHtml(m.att, t.iso, false) : '')+
   '</div>';
 }
 
@@ -3806,6 +3904,7 @@ function renderCheckinPage(){
       '<div class="stat-card"><div class="label">Jam Masuk</div><div class="value" style="font-size:20px;">'+(hasIn?att.checkIn:'&mdash;')+'</div>'+(hasIn&&att.checkInHasPhoto?'<div class="sub">Foto &amp; lokasi tersimpan</div>':'')+'</div>'+
       '<div class="stat-card"><div class="label">Jam Pulang</div><div class="value" style="font-size:20px;">'+(hasOut?att.checkOut:'&mdash;')+'</div>'+(hasOut&&att.checkOutHasPhoto?'<div class="sub">Foto &amp; lokasi tersimpan</div>':'')+'</div>'+
     '</div>'+
+    (hasIn ? workTimerHtml(att, todayISO(), true) : '')+
   '</div>';
 
   var actionCard;
@@ -5546,6 +5645,7 @@ function startLiveSync(){
   if(window.__liveSyncStarted) return;
   window.__liveSyncStarted = true;
   setInterval(function(){ liveTick(false); }, 5000);
+  setInterval(tickWorkTimers, 1000);
   document.addEventListener('visibilitychange', function(){ if(!document.hidden){ liveTick(true); chatPoll(); } });
   window.addEventListener('focus', function(){ liveTick(true); });
   window.addEventListener('online', function(){ liveTick(true); });
@@ -6460,6 +6560,13 @@ document.addEventListener('click', function(e){
     navOpenMap(SESSION.role)[ngId] = ngOpen;
     navOpenSave(SESSION.role);
     if(ngEl){ ngEl.classList.toggle('open', ngOpen); el.setAttribute('aria-expanded', ngOpen ? 'true' : 'false'); }
+  } else if(action==='ot-from-timer'){
+    var wtIn = el.getAttribute('data-in'), wtOut = el.getAttribute('data-out');
+    var wtStart = minToHm(hmToMin(wtIn) + WORK_OT_MIN);
+    var nowD = new Date();
+    STATE.otPrefill = {date: el.getAttribute('data-date'), start: wtStart, end: wtOut || (pad2(nowD.getHours())+':'+pad2(nowD.getMinutes()))};
+    STATE.view = 'overtime-request'; STATE.sidebarOpen = false; STATE.notifPanelOpen = false;
+    render();
   } else if(action==='nav'){
     STATE.view = el.getAttribute('data-view');
     STATE.sidebarOpen = false;
