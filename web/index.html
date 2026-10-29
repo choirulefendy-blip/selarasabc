@@ -95,6 +95,20 @@
   a{color:var(--primary);}
   progress{accent-color:#3980C4;}
   input:focus,select:focus,textarea:focus{outline:none;border-color:#4AA3F4 !important;box-shadow:0 0 0 3px rgba(74,163,244,.22);}
+  .acc-svg .chit{cursor:pointer;}
+  .acc-svg .chit.sel{fill:rgba(74,163,244,.10);}
+  .acc-svg .cbar{transition:opacity .2s ease, filter .2s ease;pointer-events:none;}
+  .acc-svg.has-sel .cbar{opacity:.35;}
+  .acc-svg.has-sel .cbar.sel{opacity:1;filter:drop-shadow(0 3px 6px rgba(19,52,81,.28));}
+  .acc-svg .cbar-anim{transform-box:fill-box;transform-origin:50% 100%;animation:barGrow .7s cubic-bezier(.2,.8,.2,1) both;}
+  @keyframes barGrow{from{transform:scaleY(0);opacity:.4;}to{transform:scaleY(1);opacity:1;}}
+  .chart-tip{position:absolute;z-index:5;min-width:150px;max-width:260px;background:#0A1922;color:#E6F1FB;border-radius:12px;padding:10px 12px;font-size:12.5px;box-shadow:0 10px 28px rgba(10,25,34,.35);animation:tipIn .16s ease-out;pointer-events:auto;}
+  .chart-tip-h{font-weight:700;margin-bottom:6px;color:#fff;}
+  .chart-tip-r{display:flex;align-items:center;gap:8px;line-height:1.7;}
+  .chart-tip-r i{width:9px;height:9px;border-radius:3px;flex:0 0 9px;}
+  .chart-tip-r span{flex:1;color:#A9C1D6;}
+  .chart-tip-r b{font-variant-numeric:tabular-nums;}
+  @keyframes tipIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -6761,7 +6775,44 @@ function niceMax(v){
   return (f<=1 ? 1 : f<=2 ? 2 : f<=5 ? 5 : 10) * p;
 }
 var CHART_COLORS = ['#296290','#4AA3F4','#F59E0B','#DC2626'];
+var CHART_SEEN = {};
+function chartTipClose(){
+  Array.prototype.forEach.call(document.querySelectorAll('.chart-tip'), function(t){ t.remove(); });
+  Array.prototype.forEach.call(document.querySelectorAll('svg.has-sel'), function(sv){
+    sv.classList.remove('has-sel');
+    Array.prototype.forEach.call(sv.querySelectorAll('.sel'), function(x){ x.classList.remove('sel'); });
+  });
+}
+function chartTipOpen(hit){
+  var svg = hit.ownerSVGElement || hit.closest('svg'), wrap = svg.parentNode, i = hit.getAttribute('data-i');
+  var was = hit.classList.contains('sel');
+  chartTipClose();
+  if(was) return;
+  svg.classList.add('has-sel'); hit.classList.add('sel');
+  Array.prototype.forEach.call(svg.querySelectorAll('.cbar[data-i="'+i+'"]'), function(b){ b.classList.add('sel'); });
+  var parts = String(hit.getAttribute('data-tip')||'').split('^'), html = '<div class="chart-tip-h">'+escapeHtml(parts[0])+'</div>';
+  parts.slice(1).forEach(function(p){ var q = p.split('~'); html += '<div class="chart-tip-r"><i style="background:'+q[0]+'"></i><span>'+escapeHtml(q[1])+'</span><b>'+escapeHtml(q[2])+'</b></div>'; });
+  var tip = document.createElement('div'); tip.className = 'chart-tip'; tip.innerHTML = html;
+  if(getComputedStyle(wrap).position==='static') wrap.style.position = 'relative';
+  wrap.appendChild(tip);
+  var wr = wrap.getBoundingClientRect(), sr = svg.getBoundingClientRect(), hr = hit.getBoundingClientRect();
+  var vb = String(svg.getAttribute('viewBox')||'0 0 640 290').split(/\s+/), scale = sr.height / (+vb[3]||290);
+  var cx = hr.left + hr.width/2 - wr.left, topPx = sr.top - wr.top + (+hit.getAttribute('data-top'))*scale;
+  var tw = tip.offsetWidth || 160, th = tip.offsetHeight || 60;
+  var left = Math.max(4, Math.min(cx - tw/2, wrap.clientWidth - tw - 4));
+  var top = topPx - th - 10; if(top < sr.top - wr.top) top = topPx + 10;
+  tip.style.left = left+'px'; tip.style.top = top+'px';
+}
+document.addEventListener('click', function(e){
+  var hit = e.target.closest && e.target.closest('svg .chit, svg .cbar');
+  if(hit){
+    if(hit.classList.contains('cbar')) hit = hit.ownerSVGElement.querySelector('.chit[data-i="'+hit.getAttribute('data-i')+'"]');
+    if(hit){ chartTipOpen(hit); return; }
+  }
+  if(!(e.target.closest && e.target.closest('.chart-tip'))) chartTipClose();
+});
 function svgBarChart(title, cats, series, fmt){
+  var tfmt = fmt || rupiah;
   fmt = fmt || fmtCompactRp;
   var any = false;
   series.forEach(function(s){ s.values.forEach(function(v){ if(v>0) any = true; }); });
@@ -6783,16 +6834,26 @@ function svgBarChart(title, cats, series, fmt){
     out += '<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y+'" y2="'+y+'" stroke="#e2e8f0" stroke-width="1"/>'+
       '<text x="'+(pl-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" fill="#64748b" font-family="Arial,sans-serif">'+fmt(max*f)+'</text>';
   });
+  var ckey = title+'|'+JSON.stringify(series.map(function(s){ return s.values; }));
+  var anim = !CHART_SEEN[ckey]; CHART_SEEN[ckey] = 1;
+  var hits = '', hitPos = out.length;
   cats.forEach(function(c, i){
-    var gx = pl + i*cw + (cw - bw*series.length)/2;
+    var gx = pl + i*cw + (cw - bw*series.length)/2, tip = [String(c)], topY = H-pb;
     series.forEach(function(s, k){
-      var v = Math.max(0, s.values[i]||0), h = v/max*(H-pb-pt), x = gx + k*bw;
-      if(h>0) out += '<rect x="'+x.toFixed(1)+'" y="'+(H-pb-h).toFixed(1)+'" width="'+(bw-2).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="3" fill="'+CHART_COLORS[k%4]+'"><title>'+escapeHtml(s.name+' - '+c+': '+fmt(v))+'</title></rect>';
+      var v = Math.max(0, s.values[i]||0), h = v/max*(H-pb-pt), x = gx + k*bw, w = bw-2, y = H-pb-h, r = Math.min(6, w/2, h);
+      tip.push(CHART_COLORS[k%4]+'~'+s.name+'~'+tfmt(v));
+      if(h>0){
+        topY = Math.min(topY, y);
+        out += '<path class="cbar'+(anim?' cbar-anim':'')+'" data-i="'+i+'" style="animation-delay:'+(i*35+k*60)+'ms" fill="'+CHART_COLORS[k%4]+'" d="M'+x.toFixed(1)+','+(H-pb)+'V'+(y+r).toFixed(1)+
+          'Q'+x.toFixed(1)+','+y.toFixed(1)+' '+(x+r).toFixed(1)+','+y.toFixed(1)+'H'+(x+w-r).toFixed(1)+'Q'+(x+w).toFixed(1)+','+y.toFixed(1)+' '+(x+w).toFixed(1)+','+(y+r).toFixed(1)+'V'+(H-pb)+'Z"/>';
+      }
     });
+    hits += '<rect class="chit" data-i="'+i+'" data-top="'+topY.toFixed(1)+'" data-tip="'+escapeHtml(tip.join('^'))+'" x="'+(pl+i*cw).toFixed(1)+'" y="'+pt+'" width="'+cw.toFixed(1)+'" height="'+(H-pb-pt)+'" fill="transparent"/>';
     var lab = String(c).length>14 ? String(c).slice(0,13)+'…' : String(c);
     if(cats.length>12 && i % Math.ceil(cats.length/10) !== 0) lab = '';
     out += '<text x="'+(pl+i*cw+cw/2).toFixed(1)+'" y="'+(H-pb+16)+'" text-anchor="middle" font-size="10.5" fill="#475569" font-family="Arial,sans-serif">'+escapeHtml(lab)+'</text>';
   });
+  out = out.slice(0, hitPos) + hits + out.slice(hitPos);
   return '<svg xmlns="http://www.w3.org/2000/svg" class="acc-svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="'+escapeHtml(title)+'" style="width:100%;height:auto;max-width:'+W+'px;">'+out+'</svg>';
 }
 function saveBlobAs(blob, name){

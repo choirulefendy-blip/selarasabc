@@ -94,3 +94,4 @@ sinkronisasi live, dan render semua halaman semua peran. Tes juga jalan otomatis
 | Grafik Selaras Board | Semua akun (staf, HOD, HR) punya grafik di tiap tab Board: tugas per status/prioritas/tren 6 bulan, jam per project, agenda per minggu, pekerjaan per hari (Rekap Kerja). Bisa diunduh PNG. |
 | Tombol Back & Refresh | Back di HP kembali ke halaman sebelumnya (menutup popup/menu dulu), tidak keluar aplikasi. Refresh tetap di halaman terakhir (termasuk tab Board). |
 | Tema Lumina Selaras | Palet biru: Sky #4AA3F4 (tombol utama/aksen), Ocean #3980C4 & #296290 (navigasi, grafik), Navy #133451 & Midnight #0A1922 (teks, dark mode). |
+| Grafik interaktif | Batang tumbuh beranimasi, sudut atas membulat. Klik/tap batang → tooltip berisi kategori, seri & nilai (Rupiah penuh untuk grafik uang); batang lain meredup. Tap di luar untuk menutup. |
