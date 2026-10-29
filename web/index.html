@@ -332,6 +332,8 @@
     .cal-tag{font-size:7.5px;padding:1px 2px;border-radius:6px;text-align:center;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
   }
 
+  .money-eye{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin:-6px -6px -6px 0;border:none;border-radius:50%;background:transparent;color:var(--text-muted);cursor:pointer;}
+  .money-eye:hover{background:var(--surface-container-high);}
   .work-timer{margin-top:14px;padding:14px 16px;border-radius:16px;background:var(--surface-container);}
   .wt-label{font-size:12px;color:var(--text-muted);margin-bottom:6px;}
   .wt-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
@@ -2081,6 +2083,8 @@ function renderLogin(){
 
 /* ---------------------------- RENDER: SHELL ---------------------------- */
 var ICONS = {
+  eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+  eyeOff: '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>',
   grid: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
   clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
   users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -2109,6 +2113,28 @@ var ICONS = {
   listCheck: '<path d="M9 6h12M9 12h12M9 18h12"/><path d="M3 6l1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/>',
   clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3"/>'
 };
+/* ---------- Sembunyikan nominal (Take Home Pay) ---------- */
+function moneyHidden(){ try{ return localStorage.getItem('abcHideMoney')==='1'; }catch(e){ return !!window.__hideMoney; } }
+function moneySetHidden(v){ try{ localStorage.setItem('abcHideMoney', v?'1':'0'); }catch(e){ window.__hideMoney = v; } }
+function moneyMask(){ return 'Rp &bull;&bull;&bull;&bull;&bull;&bull;'; }
+function moneyHtml(amountTxt){
+  return '<span class="money-val" data-money="'+escapeHtml(amountTxt)+'">'+(moneyHidden() ? moneyMask() : escapeHtml(amountTxt))+'</span>';
+}
+function moneyToggleBtn(){
+  var h = moneyHidden();
+  return '<button type="button" class="money-eye" data-action="toggle-money" aria-label="'+(h?'Tampilkan nominal':'Sembunyikan nominal')+'">'+iconSvg(h?'eyeOff':'eye',16)+'</button>';
+}
+function applyMoneyVisibility(){
+  var h = moneyHidden();
+  var vals = document.querySelectorAll('.money-val');
+  for(var i=0;i<vals.length;i++){ vals[i].innerHTML = h ? moneyMask() : escapeHtml(vals[i].getAttribute('data-money')); }
+  var btns = document.querySelectorAll('.money-eye');
+  for(var j=0;j<btns.length;j++){
+    btns[j].innerHTML = iconSvg(h?'eyeOff':'eye',16);
+    btns[j].setAttribute('aria-label', h?'Tampilkan nominal':'Sembunyikan nominal');
+  }
+}
+
 function iconSvg(name, size){
   var body = ICONS[name] || ICONS.grid;
   var s = size || 18;
@@ -2469,7 +2495,7 @@ function renderAdminDashboard(){
     '<div class="stat-card"><div class="label">Karyawan Aktif</div><div class="value">'+emps.length+'</div><div class="sub">'+monthLabel(ym)+'</div></div>'+
     '<div class="stat-card"><div class="label">Total Menit Telat</div><div class="value">'+totalLateMin+'</div><div class="sub">Seluruh karyawan</div></div>'+
     '<div class="stat-card"><div class="label">Estimasi Potongan Telat</div><div class="value" style="font-size:19px;">'+rupiah(totalLateDeduction)+'</div><div class="sub">Bulan berjalan</div></div>'+
-    '<div class="stat-card"><div class="label">Estimasi Total THP</div><div class="value" style="font-size:19px;">'+rupiah(totalPayroll)+'</div><div class="sub">Setelah semua potongan</div></div>'+
+    '<div class="stat-card"><div class="label" style="display:flex;align-items:center;justify-content:space-between;">Estimasi Total THP'+moneyToggleBtn()+'</div><div class="value" style="font-size:19px;">'+moneyHtml(rupiah(totalPayroll))+'</div><div class="sub">Setelah semua potongan</div></div>'+
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Keterlambatan per Karyawan</div>'+
@@ -3822,7 +3848,7 @@ function renderStaffDashboard(){
     '<div class="stat-card"><div class="label">Hadir</div><div class="value">'+s.hadir+'</div><div class="sub">'+monthLabel(ym)+'</div></div>'+
     '<div class="stat-card"><div class="label">Telat</div><div class="value">'+s.telat+'</div><div class="sub">'+s.totalLateMinutes+' menit total</div></div>'+
     '<div class="stat-card"><div class="label">Alpha</div><div class="value">'+s.alpha+'</div><div class="sub">Tanpa keterangan</div></div>'+
-    '<div class="stat-card"><div class="label">Take Home Pay</div><div class="value" style="font-size:18px;">'+rupiah(p.thp)+'</div><div class="sub">Estimasi bulan ini</div></div>'+
+    '<div class="stat-card"><div class="label" style="display:flex;align-items:center;justify-content:space-between;">Take Home Pay'+moneyToggleBtn()+'</div><div class="value" style="font-size:18px;">'+moneyHtml(rupiah(p.thp))+'</div><div class="sub">Estimasi bulan ini</div></div>'+
   '</div>'+
   '<div class="card"><button class="btn btn-primary" data-action="nav" data-view="my-payslip">Lihat Slip Gaji</button></div>';
 }
@@ -6552,6 +6578,8 @@ document.addEventListener('click', function(e){
     render();
   } else if(action==='toggle-dark-mode'){
     toggleDarkMode();
+  } else if(action==='toggle-money'){
+    moneySetHidden(!moneyHidden()); applyMoneyVisibility();
   } else if(action==='toggle-nav-group'){
     var ngId = el.getAttribute('data-group');
     var ngEl = el.closest('.nav-group');

@@ -79,6 +79,16 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   ok(calls===1, 'liveTick(force) langsung menarik data (dipakai saat app dibuka kembali)');
   w.refreshLiveData = orig;
   w.STATE.notifPanelOpen = false;
+  console.log('\n[Sembunyikan Take Home Pay]');
+  login('staff'); w.STATE.view='dashboard'; w.render();
+  var mv = d.querySelector('.money-val');
+  ok(!!mv && mv.textContent.indexOf('Rp')===0 && mv.textContent.indexOf('\u2022')===-1, 'THP tampil secara default');
+  await click('.money-eye');
+  ok(d.querySelector('.money-val').textContent.indexOf('\u2022')!==-1, 'klik ikon mata menyembunyikan nominal');
+  w.render();
+  ok(d.querySelector('.money-val').textContent.indexOf('\u2022')!==-1, 'pilihan sembunyi bertahan setelah render ulang');
+  await click('.money-eye');
+  ok(d.querySelector('.money-val').textContent.indexOf('\u2022')===-1, 'klik lagi menampilkan nominal');
   console.log('\nHASIL: '+pass+' lulus, '+fail+' gagal');
   process.exit(fail?1:0);
 })().catch(function(e){ console.error('TES CRASH', e); process.exit(2); });
