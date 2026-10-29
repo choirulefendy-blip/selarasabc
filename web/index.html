@@ -181,6 +181,7 @@
   /* ---------- Generic components ---------- */
   .card{background:var(--surface-container-low);border:1px solid transparent;border-radius:var(--radius);padding:20px;}
   .card + .card{margin-top:18px;}
+  .grid > .card + .card{margin-top:0;}
   .card-title{font-weight:700;font-size:15px;margin:0 0 4px;}
   .card-sub{font-size:12.5px;color:var(--text-muted);margin:0 0 16px;}
   .grid{display:grid;gap:16px;}
@@ -337,6 +338,22 @@
   .update-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 20px;background:var(--primary-container);color:var(--on-primary-container);}
   .update-text{display:flex;flex-direction:column;font-size:13px;line-height:1.35;}
   .update-actions{display:flex;gap:6px;align-items:center;}
+  .rp-list{display:flex;flex-direction:column;gap:7px;}
+  .rp-row{display:grid;grid-template-columns:minmax(90px,170px) 1fr minmax(70px,auto);gap:10px;align-items:center;font-size:12.5px;}
+  .rp-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rp-track{display:flex;height:14px;border-radius:7px;background:var(--surface-container);overflow:hidden;}
+  .rp-seg{display:block;height:100%;}
+  .rp-val{text-align:right;color:var(--text-muted);font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .rp-hadir{background:var(--primary);} .rp-telat{background:#E8A33D;} .rp-alpha{background:var(--danger);} .rp-ot{background:#7E57C2;}
+  .rp-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--text-muted);}
+  .rp-legend span{display:inline-flex;align-items:center;gap:5px;}
+  .rp-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+  .rp-svg{width:100%;height:auto;display:block;}
+  .rp-grid{stroke:var(--border);stroke-width:1;}
+  .rp-axis{fill:var(--text-muted);font-size:12px;}
+  .rp-target{stroke:var(--text-muted);stroke-width:1;stroke-dasharray:4 3;}
+  .rp-b-ok{fill:var(--primary);} .rp-b-telat{fill:#E8A33D;} .rp-b-ot{fill:#7E57C2;}
+  @media(max-width:600px){.rp-row{grid-template-columns:90px 1fr auto;font-size:12px;}}
   .work-timer{margin-top:14px;padding:14px 16px;border-radius:16px;background:var(--surface-container);}
   .wt-label{font-size:12px;color:var(--text-muted);margin-bottom:6px;}
   .wt-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
@@ -2088,6 +2105,7 @@ function renderLogin(){
 
 /* ---------------------------- RENDER: SHELL ---------------------------- */
 var ICONS = {
+  chart: '<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/>',
   eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
   eyeOff: '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>',
   grid: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>',
@@ -2146,7 +2164,7 @@ function iconSvg(name, size){
   return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+body+'</svg>';
 }
 var NAV_ICON_MAP = {
-  dashboard:'grid', employees:'users', attendance:'clock', 'hod-attendance':'clock', checkin:'clock',
+  dashboard:'grid', report:'chart', employees:'users', attendance:'clock', 'hod-attendance':'clock', checkin:'clock',
   schedule:'calendar', 'schedule-approval':'calendarCheck', 'leave-request':'calendarCheck', 'leave-approval':'calendarCheck',
   'kpi':'chart', 'kpi-approval':'chart',
   'form-request':'fileText', 'form-approval':'fileText', announcements:'megaphone', payroll:'banknote',
@@ -2161,6 +2179,7 @@ function navItemsFor(role){
       {v:'dashboard', label:'Dashboard'},
       {v:'employees', label:'Karyawan'},
       {v:'attendance', label:'Absensi & Pencocokan'},
+      {v:'report', label:'Laporan & Grafik'},
       {v:'schedule-approval', label:'Persetujuan Jadwal'},
       {v:'kpi-approval', label:'Persetujuan KPI'},
       {v:'leave-approval', label:'Pengajuan Cuti'},
@@ -2181,6 +2200,7 @@ function navItemsFor(role){
       {v:'dashboard', label:'Dashboard'},
       {v:'checkin', label:'Absen'},
       {v:'hod-attendance', label:'Absensi Tim'},
+      {v:'report', label:'Laporan & Grafik'},
       {v:'schedule', label:'Atur Jadwal Tim'},
       {v:'kpi', label:'KPI Tim'},
       {v:'leave-request', label:'Pengajuan Cuti'},
@@ -2217,7 +2237,7 @@ function navItemsFor(role){
 function navGroupsFor(role){
   if(role==='hr'){
     return {top:['dashboard'], groups:[
-      {id:'sdm', label:'SDM', views:['employees','attendance','payroll']},
+      {id:'sdm', label:'SDM', views:['employees','attendance','report','payroll']},
       {id:'persetujuan', label:'Persetujuan', views:['schedule-approval','kpi-approval','leave-approval','overtime-approval','form-approval']},
       {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','banners']},
       {id:'tugas', label:'Tugas & Aktivitas', views:['todo','activity-log']},
@@ -2226,7 +2246,7 @@ function navGroupsFor(role){
   }
   if(role==='hod'){
     return {top:['dashboard','checkin'], groups:[
-      {id:'tim', label:'Tim Saya', views:['hod-attendance','schedule','kpi']},
+      {id:'tim', label:'Tim Saya', views:['hod-attendance','report','schedule','kpi']},
       {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request']},
       {id:'komunikasi', label:'Komunikasi', views:['chat','announcements']},
       {id:'tugas', label:'Tugas & Aktivitas', views:['todo','my-activity']},
@@ -2295,7 +2315,7 @@ function viewTitle(v){
     'leave-request':'Pengajuan Cuti', 'leave-approval':'Pengajuan Cuti',
     'form-request':'Form & Approval', 'form-approval':'Form & Approval',
     checkin:'Absen', announcements:'Pengumuman', 'activity-log':'Riwayat Aktivitas',
-    'schedule-approval':'Persetujuan Jadwal', 'hod-attendance':'Absensi Tim',
+    'schedule-approval':'Persetujuan Jadwal', 'hod-attendance':'Absensi Tim', report:'Laporan & Grafik',
     'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI',
     'overtime-request':'Pengajuan Lembur', 'overtime-approval':'Pengajuan Lembur',
     banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'To-Do List', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
@@ -2304,7 +2324,7 @@ function viewTitle(v){
 }
 
 function needsMonthPicker(v){
-  return ['dashboard','schedule','attendance','payroll','payroll-detail','my-schedule','my-attendance','my-payslip','kpi','hod-attendance'].indexOf(v) !== -1;
+  return ['dashboard','schedule','attendance','payroll','payroll-detail','my-schedule','my-attendance','my-payslip','kpi','hod-attendance','report'].indexOf(v) !== -1;
 }
 
 function renderShell(){
@@ -2333,6 +2353,7 @@ function renderShell(){
     else if(STATE.view==='announcements') body = renderAnnouncementsPage();
     else if(STATE.view==='payroll') body = renderPayrollPage();
     else if(STATE.view==='payroll-detail') body = renderSlipPage(STATE.payrollDetailEmp, true);
+    else if(STATE.view==='report') body = renderReportPage();
     else if(STATE.view==='activity-log') body = renderActivityLogPage();
     else if(STATE.view==='banners') body = renderBannersPage();
     else if(STATE.view==='chat') body = renderChatPage();
@@ -2344,6 +2365,7 @@ function renderShell(){
     if(STATE.view==='dashboard') body = renderHodDashboard();
     else if(STATE.view==='checkin') body = renderCheckinPage();
     else if(STATE.view==='hod-attendance') body = renderHodAttendancePage();
+    else if(STATE.view==='report') body = renderReportPage();
     else if(STATE.view==='schedule') body = renderSchedulePage();
     else if(STATE.view==='kpi') body = renderHodKpiPage();
     else if(STATE.view==='leave-request') body = renderLeaveRequestPage();
@@ -2758,6 +2780,150 @@ function employeeProfileModalHtml(emp){
 }
 
 /* ---------------------------- RENDER: SCHEDULE ---------------------------- */
+/* ---------------------------- LAPORAN & GRAFIK ---------------------------- */
+function reportScope(){
+  var list;
+  if(SESSION.role==='hr'){
+    list = activeEmployees();
+    if(STATE.reportDept) list = list.filter(function(e){ return e.department===STATE.reportDept; });
+  } else {
+    list = getTeamForHod(SESSION.empId).slice();
+    var me = getEmployee(SESSION.empId);
+    if(me && !list.some(function(e){ return e.id===me.id; })) list.unshift(me);
+  }
+  return list.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+}
+function workedHours(att, isToday){
+  if(!att || !att.checkIn) return 0;
+  var a = hmToMin(att.checkIn); if(a===null) return 0;
+  var b;
+  if(att.checkOut){ b = hmToMin(att.checkOut); if(b===null) return 0; if(b<a) b += 1440; }
+  else if(isToday){ var n = new Date(); b = n.getHours()*60+n.getMinutes(); }
+  else return 0;
+  return Math.max(0, (b-a)/60);
+}
+function reportStatsFor(emp, ym){
+  var sum = getMonthSummary(emp.id, ym);
+  var today = todayISO(), n = daysInMonth(ym), hours = 0, daysWorked = 0, perDay = [];
+  for(var d=1; d<=n; d++){
+    var m = sum.days[d-1];
+    var iso = ym+'-'+pad2(d);
+    var h = workedHours(m && m.att, iso===today);
+    if(h>0){ hours += h; daysWorked++; }
+    perDay.push({d:d, status:m ? m.status : 'unset', hours:h});
+  }
+  var ot = 0;
+  (DB.overtimeRequests||[]).forEach(function(r){
+    if(r.empId===emp.id && r.status==='approved' && String(r.date||'').slice(0,7)===ym) ot += (r.durationHours||0);
+  });
+  var sched = sum.totals.hadir + sum.totals.telat + sum.totals.alpha;
+  return {
+    emp:emp, hadir:sum.totals.hadir, telat:sum.totals.telat, alpha:sum.totals.alpha,
+    cuti:sum.totals.cuti, lateMin:sum.totals.totalLateMinutes, overtime:ot,
+    hours:hours, avgHours: daysWorked ? hours/daysWorked : 0,
+    rate: sched ? Math.round((sum.totals.hadir+sum.totals.telat)/sched*100) : null,
+    perDay:perDay
+  };
+}
+function fmtNum(x, dec){ return (Math.round(x*Math.pow(10,dec||0))/Math.pow(10,dec||0)).toString().replace('.',','); }
+
+function rpStackedChart(rows){
+  var max = 1;
+  rows.forEach(function(r){ max = Math.max(max, r.hadir+r.telat+r.alpha); });
+  return '<div class="rp-list">'+rows.map(function(r){
+    var tot = r.hadir+r.telat+r.alpha;
+    function seg(v, cls){ return v>0 ? '<span class="rp-seg '+cls+'" style="width:'+(v/max*100)+'%" title="'+v+'"></span>' : ''; }
+    return '<div class="rp-row"><div class="rp-name">'+escapeHtml(r.emp.name)+'</div>'+
+      '<div class="rp-track">'+seg(r.hadir,'rp-hadir')+seg(r.telat,'rp-telat')+seg(r.alpha,'rp-alpha')+'</div>'+
+      '<div class="rp-val">'+r.hadir+' / '+r.telat+' / '+r.alpha+'</div></div>';
+  }).join('')+'</div>'+
+  '<div class="rp-legend"><span><i class="rp-hadir"></i>Hadir</span><span><i class="rp-telat"></i>Telat</span><span><i class="rp-alpha"></i>Alpha</span></div>';
+}
+function rpBarChart(rows, valueOf, fmt, cls){
+  var max = 0;
+  rows.forEach(function(r){ max = Math.max(max, valueOf(r)); });
+  if(max<=0) return '<div class="empty-state">Belum ada data bulan ini.</div>';
+  var sorted = rows.slice().sort(function(a,b){ return valueOf(b)-valueOf(a); });
+  return '<div class="rp-list">'+sorted.map(function(r){
+    var v = valueOf(r);
+    return '<div class="rp-row"><div class="rp-name">'+escapeHtml(r.emp.name)+'</div>'+
+      '<div class="rp-track">'+(v>0?'<span class="rp-seg '+cls+'" style="width:'+(v/max*100)+'%"></span>':'')+'</div>'+
+      '<div class="rp-val">'+fmt(v)+'</div></div>';
+  }).join('')+'</div>';
+}
+function rpDailyChart(days, valueOf, maxVal, colorOf, unit, targetVal){
+  var W = 620, H = 150, padL = 26, padB = 20, n = days.length;
+  var bw = (W-padL) / n, out = '';
+  [0, .5, 1].forEach(function(f){
+    var y = H-padB - f*(H-padB-8);
+    out += '<line x1="'+padL+'" x2="'+W+'" y1="'+y+'" y2="'+y+'" class="rp-grid"/><text x="'+(padL-4)+'" y="'+(y+3)+'" text-anchor="end" class="rp-axis">'+fmtNum(maxVal*f, 0)+'</text>';
+  });
+  if(targetVal){
+    var ty = H-padB - targetVal/maxVal*(H-padB-8);
+    out += '<line x1="'+padL+'" x2="'+W+'" y1="'+ty+'" y2="'+ty+'" class="rp-target"/><text x="'+W+'" y="'+(ty-3)+'" text-anchor="end" class="rp-axis">target '+targetVal+' jam</text>';
+  }
+  days.forEach(function(dd, i){
+    var v = Math.min(valueOf(dd), maxVal);
+    var h = maxVal>0 ? v/maxVal*(H-padB-8) : 0;
+    var x = padL + i*bw + bw*0.15;
+    if(h>0) out += '<rect x="'+x.toFixed(1)+'" y="'+(H-padB-h).toFixed(1)+'" width="'+(bw*0.7).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="2" class="'+colorOf(dd)+'"><title>Tgl '+dd.d+': '+fmtNum(valueOf(dd),1)+' '+unit+'</title></rect>';
+    if(dd.d===1 || dd.d%5===0) out += '<text x="'+(padL+i*bw+bw/2).toFixed(1)+'" y="'+(H-5)+'" text-anchor="middle" class="rp-axis">'+dd.d+'</text>';
+  });
+  return '<svg class="rp-svg" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Grafik harian">'+out+'</svg>';
+}
+
+function renderReportPage(){
+  var ym = STATE.currentMonth;
+  var scope = reportScope();
+  var isHr = SESSION.role==='hr';
+  var selEmp = STATE.reportEmp && scope.some(function(e){ return e.id===STATE.reportEmp; }) ? STATE.reportEmp : '';
+  var rows = scope.map(function(e){ return reportStatsFor(e, ym); });
+  var shown = selEmp ? rows.filter(function(r){ return r.emp.id===selEmp; }) : rows;
+
+  var deptSel = isHr ? '<div class="form-group" style="margin:0;min-width:160px;"><label>Departemen</label><select id="reportDept"><option value="">Semua departemen</option>'+
+    getDepartments().map(function(dp){ return '<option value="'+escapeHtml(dp)+'"'+(STATE.reportDept===dp?' selected':'')+'>'+escapeHtml(dp)+'</option>'; }).join('')+'</select></div>' : '';
+  var empSel = '<div class="form-group" style="margin:0;min-width:200px;"><label>'+(isHr?'Staf':'Tampilkan')+'</label><select id="reportEmp"><option value="">'+(isHr?'Semua staf':'Saya &amp; seluruh tim')+'</option>'+
+    scope.map(function(e){ return '<option value="'+e.id+'"'+(selEmp===e.id?' selected':'')+'>'+escapeHtml(e.name)+(e.id===SESSION.empId?' (saya)':'')+'</option>'; }).join('')+'</select></div>';
+  var filters = '<div class="card"><div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">'+deptSel+empSel+
+    '<div class="muted" style="font-size:12.5px;margin-left:auto;">Periode: <strong>'+monthLabel(ym)+'</strong> (ganti lewat pemilih bulan di atas)</div></div></div>';
+
+  if(!shown.length) return filters+'<div class="card"><div class="empty-state">Tidak ada staf pada pilihan ini.</div></div>';
+
+  var tot = {hadir:0, telat:0, alpha:0, lateMin:0, overtime:0, hours:0}, rateSum = 0, rateN = 0;
+  shown.forEach(function(r){ tot.hadir+=r.hadir; tot.telat+=r.telat; tot.alpha+=r.alpha; tot.lateMin+=r.lateMin; tot.overtime+=r.overtime; tot.hours+=r.hours; if(r.rate!==null){ rateSum+=r.rate; rateN++; } });
+  var avgRate = rateN ? Math.round(rateSum/rateN) : null;
+  function stat(label, val, sub){ return '<div class="stat-card"><div class="label">'+label+'</div><div class="value" style="font-size:22px;">'+val+'</div><div class="sub">'+sub+'</div></div>'; }
+  var stats = '<div class="grid grid-4">'+
+    stat(selEmp?'Kehadiran':'Rata-rata Kehadiran', avgRate===null?'&mdash;':avgRate+'%', shown.length+' staf &middot; hadir+telat dari hari kerja')+
+    stat('Total Telat', tot.telat+'x', tot.lateMin+' menit')+
+    stat('Alpha', tot.alpha, 'hari tanpa keterangan')+
+    stat('Lembur Disetujui', fmtNum(tot.overtime,1)+' jam', 'total jam kerja '+fmtNum(tot.hours,0)+' jam')+
+  '</div>';
+
+  var charts = '';
+  if(selEmp){
+    var r = shown[0];
+    charts += '<div class="card"><div class="card-title">Jam Kerja Harian &mdash; '+escapeHtml(r.emp.name)+'</div><div class="card-sub">'+monthLabel(ym)+' &middot; rata-rata '+fmtNum(r.avgHours,1)+' jam/hari kerja. Garis putus-putus = target 8 jam.</div>'+
+      rpDailyChart(r.perDay, function(x){ return x.hours; }, 12, function(x){ return x.status==='telat' ? 'rp-b-telat' : (x.hours>=9 ? 'rp-b-ot' : 'rp-b-ok'); }, 'jam', 8)+
+      '<div class="rp-legend"><span><i class="rp-hadir"></i>Tepat waktu</span><span><i class="rp-telat"></i>Telat</span><span><i class="rp-ot"></i>9 jam+ (lembur)</span></div></div>';
+    charts += '<div class="card"><div class="card-title">Ringkasan Bulan Ini</div>'+rpStackedChart([r])+
+      '<div class="muted" style="font-size:12.5px;margin-top:8px;">Hadir / Telat / Alpha &middot; Cuti: '+r.cuti+' hari &middot; Total telat '+r.lateMin+' menit</div></div>';
+  } else {
+    var present = shown[0].perDay.map(function(x, i){
+      var c = 0; shown.forEach(function(rr){ var st = rr.perDay[i].status; if(st==='hadir'||st==='telat'||st==='lembur') c++; });
+      return {d:x.d, v:c};
+    });
+    charts += '<div class="card"><div class="card-title">Kehadiran per Staf</div><div class="card-sub">Jumlah hari Hadir / Telat / Alpha &middot; '+monthLabel(ym)+'</div>'+rpStackedChart(shown)+'</div>';
+    charts += '<div class="card"><div class="card-title">Tren Kehadiran Harian</div><div class="card-sub">Jumlah staf yang masuk tiap tanggal</div>'+
+      rpDailyChart(present, function(x){ return x.v; }, Math.max(1, shown.length), function(){ return 'rp-b-ok'; }, 'staf')+'</div>';
+    charts += '<div class="grid grid-2">'+
+      '<div class="card"><div class="card-title">Menit Telat per Staf</div><div class="card-sub">Diurutkan dari yang terbanyak</div>'+rpBarChart(shown, function(x){ return x.lateMin; }, function(v){ return v+' mnt'; }, 'rp-telat')+'</div>'+
+      '<div class="card"><div class="card-title">Lembur Disetujui per Staf</div><div class="card-sub">Jam lembur yang sudah disetujui</div>'+rpBarChart(shown, function(x){ return x.overtime; }, function(v){ return fmtNum(v,1)+' jam'; }, 'rp-ot')+'</div>'+
+    '</div>';
+  }
+  return filters + stats + charts;
+}
+
 function renderHodAttendancePage(){
   var myDepts = getHodDepartments(SESSION.empId);
   if(myDepts.length===0){
@@ -7818,6 +7984,8 @@ document.addEventListener('change', function(e){
     if(pfFile && STATE.photoTarget) setEmployeePhotoFromFile(STATE.photoTarget, pfFile);
     return;
   }
+  if(t.id==='reportDept'){ STATE.reportDept = t.value; STATE.reportEmp = ''; render(); return; }
+  if(t.id==='reportEmp'){ STATE.reportEmp = t.value; render(); return; }
   if(t.id==='todoFilterDept'){ STATE.todoFilterDept = t.value; STATE.todoFilterEmp = ''; render(); return; }
   if(t.id==='todoFilterEmp'){ STATE.todoFilterEmp = t.value; render(); return; }
   if(t.id==='todoFilterStatus'){ STATE.todoFilterStatus = t.value; render(); return; }

@@ -24,7 +24,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   });
   login('hr');
   ok(d.querySelectorAll('.nav-group').length===5, 'HR: 5 kelompok menu');
-  ok(d.querySelectorAll('.nav-item').length===16, 'HR: 16 item tetap ada di DOM');
+  ok(d.querySelectorAll('.nav-item').length===17, 'HR: 17 item tetap ada di DOM');
   ok(!d.querySelector('.nav-group.open'), 'HR: di Dashboard semua kelompok tertutup');
   var topItems = Array.prototype.filter.call(d.querySelectorAll('.sidebar > .nav-item'), function(){ return true; }).length;
   ok(topItems===1, 'HR: Dashboard tampil di luar kelompok');
