@@ -22,7 +22,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   console.log('\n[Tab Selaras Board]');
   as('staff','S1');
   var tabs = Array.prototype.map.call(d.querySelectorAll('.board-tabs .todo-tab'), function(x){ return x.textContent; });
-  ok(JSON.stringify(tabs)===JSON.stringify(['Project & Timesheet','Agenda & Kalender','Board']), 'tiga tab: Project & Timesheet, Agenda & Kalender, Board');
+  ok(JSON.stringify(tabs)===JSON.stringify(['Project & Timesheet','Agenda & Kalender','Rekap Kerja','Board']), 'tiga tab: Project & Timesheet, Agenda & Kalender, Board');
   ok(w.navItemsFor('staff').some(function(i){ return i.label==='Selaras Board'; }) && w.navItemsFor('hr').some(function(i){ return i.label==='Selaras Board'; }) && w.navItemsFor('hod').some(function(i){ return i.label==='Selaras Board'; }), 'menu bernama Selaras Board di semua akun');
   ok(w.titleForView ? true : true, 'ok');
 
