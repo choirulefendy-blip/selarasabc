@@ -334,6 +334,9 @@
 
   .money-eye{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;margin:-6px -6px -6px 0;border:none;border-radius:50%;background:transparent;color:var(--text-muted);cursor:pointer;}
   .money-eye:hover{background:var(--surface-container-high);}
+  .update-banner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 20px;background:var(--primary-container);color:var(--on-primary-container);}
+  .update-text{display:flex;flex-direction:column;font-size:13px;line-height:1.35;}
+  .update-actions{display:flex;gap:6px;align-items:center;}
   .work-timer{margin-top:14px;padding:14px 16px;border-radius:16px;background:var(--surface-container);}
   .wt-label{font-size:12px;color:var(--text-muted);margin-bottom:6px;}
   .wt-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
@@ -1162,6 +1165,8 @@ var SUPABASE_BUCKET = 'attachments';
 var VAPID_PUBLIC_KEY = 'BMPhKJL68Parug2W_JsJRztuIQjDxd6Pd-OLngatqOWeaxLCj4qkr40_FDyUxsaukvqNTl6YgabVLLHwevtx6rg';
 /* FCM (notifikasi Android saat app tertutup). Biarkan false di sini: workflow APK
    otomatis mengubahnya jadi true hanya di build Android, jika secret GOOGLE_SERVICES_JSON diisi. */
+var APP_BUILD = 'dev';   /* diisi otomatis oleh build APK (hash commit); 'dev' = web biasa */
+var APP_RELEASE_API = 'https://api.github.com/repos/choirulefendy-blip/selarasabc/releases/tags/apk-terbaru';
 var FCM_ENABLED = false;
 var PUSH_FUNCTION_URL = '';   /* contoh: https://xxxxxxxx.supabase.co/functions/v1/send-push */
 
@@ -2388,6 +2393,7 @@ function renderShell(){
       '</div>'+
     '</div>'+
     '<div class="main">'+
+      '<div id="updateBannerHolder">'+updateBannerHtml()+'</div>'+
       '<div class="topbar">'+
         '<div style="display:flex;align-items:center;gap:10px;">'+
           '<button class="hamburger" data-action="toggle-sidebar">&#9776;</button>'+
@@ -5396,6 +5402,53 @@ function setNotifPref(audience, key, value){
 function isNativeApp(){
   try{ return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); }catch(e){ return false; }
 }
+/* ---------- Pembaruan APK ---------- */
+function updateAvailable(){ return !!(STATE.updateInfo && !STATE.updateDismissed); }
+function updateBannerHtml(){
+  if(!updateAvailable()) return '';
+  return '<div class="update-banner no-print">'+
+    '<div class="update-text"><strong>Versi baru ABC Selaras tersedia.</strong><span>Unduh lalu pasang supaya fitur dan perbaikan terbaru aktif.</span></div>'+
+    '<div class="update-actions">'+
+      '<button class="btn btn-primary btn-sm" data-action="app-update-download">Unduh &amp; Pasang</button>'+
+      '<button class="btn btn-ghost btn-sm" data-action="app-update-dismiss">Nanti</button>'+
+    '</div>'+
+  '</div>';
+}
+function showUpdateBanner(){
+  var holder = document.getElementById('updateBannerHolder');
+  if(holder) holder.innerHTML = updateBannerHtml();
+}
+function parseReleaseInfo(rel){
+  if(!rel) return null;
+  var m = /commit\s+([0-9a-f]{7,40})/i.exec(rel.body || '');
+  var apk = (rel.assets||[]).filter(function(a){ return /\.apk$/i.test(a.name||''); })[0];
+  if(!m || !apk) return null;
+  return {sha:m[1].toLowerCase(), url:apk.browser_download_url};
+}
+function checkAppUpdate(force){
+  if(!isNativeApp() || !APP_BUILD || APP_BUILD==='dev') return Promise.resolve(false);
+  var last = 0;
+  try{ last = parseInt(localStorage.getItem('abcUpdChk')||'0',10)||0; }catch(e){}
+  if(!force && Date.now()-last < 30*60*1000) return Promise.resolve(false);
+  try{ localStorage.setItem('abcUpdChk', String(Date.now())); }catch(e){}
+  return fetch(APP_RELEASE_API, {headers:{'Accept':'application/vnd.github+json'}}).then(function(r){
+    if(!r.ok) throw new Error('HTTP '+r.status); return r.json();
+  }).then(function(rel){
+    var info = parseReleaseInfo(rel);
+    if(!info) return false;
+    var cur = APP_BUILD.toLowerCase();
+    if(cur.indexOf(info.sha)===0 || info.sha.indexOf(cur)===0) { STATE.updateInfo = null; showUpdateBanner(); return false; }
+    STATE.updateInfo = info; showUpdateBanner();
+    var seen = ''; try{ seen = localStorage.getItem('abcUpdSeen')||''; }catch(e){}
+    if(seen !== info.sha){
+      try{ localStorage.setItem('abcUpdSeen', info.sha); }catch(e){}
+      systemNotify('ABC Selaras', 'Versi baru aplikasi tersedia. Buka aplikasi untuk mengunduh.');
+      toast('Versi baru aplikasi tersedia.');
+    }
+    return true;
+  }).catch(function(){ return false; });
+}
+
 function nativeLocalNotif(){
   try{ return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) || null; }catch(e){ return null; }
 }
@@ -5671,8 +5724,10 @@ function startLiveSync(){
   window.__liveSyncStarted = true;
   setInterval(function(){ liveTick(false); }, 5000);
   setInterval(tickWorkTimers, 1000);
+  setTimeout(function(){ checkAppUpdate(true); }, 3000);
+  setInterval(function(){ checkAppUpdate(false); }, 30*60*1000);
   document.addEventListener('visibilitychange', function(){ if(!document.hidden){ liveTick(true); chatPoll(); } });
-  window.addEventListener('focus', function(){ liveTick(true); });
+  window.addEventListener('focus', function(){ liveTick(true); checkAppUpdate(false); });
   window.addEventListener('online', function(){ liveTick(true); });
   setInterval(advanceBannerTrack, 5500);
   setInterval(chatPoll, 6000);
@@ -6578,6 +6633,10 @@ document.addEventListener('click', function(e){
     render();
   } else if(action==='toggle-dark-mode'){
     toggleDarkMode();
+  } else if(action==='app-update-download'){
+    if(STATE.updateInfo){ try{ window.open(STATE.updateInfo.url, '_blank'); }catch(e){ window.location.href = STATE.updateInfo.url; } toast('Mengunduh... setelah selesai, buka file APK lalu pilih Perbarui/Pasang.'); }
+  } else if(action==='app-update-dismiss'){
+    STATE.updateDismissed = true; showUpdateBanner();
   } else if(action==='toggle-money'){
     moneySetHidden(!moneyHidden()); applyMoneyVisibility();
   } else if(action==='toggle-nav-group'){

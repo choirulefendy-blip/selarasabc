@@ -89,6 +89,29 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   ok(d.querySelector('.money-val').textContent.indexOf('\u2022')!==-1, 'pilihan sembunyi bertahan setelah render ulang');
   await click('.money-eye');
   ok(d.querySelector('.money-val').textContent.indexOf('\u2022')===-1, 'klik lagi menampilkan nominal');
+  console.log('\n[Pembaruan APK]');
+  var sha1='a'.repeat(40), sha2='b'.repeat(40);
+  var rel = {body:'APK debug hasil build otomatis dari commit '+sha2+'. Unduh', assets:[{name:'app-debug.apk', browser_download_url:'https://x/app-debug.apk'}]};
+  var pi = w.parseReleaseInfo(rel);
+  ok(pi && pi.sha===sha2 && pi.url==='https://x/app-debug.apk', 'parseReleaseInfo membaca hash commit & tautan APK');
+  ok(w.parseReleaseInfo({body:'tanpa hash', assets:[]})===null, 'rilis tanpa hash/APK diabaikan');
+  /* web biasa: tidak mengecek */
+  ok((await w.checkAppUpdate(true))===false, 'versi web (bukan APK) tidak menampilkan pembaruan');
+  /* simulasi APK */
+  w.Capacitor = {isNativePlatform:function(){ return true; }, Plugins:{}};
+  w.APP_BUILD = sha1;
+  w.fetch = function(){ return Promise.resolve({ok:true, json:function(){ return Promise.resolve(rel); }}); };
+  login('staff'); w.STATE.view='dashboard'; w.render();
+  ok((await w.checkAppUpdate(true))===true, 'APK versi lama: pembaruan terdeteksi');
+  ok(!!d.querySelector('.update-banner') && d.querySelector('[data-action="app-update-download"]'), 'banner Unduh & Pasang tampil');
+  var opened=null; w.open = function(u){ opened=u; };
+  await click('[data-action="app-update-download"]');
+  ok(opened==='https://x/app-debug.apk', 'tombol membuka tautan unduhan APK terbaru');
+  await click('[data-action="app-update-dismiss"]');
+  ok(!d.querySelector('.update-banner'), '"Nanti" menyembunyikan banner');
+  w.STATE.updateDismissed=false; w.APP_BUILD = sha2; w.STATE.updateInfo=null;
+  ok((await w.checkAppUpdate(true))===false && !d.querySelector('.update-banner'), 'APK sudah terbaru: tidak ada banner');
+  w.Capacitor = undefined; w.APP_BUILD = 'dev';
   console.log('\nHASIL: '+pass+' lulus, '+fail+' gagal');
   process.exit(fail?1:0);
 })().catch(function(e){ console.error('TES CRASH', e); process.exit(2); });

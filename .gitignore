@@ -13,6 +13,7 @@ mobile/android/capacitor-cordova-android-plugins/
 # Kunci penandatangan APK & rahasia -- JANGAN PERNAH di-commit
 *.jks
 *.keystore
+!mobile/android/app/selaras-debug.keystore
 keystore.properties
 .env
 .env.*

@@ -68,9 +68,15 @@ jobs:
           grep -q "var FCM_ENABLED = false;" "$F"
           sed -i "s/var FCM_ENABLED = false;/var FCM_ENABLED = true;/" "$F"
 
+      - name: Tandai versi build di aplikasi (untuk fitur pembaruan otomatis)
+        run: |
+          F=mobile/android/app/src/main/assets/public/index.html
+          grep -q "var APP_BUILD = 'dev';" "$F"
+          sed -i "s/var APP_BUILD = 'dev';/var APP_BUILD = '${{ github.sha }}';/" "$F"
+
       - name: Build APK debug (bisa langsung dipasang, tanpa keystore)
         working-directory: mobile/android
-        run: ./gradlew assembleDebug --no-daemon
+        run: ./gradlew assembleDebug --no-daemon -PappVersionCode=${{ github.run_number }}
 
       - name: Siapkan keystore release
         id: keystore
@@ -92,7 +98,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          ./gradlew assembleRelease --no-daemon \
+          ./gradlew assembleRelease --no-daemon -PappVersionCode=${{ github.run_number }} \
             -Pandroid.injected.signing.store.file="$RUNNER_TEMP/release.keystore" \
             -Pandroid.injected.signing.store.password="$KS_PASS" \
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
