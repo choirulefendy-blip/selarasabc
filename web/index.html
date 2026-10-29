@@ -2220,6 +2220,7 @@ function navItemsFor(role){
     {v:'checkin', label:'Absen'},
     {v:'my-schedule', label:'Jadwal Saya'},
     {v:'my-attendance', label:'Absensi Saya'},
+    {v:'report', label:'Grafik Saya'},
     {v:'leave-request', label:'Pengajuan Cuti'},
     {v:'overtime-request', label:'Pengajuan Lembur'},
     {v:'form-request', label:'Form & Approval'},
@@ -2254,7 +2255,7 @@ function navGroupsFor(role){
     ]};
   }
   return {top:['dashboard','checkin'], groups:[
-    {id:'jadwal', label:'Jadwal & Absensi', views:['my-schedule','my-attendance']},
+    {id:'jadwal', label:'Jadwal & Absensi', views:['my-schedule','my-attendance','report']},
     {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request']},
     {id:'komunikasi', label:'Komunikasi', views:['chat','announcements']},
     {id:'tugas', label:'Tugas & Aktivitas', views:['todo','my-activity']},
@@ -2384,6 +2385,7 @@ function renderShell(){
     else if(STATE.view==='checkin') body = renderCheckinPage();
     else if(STATE.view==='my-schedule') body = renderStaffSchedule();
     else if(STATE.view==='my-attendance') body = renderStaffAttendance();
+    else if(STATE.view==='report') body = renderReportPage();
     else if(STATE.view==='leave-request') body = renderLeaveRequestPage();
     else if(STATE.view==='overtime-request') body = renderOvertimeRequestPage();
     else if(STATE.view==='form-request') body = renderFormRequestPage();
@@ -2783,6 +2785,10 @@ function employeeProfileModalHtml(emp){
 /* ---------------------------- LAPORAN & GRAFIK ---------------------------- */
 function reportScope(){
   var list;
+  if(SESSION.role==='staff'){
+    var self = getEmployee(SESSION.empId);
+    return self ? [self] : [];
+  }
   if(SESSION.role==='hr'){
     list = activeEmployees();
     if(STATE.reportDept) list = list.filter(function(e){ return e.department===STATE.reportDept; });
@@ -2876,7 +2882,8 @@ function renderReportPage(){
   var ym = STATE.currentMonth;
   var scope = reportScope();
   var isHr = SESSION.role==='hr';
-  var selEmp = STATE.reportEmp && scope.some(function(e){ return e.id===STATE.reportEmp; }) ? STATE.reportEmp : '';
+  var isStaff = SESSION.role==='staff';
+  var selEmp = isStaff && scope.length ? scope[0].id : (STATE.reportEmp && scope.some(function(e){ return e.id===STATE.reportEmp; }) ? STATE.reportEmp : '');
   var rows = scope.map(function(e){ return reportStatsFor(e, ym); });
   var shown = selEmp ? rows.filter(function(r){ return r.emp.id===selEmp; }) : rows;
 
@@ -2884,7 +2891,7 @@ function renderReportPage(){
     getDepartments().map(function(dp){ return '<option value="'+escapeHtml(dp)+'"'+(STATE.reportDept===dp?' selected':'')+'>'+escapeHtml(dp)+'</option>'; }).join('')+'</select></div>' : '';
   var empSel = '<div class="form-group" style="margin:0;min-width:200px;"><label>'+(isHr?'Staf':'Tampilkan')+'</label><select id="reportEmp"><option value="">'+(isHr?'Semua staf':'Saya &amp; seluruh tim')+'</option>'+
     scope.map(function(e){ return '<option value="'+e.id+'"'+(selEmp===e.id?' selected':'')+'>'+escapeHtml(e.name)+(e.id===SESSION.empId?' (saya)':'')+'</option>'; }).join('')+'</select></div>';
-  var filters = '<div class="card"><div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">'+deptSel+empSel+
+  var filters = isStaff ? '<div class="card"><div class="muted" style="font-size:12.5px;">Grafik kehadiranmu pada <strong>'+monthLabel(ym)+'</strong> (ganti lewat pemilih bulan di atas).</div></div>' : '<div class="card"><div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;">'+deptSel+empSel+
     '<div class="muted" style="font-size:12.5px;margin-left:auto;">Periode: <strong>'+monthLabel(ym)+'</strong> (ganti lewat pemilih bulan di atas)</div></div></div>';
 
   if(!shown.length) return filters+'<div class="card"><div class="empty-state">Tidak ada staf pada pilihan ini.</div></div>';

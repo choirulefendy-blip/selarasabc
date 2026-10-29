@@ -57,7 +57,14 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
   console.log('\n[Menu & akses]');
   ok(w.navItemsFor('hr').some(function(i){ return i.v==='report'; }) && w.navItemsFor('hod').some(function(i){ return i.v==='report'; }), 'menu Laporan & Grafik ada untuk HR dan HOD');
-  ok(!w.navItemsFor('staff').some(function(i){ return i.v==='report'; }), 'staf biasa tidak punya menu laporan');
+  ok(w.navItemsFor('staff').some(function(i){ return i.v==='report'; }), 'staf biasa punya menu Grafik Saya');
+  w.SESSION = {role:'staff',empId:'S1'}; w.STATE.view='report'; w.STATE.reportEmp='S2'; w.render();
+  var n3 = names();
+  ok(n3.length===0 || n3.every(function(n){ return n==='Sari Staf'; }), 'staf hanya melihat datanya sendiri (S2 diminta, tetap S1)');
+  ok(d.body.textContent.indexOf('Sari Staf')!==-1 && d.body.textContent.indexOf('Sigit')===-1 && d.body.textContent.indexOf('Hana')===-1, 'tidak ada nama staf lain di halaman');
+  ok(!d.getElementById('reportEmp') && !d.getElementById('reportDept'), 'staf tanpa dropdown pilih orang/departemen');
+  ok(d.body.textContent.indexOf('Jam Kerja Harian')!==-1, 'grafik jam kerja harian pribadi tampil');
+  ['staff'].forEach(function(role){ var cfg = w.navGroupsFor(role); var all = w.navItemsFor(role).map(function(i){ return i.v; }).sort(); var g = cfg.top.concat([].concat.apply([], cfg.groups.map(function(x){ return x.views; }))).sort(); ok(JSON.stringify(all)===JSON.stringify(g), role+': menu grafik masuk tepat satu kelompok'); });
   ['hr','hod'].forEach(function(role){ var cfg = w.navGroupsFor(role); var all = w.navItemsFor(role).map(function(i){ return i.v; }).sort(); var g = cfg.top.concat([].concat.apply([], cfg.groups.map(function(x){ return x.views; }))).sort(); ok(JSON.stringify(all)===JSON.stringify(g), role+': menu laporan masuk tepat satu kelompok'); });
   console.log('\nHASIL: '+pass+' lulus, '+fail+' gagal');
   process.exit(fail?1:0);
