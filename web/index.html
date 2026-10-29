@@ -173,6 +173,9 @@
   }
   .topbar h2{font-family:var(--font-serif);font-weight:500;font-size:21px;margin:0;}
   .topbar-right{display:flex;align-items:center;gap:10px;}
+  .dept-shortcuts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:16px;}
+  .dept-card{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0;}
+  .dept-card h3{margin:0 0 2px;font-size:15px;}
   .month-input{padding:9px 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface-container-low);font-weight:600;}
   .hamburger{display:inline-flex;align-items:center;justify-content:center;background:var(--surface-container-low);border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;}
   .content{padding:26px 28px 60px;max-width:1360px;width:100%;margin:0 auto;display:flex;flex-direction:column;gap:18px;}
@@ -443,8 +446,13 @@
     .hamburger{display:inline-flex;align-items:center;justify-content:center;}
     .sidebar-close{display:inline-flex;align-items:center;justify-content:center;}
     .content{padding:18px 16px 50px;}
-    .topbar{padding:12px 16px;}
-    .topbar-right{width:100%;justify-content:flex-end;}
+    .topbar{padding:10px 12px;flex-wrap:nowrap;gap:8px;}
+    .topbar > div:first-child{min-width:0;flex:1 1 auto;}
+    .topbar h2{font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+    .topbar-right{flex:0 0 auto;gap:6px;flex-wrap:nowrap;}
+    .topbar-right .month-input{padding:6px 6px;font-size:11.5px;width:142px;max-width:142px;}
+    .push-btn .lbl-long{display:none;}
+    .push-btn .lbl-short{display:inline !important;}
     .login-wrap{grid-template-columns:1fr;}
     .login-brand{padding:30px 26px;}
   }
@@ -1608,6 +1616,10 @@ function runDBMigrations(){
   }
   if(!DB.departments) DB.departments = DEFAULT_DEPARTMENTS.slice();
   if(!DB.properties) DB.properties = DEFAULT_PROPERTIES.slice();
+  ['Sales','Accounting','Purchasing'].forEach(function(d){
+    if(!DB.departments.some(function(x){ return String(x).toLowerCase()===d.toLowerCase(); })) DB.departments.push(d);
+  });
+  accInit();
   if(DB.nextEmployeeSeq===undefined) DB.nextEmployeeSeq = 1;
   (DB.employees||[]).forEach(function(e){
     if(!e.empCode){ e.empCode = generateEmployeeCode(e); }
@@ -2361,13 +2373,13 @@ function viewTitle(v){
     'schedule-approval':'Persetujuan Jadwal', 'hod-attendance':'Absensi Tim', report:'Laporan & Grafik',
     'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI',
     'overtime-request':'Pengajuan Lembur', 'overtime-approval':'Pengajuan Lembur',
-    banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'Selaras Board', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
+    banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'Selaras Board', accounting:'Dashboard Accounting', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
   };
   return map[v] || 'Sistem HR';
 }
 
 function needsMonthPicker(v){
-  return ['dashboard','schedule','attendance','payroll','payroll-detail','my-schedule','my-attendance','my-payslip','kpi','hod-attendance','report'].indexOf(v) !== -1;
+  return ['dashboard','schedule','attendance','payroll','payroll-detail','my-schedule','my-attendance','my-payslip','kpi','hod-attendance','report','accounting'].indexOf(v) !== -1;
 }
 
 function renderShell(){
@@ -2401,6 +2413,7 @@ function renderShell(){
     else if(STATE.view==='banners') body = renderBannersPage();
     else if(STATE.view==='chat') body = renderChatPage();
     else if(STATE.view==='todo') body = renderTodoPage();
+    else if(STATE.view==='accounting') body = renderAccountingPage();
     else if(STATE.view==='notif-settings') body = renderNotifSettingsPage();
     else if(STATE.view==='settings') body = renderSettingsPage();
     else body = renderAdminDashboard();
@@ -2417,6 +2430,7 @@ function renderShell(){
     else if(STATE.view==='announcements') body = renderAnnouncementsPage();
     else if(STATE.view==='my-payslip') body = renderSlipPage(SESSION.empId, false);
     else if(STATE.view==='todo') body = renderTodoPage();
+    else if(STATE.view==='accounting') body = renderAccountingPage();
     else if(STATE.view==='my-activity') body = renderMyActivityPage();
     else if(STATE.view==='chat') body = renderChatPage();
     else if(STATE.view==='my-profile') body = renderMyProfilePage();
@@ -2434,6 +2448,7 @@ function renderShell(){
     else if(STATE.view==='announcements') body = renderAnnouncementsPage();
     else if(STATE.view==='my-payslip') body = renderSlipPage(SESSION.empId, false);
     else if(STATE.view==='todo') body = renderTodoPage();
+    else if(STATE.view==='accounting') body = renderAccountingPage();
     else if(STATE.view==='my-activity') body = renderMyActivityPage();
     else if(STATE.view==='chat') body = renderChatPage();
     else if(STATE.view==='my-profile') body = renderMyProfilePage();
@@ -2466,7 +2481,7 @@ function renderShell(){
           '<h2>'+viewTitle(STATE.view)+'</h2>'+
         '</div>'+
         '<div class="topbar-right no-print">'+
-          (deviceNotifSupported() && !deviceNotifGranted() && !(('Notification' in window) && !isNativeApp() && Notification.permission==='denied') ? '<button class="btn btn-secondary btn-sm" data-action="enable-push">Aktifkan Notifikasi Perangkat</button>' : '')+
+          (deviceNotifSupported() && !deviceNotifGranted() && !(('Notification' in window) && !isNativeApp() && Notification.permission==='denied') ? '<button class="btn btn-secondary btn-sm push-btn" data-action="enable-push"><span class="lbl-long">Aktifkan Notifikasi Perangkat</span><span class="lbl-short" style="display:none;">&#128276;</span></button>' : '')+
           '<button class="theme-toggle-btn" data-action="toggle-dark-mode" aria-label="Ganti tema">'+iconSvg(isDarkMode()?'sun':'moon',18)+'</button>'+
           renderNotifBell()+
           (needsMonthPicker(STATE.view) ? '<input type="month" class="month-input" id="topbarMonth" value="'+STATE.currentMonth+'">' : '')+
@@ -3561,7 +3576,7 @@ function renderHodDashboard(){
   if(!STATE.selectedHodEmp || emps.every(function(e){ return e.id!==STATE.selectedHodEmp; })) STATE.selectedHodEmp = emps[0].id;
   var empId = STATE.selectedHodEmp;
 
-  var todayCard = renderDashboardHeader(getEmployee(SESSION.empId), true);
+  var todayCard = renderDashboardHeader(getEmployee(SESSION.empId), true) + deptShortcutsHtml();
 
   var summaryRows = emps.map(function(e){
     var s = getMonthSummary(e.id, ym).totals;
@@ -4064,7 +4079,7 @@ function renderStaffDashboard(){
   var s = getMonthSummary(emp.id, ym).totals;
   var p = computePayroll(emp.id, ym);
   return ''+
-  renderDashboardHeader(emp, false)+
+  renderDashboardHeader(emp, false)+deptShortcutsHtml()+
   '<div class="grid grid-4">'+
     '<div class="stat-card"><div class="label">Hadir</div><div class="value">'+s.hadir+'</div><div class="sub">'+monthLabel(ym)+'</div></div>'+
     '<div class="stat-card"><div class="label">Telat</div><div class="value">'+s.telat+'</div><div class="sub">'+s.totalLateMinutes+' menit total</div></div>'+
@@ -5407,7 +5422,8 @@ function boardTabsHtml(tab){
 }
 function renderTodoPage(){
   var bt = STATE.boardTab || 'board';
-  var head = boardTabsHtml(bt);
+  var head = boardTabsHtml(bt) + deptShortcutsHtml();
+  if(bt==='board' && canImportBoard()) head += '<div class="no-print" style="margin-bottom:12px;"><button class="btn btn-secondary btn-sm" data-action="board-import-open">&#8682; Import Spreadsheet</button></div>';
   if(bt==='project') return head + renderProjectTab();
   if(bt==='agenda') return head + renderAgendaTab();
   var canMonitor = SESSION.role==='hr' || SESSION.role==='hod';
@@ -6159,6 +6175,427 @@ function raiseAttendanceAlerts(empId, ym, day, type, time, loc, geo){
   }
 }
 
+/* ---------------------------- DEPT: SHORTCUT, IMPOR BOARD, DASHBOARD ACCOUNTING ---------------------------- */
+var SALES_DASHBOARD_URL = 'https://dmleadmarcomm.netlify.app/';
+var SALES_DEPTS = ['sales','marketing','sales & marketing','sales and marketing'];
+var ACC_DEPTS = ['accounting','akuntansi','finance'];
+var PUR_DEPTS = ['purchasing','pembelian'];
+
+function deptKey(d){ return String(d||'').toLowerCase().replace(/\s+/g,' ').trim(); }
+function myDeptKey(){ var e = SESSION.role==='hr' ? null : getEmployee(SESSION.empId); return e ? deptKey(e.department) : ''; }
+function inDeptList(list){ if(SESSION.role==='hr') return true; return list.indexOf(myDeptKey())!==-1; }
+function canSales(){ return inDeptList(SALES_DEPTS); }
+function canAccounting(){ return inDeptList(ACC_DEPTS); }
+function canPurchasing(){ return inDeptList(PUR_DEPTS); }
+function canAccDashboard(){ return canAccounting() || canPurchasing(); }
+function canImportBoard(){ return canSales(); }
+function employeesInDepts(list){
+  return (DB.employees||[]).filter(function(e){ return e.active!==false && list.indexOf(deptKey(e.department))!==-1; });
+}
+
+function deptShortcutsHtml(){
+  var out = '';
+  if(canSales()){
+    out += '<div class="card dept-card"><div><h3>Dashboard Sales</h3><div class="card-sub">Form Rekap Visit, DM Track Lead, dan Business Done.</div></div>'+
+      '<button class="btn btn-primary" data-action="open-sales-dashboard">Buka Dashboard Sales</button></div>';
+  }
+  if(canAccDashboard()){
+    out += '<div class="card dept-card"><div><h3>Dashboard Accounting</h3><div class="card-sub">Jurnal, Neraca, Laba Rugi, dan Purchase Order per properti.</div></div>'+
+      '<button class="btn btn-primary" data-action="go-accounting">Buka Dashboard Accounting</button></div>';
+  }
+  return out ? '<div class="dept-shortcuts no-print">'+out+'</div>' : '';
+}
+
+/* ---- Impor spreadsheet ke Selaras Board ---- */
+var BOARD_IMPORT_HEADERS = ['Judul','Catatan','Tenggat','Prioritas','Status','Project','Penanggung Jawab'];
+var BOARD_IMPORT_SYN = {
+  title:['judul','tugas','task','title','pekerjaan','aktivitas','kegiatan','nama tugas'],
+  note:['catatan','note','notes','keterangan','deskripsi','description'],
+  due:['tenggat','due','deadline','tanggal','target','due date','batas waktu'],
+  prio:['prioritas','priority','prio'],
+  status:['status'],
+  project:['project','proyek','projek'],
+  owner:['penanggung jawab','pic','owner','nama','assignee','pj']
+};
+function pad2s(n){ return (n<10?'0':'')+n; }
+function parseDateLoose(v){
+  if(v===null || v===undefined || v==='') return '';
+  if(v instanceof Date && !isNaN(v)) return v.getFullYear()+'-'+pad2s(v.getMonth()+1)+'-'+pad2s(v.getDate());
+  if(typeof v==='number' && v>20000 && v<80000){
+    var d0 = new Date(Math.round((v-25569)*86400*1000));
+    return d0.getUTCFullYear()+'-'+pad2s(d0.getUTCMonth()+1)+'-'+pad2s(d0.getUTCDate());
+  }
+  var s = String(v).trim(), m;
+  if((m = s.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/))) return m[1]+'-'+pad2s(+m[2])+'-'+pad2s(+m[3]);
+  if((m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})$/))){
+    var yy = +m[3]; if(yy<100) yy += 2000;
+    return yy+'-'+pad2s(+m[2])+'-'+pad2s(+m[1]);
+  }
+  var mon = {jan:1,feb:2,mar:3,apr:4,mei:5,may:5,jun:6,jul:7,agu:8,agt:8,aug:8,sep:9,okt:10,oct:10,nov:11,des:12,dec:12};
+  if((m = s.toLowerCase().match(/^(\d{1,2})\s+([a-z]{3})[a-z]*\.?\s+(\d{4})$/)) && mon[m[2]]) return m[3]+'-'+pad2s(mon[m[2]])+'-'+pad2s(+m[1]);
+  return '';
+}
+function importStatusOf(v){
+  var s = String(v||'').toLowerCase().trim();
+  if(!s) return 'todo';
+  if(/(finish|done|selesai|complete|beres)/.test(s)) return 'done';
+  if(/(progress|proses|doing|berjalan|jalan|dikerjakan)/.test(s)) return 'doing';
+  if(/(pending|tunda|hold|tertunda|menunggu)/.test(s)) return 'pending';
+  return 'todo';
+}
+function importPrioOf(v){
+  var s = String(v||'').toLowerCase().trim();
+  if(/(tinggi|high|urgent|penting)/.test(s)) return 'tinggi';
+  if(/(rendah|low)/.test(s)) return 'rendah';
+  return 'normal';
+}
+function parseBoardRows(aoa){
+  /* aoa = array of arrays; baris pertama (yang berisi "judul"/"tugas") dianggap header */
+  var hi = -1, i, j;
+  for(i=0;i<Math.min(aoa.length,10) && hi<0;i++){
+    for(j=0;j<(aoa[i]||[]).length;j++){
+      if(BOARD_IMPORT_SYN.title.indexOf(String(aoa[i][j]||'').toLowerCase().trim())!==-1){ hi = i; break; }
+    }
+  }
+  if(hi<0) return {error:'Kolom "Judul" tidak ditemukan. Pakai template yang disediakan.'};
+  var col = {};
+  (aoa[hi]||[]).forEach(function(h,idx){
+    var k = String(h||'').toLowerCase().trim();
+    Object.keys(BOARD_IMPORT_SYN).forEach(function(f){ if(col[f]===undefined && BOARD_IMPORT_SYN[f].indexOf(k)!==-1) col[f] = idx; });
+  });
+  var rows = [];
+  for(i=hi+1;i<aoa.length;i++){
+    var r = aoa[i]||[];
+    var title = String(col.title!==undefined && r[col.title]!==undefined ? r[col.title] : '').trim();
+    if(!title) continue;
+    function cell(f){ return col[f]!==undefined && r[col[f]]!==undefined ? r[col[f]] : ''; }
+    rows.push({
+      title: title.slice(0,200), note: String(cell('note')).trim().slice(0,1000), due: parseDateLoose(cell('due')),
+      priority: importPrioOf(cell('prio')), status: importStatusOf(cell('status')),
+      project: String(cell('project')).trim(), owner: String(cell('owner')).trim()
+    });
+  }
+  return {rows: rows};
+}
+function resolveImportOwner(name){
+  var self = todoSelfKey();
+  if(!name || SESSION.role==='staff') return self;
+  var n = name.toLowerCase();
+  var hit = todoMonitorScope().filter(function(e){ return String(e.name||'').toLowerCase()===n || String(e.empCode||'').toLowerCase()===n; })[0];
+  return hit ? hit.id : self;
+}
+function boardImportModalHtml(){
+  var imp = STATE.boardImport || {};
+  var body;
+  if(imp.rows){
+    var prev = imp.rows.slice(0,8).map(function(r){
+      return '<tr><td>'+escapeHtml(r.title)+'</td><td>'+escapeHtml(r.due?formatDateID(r.due):'-')+'</td><td>'+escapeHtml(TODO_STATUS[r.status]?TODO_STATUS[r.status].label:r.status)+'</td><td>'+escapeHtml(r.project||'-')+'</td></tr>';
+    }).join('');
+    body = '<div class="card-sub" style="margin:10px 0;"><b>'+imp.rows.length+'</b> tugas siap diimpor dari <b>'+escapeHtml(imp.fileName||'')+'</b>. Tugas yang sama (judul + tenggat) otomatis dilewati.</div>'+
+      '<div class="table-wrap" style="max-height:220px;overflow:auto;"><table><thead><tr><th>Judul</th><th>Tenggat</th><th>Status</th><th>Project</th></tr></thead><tbody>'+prev+'</tbody></table></div>'+
+      (imp.rows.length>8 ? '<div class="muted" style="font-size:12px;margin-top:4px;">...dan '+(imp.rows.length-8)+' lainnya</div>' : '')+
+      '<div class="modal-actions" style="margin-top:14px;"><button class="btn btn-secondary" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="board-import-confirm">Impor '+imp.rows.length+' Tugas</button></div>';
+  } else {
+    body = '<div class="card-sub" style="margin:10px 0;">Upload file <b>.xlsx / .xls / .csv</b> dengan kolom: '+BOARD_IMPORT_HEADERS.join(', ')+'. Hanya "Judul" yang wajib. Status: To Do / In Progress / Finish / Pending. Kolom Project yang belum ada akan dibuatkan otomatis.</div>'+
+      (imp.error ? '<div class="badge badge-danger" style="margin-bottom:8px;">'+escapeHtml(imp.error)+'</div>' : '')+
+      '<div class="form-group"><input type="file" id="boardImportFile" accept=".xlsx,.xls,.csv,text/csv"></div>'+
+      '<div class="modal-actions"><button class="btn btn-ghost" data-action="board-import-template">Unduh Template</button><button class="btn btn-secondary" data-action="close-modal">Tutup</button></div>';
+  }
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1"><h3>Import Spreadsheet ke Selaras Board</h3>'+body+'</div></div>';
+}
+function boardImportFromFile(file){
+  if(typeof XLSX==='undefined'){ STATE.boardImport = {error:'Library spreadsheet belum termuat. Cek koneksi internet lalu coba lagi.'}; openModal(boardImportModalHtml()); return; }
+  var isCsv = /\.csv$/i.test(file.name||'');
+  var fr = new FileReader();
+  fr.onload = function(){
+    try{
+      var wb = isCsv ? XLSX.read(fr.result, {type:'string', cellDates:true}) : XLSX.read(fr.result, {type:'array', cellDates:true});
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
+      var res = parseBoardRows(aoa);
+      if(res.error) STATE.boardImport = {error:res.error};
+      else if(!res.rows.length) STATE.boardImport = {error:'Tidak ada baris tugas yang bisa dibaca.'};
+      else STATE.boardImport = {rows:res.rows, fileName:file.name};
+    }catch(err){ console.error('import board', err); STATE.boardImport = {error:'File tidak bisa dibaca. Pastikan formatnya xlsx/csv.'}; }
+    openModal(boardImportModalHtml());
+  };
+  fr.onerror = function(){ STATE.boardImport = {error:'Gagal membaca file.'}; openModal(boardImportModalHtml()); };
+  if(isCsv) fr.readAsText(file); else fr.readAsArrayBuffer(file);
+}
+function boardImportTemplate(){
+  var t = todayISO();
+  var aoa = [BOARD_IMPORT_HEADERS,
+    ['Follow up klien Padi Heritage','Kirim penawaran paket gathering', t, 'Tinggi','To Do','Campaign Sales',''],
+    ['Rekap visit minggu 1','', t, 'Normal','In Progress','','']];
+  if(typeof XLSX!=='undefined'){
+    var ws = XLSX.utils.aoa_to_sheet(aoa), wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Board');
+    XLSX.writeFile(wb, 'Template Selaras Board.xlsx');
+  } else {
+    var csv = aoa.map(function(r){ return r.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+    var a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download = 'Template Selaras Board.csv'; a.click();
+  }
+}
+function boardImportConfirm(){
+  var imp = STATE.boardImport; if(!imp || !imp.rows) return 0;
+  DB.todos = DB.todos || []; DB.projects = DB.projects || [];
+  var now = new Date().toISOString(), self = todoSelfKey();
+  var selfEmp = SESSION.role==='hr' ? null : getEmployee(SESSION.empId);
+  var label = 'oleh '+(SESSION.role==='hr' ? 'HR' : (selfEmp?selfEmp.name:''))+' (impor)';
+  var added = 0, skipped = 0, newProj = 0;
+  imp.rows.forEach(function(r){
+    var owner = resolveImportOwner(r.owner);
+    var dupe = DB.todos.some(function(t){ return !t.deleted && t.ownerId===owner && t.title.toLowerCase()===r.title.toLowerCase() && (t.due||'')===(r.due||''); });
+    if(dupe){ skipped++; return; }
+    var pid = null;
+    if(r.project){
+      var pn = r.project.toLowerCase();
+      var p = projectsVisible().filter(function(x){ return String(x.name||'').toLowerCase()===pn; })[0];
+      if(!p){
+        p = {id:uid('PJ'), name:r.project, client:'', description:'', due:'', status:'aktif', ownerId:self, memberIds:[self], createdAt:now, updatedAt:now};
+        DB.projects.unshift(p); newProj++;
+      }
+      pid = p.id;
+    }
+    DB.todos.unshift({id:uid('TD'), ownerId:owner, title:r.title, note:r.note, due:r.due, priority:r.priority, status:r.status,
+      createdById:self, createdByLabel:label, createdAt:now, updatedAt:now, doneAt:r.status==='done'?now:null, photoKey:null, photoUrl:null, projectId:pid});
+    added++;
+  });
+  STATE.boardImport = null;
+  logActivity('Impor spreadsheet ke Selaras Board: '+added+' tugas'+(skipped?' ('+skipped+' dilewati)':'')+'.');
+  return {added:added, skipped:skipped, newProj:newProj};
+}
+
+/* ---- Dashboard Accounting ---- */
+var ACC_DEFAULT_COA = [
+  {code:'1100',name:'Kas & Bank',type:'aset'},{code:'1200',name:'Piutang Usaha',type:'aset'},{code:'1300',name:'Persediaan',type:'aset'},{code:'1500',name:'Aset Tetap',type:'aset'},
+  {code:'2100',name:'Hutang Usaha',type:'kewajiban'},{code:'2200',name:'Hutang Pajak',type:'kewajiban'},
+  {code:'3100',name:'Modal',type:'modal'},{code:'3200',name:'Laba Ditahan',type:'modal'},
+  {code:'4100',name:'Pendapatan Kamar',type:'pendapatan'},{code:'4200',name:'Pendapatan F&B',type:'pendapatan'},{code:'4300',name:'Pendapatan Lain',type:'pendapatan'},
+  {code:'5100',name:'Harga Pokok Penjualan',type:'beban'},{code:'5200',name:'Beban Gaji',type:'beban'},{code:'5300',name:'Beban Operasional',type:'beban'},
+  {code:'5400',name:'Beban Pemeliharaan',type:'beban'},{code:'5500',name:'Beban Pemasaran',type:'beban'},{code:'5900',name:'Beban Lain-lain',type:'beban'}
+];
+var ACC_DEFAULT_CATS = ['Operasional','Pemasaran','Pemeliharaan','Bahan Baku','Gaji & Tunjangan'];
+var ACC_TYPES = {aset:'Aset', kewajiban:'Kewajiban', modal:'Modal', pendapatan:'Pendapatan', beban:'Beban'};
+var PO_STATUS = {diajukan:['Diajukan','badge-warning'], disetujui:['Disetujui','badge-info'], ditolak:['Ditolak','badge-danger'], diterima:['Diterima','badge-success']};
+
+function accInit(){
+  if(!DB) return;
+  if(!DB.accCoa) DB.accCoa = ACC_DEFAULT_COA.map(function(a){ return {code:a.code,name:a.name,type:a.type}; });
+  if(!DB.accJournals) DB.accJournals = [];
+  if(!DB.accPOs) DB.accPOs = [];
+  if(!DB.accCats) DB.accCats = {};
+  getProperties().forEach(function(p){ if(!DB.accCats[p]) DB.accCats[p] = ACC_DEFAULT_CATS.slice(); });
+}
+function accCatsOf(prop){ accInit(); return (DB.accCats[prop]||[]); }
+function accAccount(code){ accInit(); return DB.accCoa.filter(function(a){ return a.code===code; })[0] || {code:code, name:code, type:'aset'}; }
+function accNum(v){ var n = Number(String(v||'').replace(/[^\d.-]/g,'')); return isNaN(n) ? 0 : n; }
+function accYm(d){ return String(d||'').slice(0,7); }
+function accAllowedTabs(){
+  var t = [];
+  if(canAccounting()) t = t.concat([['jurnal','Jurnal'],['neraca','Neraca'],['labarugi','Laba Rugi']]);
+  if(canAccDashboard()) t.push(['po','Purchase Order']);
+  if(canAccounting()) t.push(['kategori','Kategori & Akun']);
+  return t;
+}
+function accJournalsFor(prop, fromYm, toYm){
+  accInit();
+  return DB.accJournals.filter(function(j){
+    if(j.deleted) return false;
+    var ym = accYm(j.date);
+    return (!prop || j.property===prop) && (!fromYm || ym>=fromYm) && (!toYm || ym<=toYm);
+  });
+}
+function accBalances(journals){
+  var b = {};
+  journals.forEach(function(j){ (j.lines||[]).forEach(function(l){ b[l.acc] = (b[l.acc]||0) + accNum(l.debit) - accNum(l.credit); }); });
+  return b;
+}
+function accReport(prop, ym){
+  var bal = accBalances(accJournalsFor(prop, '', ym));
+  var per = accBalances(accJournalsFor(prop, ym, ym));
+  var out = {aset:[], kewajiban:[], modal:[], pendapatan:[], beban:[], totals:{}};
+  var cum = {pendapatan:0, beban:0};
+  accInit();
+  DB.accCoa.forEach(function(a){
+    var b = bal[a.code]||0, p = per[a.code]||0;
+    if(a.type==='aset' || a.type==='beban'){ /* normal debit */ }
+    if(a.type==='aset'){ if(b) out.aset.push({acc:a, amt:b}); }
+    else if(a.type==='kewajiban'){ if(b) out.kewajiban.push({acc:a, amt:-b}); }
+    else if(a.type==='modal'){ if(b) out.modal.push({acc:a, amt:-b}); }
+    else if(a.type==='pendapatan'){ cum.pendapatan += -b; if(p) out.pendapatan.push({acc:a, amt:-p}); }
+    else if(a.type==='beban'){ cum.beban += b; if(p) out.beban.push({acc:a, amt:p}); }
+  });
+  function sum(l){ return l.reduce(function(s,x){ return s+x.amt; },0); }
+  var t = out.totals;
+  t.aset = sum(out.aset); t.kewajiban = sum(out.kewajiban); t.modal = sum(out.modal);
+  t.labaBerjalan = cum.pendapatan - cum.beban;
+  t.pasiva = t.kewajiban + t.modal + t.labaBerjalan;
+  t.pendapatan = sum(out.pendapatan); t.beban = sum(out.beban); t.laba = t.pendapatan - t.beban;
+  return out;
+}
+function accPropSelect(id, selected, withAll){
+  return '<select id="'+id+'">'+(withAll?'<option value="">Semua Properti</option>':'')+getProperties().map(function(p){
+    return '<option value="'+escapeHtml(p)+'"'+(p===selected?' selected':'')+'>'+escapeHtml(p)+'</option>'; }).join('')+'</select>';
+}
+function accCatSelectHtml(id, prop, selected){
+  return '<select id="'+id+'"><option value="">Tanpa kategori</option>'+accCatsOf(prop).map(function(c){
+    return '<option value="'+escapeHtml(c)+'"'+(c===selected?' selected':'')+'>'+escapeHtml(c)+'</option>'; }).join('')+'</select>';
+}
+function accAccountOptions(selected){
+  accInit();
+  return '<option value="">- Akun -</option>'+DB.accCoa.slice().sort(function(a,b){ return a.code.localeCompare(b.code); }).map(function(a){
+    return '<option value="'+escapeHtml(a.code)+'"'+(a.code===selected?' selected':'')+'>'+escapeHtml(a.code+' '+a.name)+'</option>'; }).join('');
+}
+
+function renderAccountingPage(){
+  accInit();
+  if(!canAccDashboard()) return '<div class="card"><div class="empty-state">Dashboard Accounting hanya untuk departemen Accounting, Purchasing, dan HR.</div></div>';
+  var tabs = accAllowedTabs();
+  var cur = STATE.accTab;
+  if(!tabs.some(function(t){ return t[0]===cur; })) cur = tabs[0][0];
+  var prop = STATE.accProp || '';
+  var head = '<div class="todo-tabs board-tabs">'+tabs.map(function(t){
+    return '<button class="todo-tab'+(cur===t[0]?' active':'')+'" data-action="acc-tab" data-tab="'+t[0]+'">'+t[1]+'</button>'; }).join('')+'</div>';
+  var filter = (cur==='kategori') ? '' :
+    '<div class="card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;"><label style="margin:0;font-weight:600;">Properti</label>'+accPropSelect('accProp', prop, true)+
+    '<span class="muted" style="font-size:12.5px;">Periode: '+monthLabel(STATE.currentMonth)+' (ganti lewat pemilih bulan di atas)</span></div>';
+  var body;
+  if(cur==='jurnal') body = renderAccJurnal(prop);
+  else if(cur==='neraca') body = renderAccNeraca(prop);
+  else if(cur==='labarugi') body = renderAccLabaRugi(prop);
+  else if(cur==='po') body = renderAccPO(prop);
+  else body = renderAccKategori();
+  return head + filter + body;
+}
+
+function renderAccJurnal(prop){
+  var ym = STATE.currentMonth;
+  var defProp = prop || getProperties()[0];
+  var rows = ''; var i;
+  for(i=1;i<=4;i++){
+    rows += '<div class="form-row" style="grid-template-columns:2fr 1fr 1fr;gap:8px;margin-bottom:6px;"><select id="jr_a'+i+'">'+accAccountOptions('')+'</select>'+
+      '<input type="number" min="0" step="any" id="jr_d'+i+'" placeholder="Debit"><input type="number" min="0" step="any" id="jr_c'+i+'" placeholder="Kredit"></div>';
+  }
+  var form = '<details class="card bd-add"><summary>+ Tambah Jurnal</summary>'+
+    '<div class="form-row"><div class="form-group"><label>Tanggal</label><input type="date" id="jr_date" value="'+todayISO()+'"></div>'+
+    '<div class="form-group"><label>Properti</label>'+accPropSelect('jr_prop', defProp, false)+'</div>'+
+    '<div class="form-group"><label>Kategori</label><span id="jr_catWrap">'+accCatSelectHtml('jr_cat', defProp, '')+'</span></div></div>'+
+    '<div class="form-group"><label>Keterangan</label><input type="text" id="jr_desc" placeholder="Contoh: Pembayaran listrik Oktober"></div>'+
+    '<label style="font-weight:600;">Baris Jurnal (total debit harus sama dengan kredit)</label>'+rows+
+    '<button class="btn btn-primary" data-action="acc-journal-add">Simpan Jurnal</button></details>';
+  var list = accJournalsFor(prop, ym, ym).sort(function(a,b){ return (b.date||'').localeCompare(a.date||'') || (b.createdAt||'').localeCompare(a.createdAt||''); });
+  var body = list.length ? list.map(function(j){
+    var tot = (j.lines||[]).reduce(function(s,l){ return s+accNum(l.debit); },0);
+    return '<tr><td>'+escapeHtml(formatDateID(j.date))+'</td><td>'+escapeHtml(j.property||'')+'<div class="muted" style="font-size:11.5px;">'+escapeHtml(j.category||'-')+'</div></td>'+
+      '<td>'+escapeHtml(j.desc||'')+(j.poNo?' <span class="badge badge-info">'+escapeHtml(j.poNo)+'</span>':'')+
+      '<div class="muted" style="font-size:11.5px;">'+(j.lines||[]).map(function(l){ var a = accAccount(l.acc); return escapeHtml(a.code+' '+a.name)+' '+(accNum(l.debit)?'D '+rupiah(l.debit):'K '+rupiah(l.credit)); }).join(' &middot; ')+'</div></td>'+
+      '<td class="num">'+rupiah(tot)+'</td>'+
+      '<td>'+(canAccounting()?'<button class="btn btn-ghost btn-sm" data-action="acc-journal-del" data-id="'+j.id+'">Hapus</button>':'')+'</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="muted" style="text-align:center;padding:18px;">Belum ada jurnal di '+monthLabel(ym)+'.</td></tr>';
+  return form + '<div class="card"><div class="card-title">Jurnal Umum &middot; '+monthLabel(ym)+'</div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Properti / Kategori</th><th>Keterangan</th><th class="num">Nilai</th><th></th></tr></thead><tbody>'+body+'</tbody></table></div></div>';
+}
+
+function accSectionRows(list){
+  return list.map(function(x){ return '<tr><td>'+escapeHtml(x.acc.code+' '+x.acc.name)+'</td><td class="num">'+rupiah(x.amt)+'</td></tr>'; }).join('') || '<tr><td class="muted" colspan="2">-</td></tr>';
+}
+function renderAccNeraca(prop){
+  var ym = STATE.currentMonth, r = accReport(prop, ym), t = r.totals;
+  var diff = Math.round(t.aset - t.pasiva);
+  var modalRows = accSectionRows(r.modal) + '<tr><td>Laba Berjalan (s.d. '+monthLabel(ym)+')</td><td class="num">'+rupiah(t.labaBerjalan)+'</td></tr>';
+  return '<div class="grid grid-2">'+
+    '<div class="card"><div class="card-title">Aset</div><div class="table-wrap"><table><tbody>'+accSectionRows(r.aset)+
+      '<tr><th>Total Aset</th><th class="num">'+rupiah(t.aset)+'</th></tr></tbody></table></div></div>'+
+    '<div class="card"><div class="card-title">Kewajiban & Modal</div><div class="table-wrap"><table><tbody>'+
+      '<tr><td colspan="2"><b>Kewajiban</b></td></tr>'+accSectionRows(r.kewajiban)+'<tr><td><i>Total Kewajiban</i></td><td class="num">'+rupiah(t.kewajiban)+'</td></tr>'+
+      '<tr><td colspan="2"><b>Modal</b></td></tr>'+modalRows+'<tr><td><i>Total Modal</i></td><td class="num">'+rupiah(t.modal+t.labaBerjalan)+'</td></tr>'+
+      '<tr><th>Total Kewajiban & Modal</th><th class="num">'+rupiah(t.pasiva)+'</th></tr></tbody></table></div></div></div>'+
+    '<div class="card"><span class="badge '+(diff===0?'badge-success':'badge-danger')+'">'+(diff===0?'Neraca seimbang':'Selisih '+rupiah(diff))+'</span> '+
+    '<span class="muted" style="font-size:12.5px;">Posisi per akhir '+monthLabel(ym)+(prop?' &middot; '+escapeHtml(prop):' &middot; semua properti')+'.</span></div>';
+}
+function renderAccLabaRugi(prop){
+  var ym = STATE.currentMonth, r = accReport(prop, ym), t = r.totals;
+  /* ringkasan per kategori */
+  var cat = {};
+  accJournalsFor(prop, ym, ym).forEach(function(j){
+    (j.lines||[]).forEach(function(l){
+      var a = accAccount(l.acc); if(a.type!=='pendapatan' && a.type!=='beban') return;
+      var k = j.category || 'Tanpa kategori'; cat[k] = cat[k] || {pend:0, beban:0};
+      if(a.type==='pendapatan') cat[k].pend += accNum(l.credit) - accNum(l.debit); else cat[k].beban += accNum(l.debit) - accNum(l.credit);
+    });
+  });
+  var catRows = Object.keys(cat).sort().map(function(k){ return '<tr><td>'+escapeHtml(k)+'</td><td class="num">'+rupiah(cat[k].pend)+'</td><td class="num">'+rupiah(cat[k].beban)+'</td></tr>'; }).join('') || '<tr><td colspan="3" class="muted">Belum ada data.</td></tr>';
+  var propRows = '';
+  if(!prop){
+    propRows = '<div class="card"><div class="card-title">Per Properti</div><div class="table-wrap"><table><thead><tr><th>Properti</th><th class="num">Pendapatan</th><th class="num">Beban</th><th class="num">Laba/Rugi</th></tr></thead><tbody>'+
+      getProperties().map(function(p){ var x = accReport(p, ym).totals; return '<tr><td>'+escapeHtml(p)+'</td><td class="num">'+rupiah(x.pendapatan)+'</td><td class="num">'+rupiah(x.beban)+'</td><td class="num">'+rupiah(x.laba)+'</td></tr>'; }).join('')+
+      '</tbody></table></div></div>';
+  }
+  return '<div class="grid grid-2">'+
+    '<div class="card"><div class="card-title">Laba Rugi &middot; '+monthLabel(ym)+'</div><div class="table-wrap"><table><tbody>'+
+      '<tr><td colspan="2"><b>Pendapatan</b></td></tr>'+accSectionRows(r.pendapatan)+'<tr><td><i>Total Pendapatan</i></td><td class="num">'+rupiah(t.pendapatan)+'</td></tr>'+
+      '<tr><td colspan="2"><b>Beban</b></td></tr>'+accSectionRows(r.beban)+'<tr><td><i>Total Beban</i></td><td class="num">'+rupiah(t.beban)+'</td></tr>'+
+      '<tr><th>'+(t.laba>=0?'Laba Bersih':'Rugi Bersih')+'</th><th class="num" style="color:'+(t.laba>=0?'var(--success)':'var(--danger)')+';">'+rupiah(t.laba)+'</th></tr></tbody></table></div></div>'+
+    '<div class="card"><div class="card-title">Per Kategori</div><div class="table-wrap"><table><thead><tr><th>Kategori</th><th class="num">Pendapatan</th><th class="num">Beban</th></tr></thead><tbody>'+catRows+'</tbody></table></div></div></div>'+propRows;
+}
+
+function poTotal(po){ return (po.items||[]).reduce(function(s,i){ return s + accNum(i.qty)*accNum(i.price); },0); }
+function renderAccPO(prop){
+  var ym = STATE.currentMonth, defProp = prop || getProperties()[0], i, rows = '';
+  for(i=1;i<=5;i++){
+    rows += '<div class="form-row" style="grid-template-columns:2fr .7fr .8fr 1fr;gap:8px;margin-bottom:6px;"><input type="text" id="poi_n'+i+'" placeholder="Item '+i+'"><input type="number" min="0" step="any" id="poi_q'+i+'" placeholder="Qty">'+
+      '<input type="text" id="poi_u'+i+'" placeholder="Satuan"><input type="number" min="0" step="any" id="poi_p'+i+'" placeholder="Harga satuan"></div>';
+  }
+  var form = canPurchasing() ? '<details class="card bd-add"><summary>+ Buat Purchase Order</summary>'+
+    '<div class="form-row"><div class="form-group"><label>Tanggal</label><input type="date" id="po_date" value="'+todayISO()+'"></div>'+
+    '<div class="form-group"><label>Properti</label>'+accPropSelect('po_prop', defProp, false)+'</div>'+
+    '<div class="form-group"><label>Kategori</label><span id="po_catWrap">'+accCatSelectHtml('po_cat', defProp, '')+'</span></div></div>'+
+    '<div class="form-group"><label>Vendor / Supplier</label><input type="text" id="po_vendor"></div>'+
+    '<div class="form-group"><label>Catatan</label><input type="text" id="po_note"></div>'+
+    '<label style="font-weight:600;">Item</label>'+rows+
+    '<button class="btn btn-primary" data-action="acc-po-add">Ajukan PO</button></details>' : '';
+  var list = (DB.accPOs||[]).filter(function(p){ return !p.deleted && (!prop || p.property===prop) && accYm(p.date)===ym; })
+    .sort(function(a,b){ return (b.date||'').localeCompare(a.date||'') || (b.no||'').localeCompare(a.no||''); });
+  var body = list.length ? list.map(function(p){
+    var st = PO_STATUS[p.status] || [p.status,'badge-info'], acts = [];
+    if(p.status==='diajukan' && canAccounting()) acts.push('<button class="btn btn-primary btn-sm" data-action="acc-po-status" data-id="'+p.id+'" data-to="disetujui">Setujui</button><button class="btn btn-ghost btn-sm" data-action="acc-po-status" data-id="'+p.id+'" data-to="ditolak">Tolak</button>');
+    if(p.status==='disetujui' && canPurchasing()) acts.push('<button class="btn btn-primary btn-sm" data-action="acc-po-status" data-id="'+p.id+'" data-to="diterima">Barang Diterima</button>');
+    if(p.status==='diterima' && !p.journalId && canAccounting()) acts.push('<button class="btn btn-secondary btn-sm" data-action="acc-po-journal" data-id="'+p.id+'">Buat Jurnal</button>');
+    if(p.journalId) acts.push('<span class="badge badge-success">Sudah dijurnal</span>');
+    if((p.status==='diajukan' || p.status==='ditolak') && canPurchasing()) acts.push('<button class="btn btn-ghost btn-sm" data-action="acc-po-del" data-id="'+p.id+'">Hapus</button>');
+    var items = (p.items||[]).map(function(x){ return escapeHtml(x.name)+' &times; '+escapeHtml(String(x.qty))+(x.unit?' '+escapeHtml(x.unit):'')+' @ '+rupiah(x.price); }).join('<br>');
+    return '<tr><td><b>'+escapeHtml(p.no)+'</b><div class="muted" style="font-size:11.5px;">'+escapeHtml(formatDateID(p.date))+'</div></td>'+
+      '<td>'+escapeHtml(p.property||'')+'<div class="muted" style="font-size:11.5px;">'+escapeHtml(p.category||'-')+'</div></td>'+
+      '<td>'+escapeHtml(p.vendor||'-')+'<details><summary class="muted" style="font-size:12px;cursor:pointer;">'+(p.items||[]).length+' item</summary><div style="font-size:12px;">'+items+(p.note?'<br><i>'+escapeHtml(p.note)+'</i>':'')+'</div></details></td>'+
+      '<td class="num">'+rupiah(poTotal(p))+'</td><td><span class="badge '+st[1]+'">'+st[0]+'</span></td><td style="white-space:nowrap;">'+acts.join(' ')+'</td></tr>';
+  }).join('') : '<tr><td colspan="6" class="muted" style="text-align:center;padding:18px;">Belum ada PO di '+monthLabel(ym)+'.</td></tr>';
+  return form + '<div class="card"><div class="card-title">Purchase Order &middot; '+monthLabel(ym)+'</div>'+
+    '<div class="card-sub">Dibuat oleh Purchasing, disetujui Accounting, lalu dijurnal (Persediaan &rarr; Hutang Usaha).</div>'+
+    '<div class="table-wrap"><table><thead><tr><th>No PO</th><th>Properti / Kategori</th><th>Vendor</th><th class="num">Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+body+'</tbody></table></div></div>';
+}
+
+function renderAccKategori(){
+  accInit();
+  var props = getProperties().map(function(p, idx){
+    return '<div class="card"><div class="card-title">'+escapeHtml(p)+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">'+
+      (accCatsOf(p).map(function(c){ return '<span class="badge badge-info" style="display:inline-flex;gap:6px;align-items:center;">'+escapeHtml(c)+
+        '<button type="button" class="btn-x" data-action="acc-cat-del" data-prop="'+escapeHtml(p)+'" data-cat="'+escapeHtml(c)+'" aria-label="Hapus kategori" style="border:0;background:none;cursor:pointer;color:inherit;font-size:14px;line-height:1;">&times;</button></span>'; }).join('') || '<span class="muted">Belum ada kategori.</span>')+
+      '</div><div style="display:flex;gap:8px;"><input type="text" id="catNew'+idx+'" placeholder="Kategori baru untuk '+escapeHtml(p)+'" style="flex:1;"><button class="btn btn-secondary" data-action="acc-cat-add" data-prop="'+escapeHtml(p)+'" data-idx="'+idx+'">Tambah</button></div></div>';
+  }).join('');
+  var coa = DB.accCoa.slice().sort(function(a,b){ return a.code.localeCompare(b.code); }).map(function(a){
+    return '<tr><td>'+escapeHtml(a.code)+'</td><td>'+escapeHtml(a.name)+'</td><td>'+ACC_TYPES[a.type]+'</td></tr>'; }).join('');
+  return '<div class="card-sub" style="margin:0 0 10px;">Kategori dipakai untuk menandai jurnal dan PO per properti.</div>'+props+
+    '<div class="card"><div class="card-title">Daftar Akun</div><div class="table-wrap" style="max-height:260px;overflow:auto;"><table><thead><tr><th>Kode</th><th>Nama</th><th>Tipe</th></tr></thead><tbody>'+coa+'</tbody></table></div>'+
+    '<div class="form-row" style="grid-template-columns:1fr 2fr 1.2fr auto;gap:8px;margin-top:10px;"><input type="text" id="coaCode" placeholder="Kode"><input type="text" id="coaName" placeholder="Nama akun">'+
+    '<select id="coaType">'+Object.keys(ACC_TYPES).map(function(k){ return '<option value="'+k+'">'+ACC_TYPES[k]+'</option>'; }).join('')+'</select>'+
+    '<button class="btn btn-secondary" data-action="acc-coa-add">Tambah Akun</button></div></div>';
+}
+
+function accNotifyDept(list, msg){
+  employeesInDepts(list).forEach(function(e){ if(e.id!==SESSION.empId) addNotification({type:'emp', empId:e.id}, msg, 'accounting', 'general'); });
+  if(SESSION.role!=='hr') addNotification({type:'hr'}, msg, 'accounting', 'general');
+}
+
 /* ---------------------------- SINKRONISASI LIVE ---------------------------- */
 var LIVE_POLL_BUSY = false;
 var LIVE_STAMP_SEEN = null, LIVE_STAMP_PENDING = null, LIVE_TICKS = 0;
@@ -6184,9 +6621,14 @@ function mergeLiveData(remote){
   DB.notifications = merged.slice(0,200);
 
   DB.todos = mergeById(DB.todos, remote.todos, function(t){ return t.updatedAt || t.createdAt || ''; });
-  ['projects','timesheets','agenda'].forEach(function(k){
+  ['projects','timesheets','agenda','accJournals','accPOs'].forEach(function(k){
     DB[k] = mergeById(DB[k], remote[k], function(x){ return x.updatedAt || x.createdAt || ''; });
   });
+  if(remote.accCats){ DB.accCats = DB.accCats || {}; Object.keys(remote.accCats).forEach(function(pr){
+    var cur = DB.accCats[pr] || [];
+    (remote.accCats[pr]||[]).forEach(function(c){ if(cur.indexOf(c)===-1) cur.push(c); });
+    DB.accCats[pr] = cur; }); }
+  if(remote.accCoa){ DB.accCoa = DB.accCoa || []; remote.accCoa.forEach(function(a){ if(!DB.accCoa.some(function(x){ return x.code===a.code; })) DB.accCoa.push(a); }); }
   DB.activityLog = mergeById(DB.activityLog, remote.activityLog, function(){ return 0; })
     .sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); }).slice(0,600);
   if(SESSION.role!=='hr' && remote.banners) DB.banners = remote.banners;
@@ -7190,6 +7632,126 @@ document.addEventListener('click', function(e){
     if(!gpE || !gcalConnected()) return;
     gcalPush(gpE).then(function(){ return saveDB(); }).then(function(){ toast('Terkirim ke Google Kalender.'); render(); })
       .catch(function(err){ toast(err.message||'Gagal mengirim.'); });
+  } else if(action==='open-sales-dashboard'){
+    try{ window.open(SALES_DASHBOARD_URL, '_blank'); }catch(e){ window.location.href = SALES_DASHBOARD_URL; }
+  } else if(action==='go-accounting'){
+    STATE.view = 'accounting'; STATE.sidebarOpen = false; render();
+  } else if(action==='board-import-open'){
+    if(!canImportBoard()){ toast('Import hanya untuk departemen Sales & Marketing.'); return; }
+    STATE.boardImport = null; openModal(boardImportModalHtml());
+  } else if(action==='board-import-template'){
+    boardImportTemplate();
+  } else if(action==='board-import-confirm'){
+    var biRes = boardImportConfirm();
+    closeModal();
+    if(!biRes){ return; }
+    saveDB();
+    toast(biRes.added+' tugas diimpor'+(biRes.skipped?', '+biRes.skipped+' dilewati (sudah ada)':'')+(biRes.newProj?', '+biRes.newProj+' project baru':'')+'.');
+    STATE.boardTab = 'board'; render();
+  } else if(action==='acc-tab'){
+    STATE.accTab = el.getAttribute('data-tab'); render();
+  } else if(action==='acc-journal-add'){
+    if(!canAccounting()){ toast('Hanya Accounting yang bisa input jurnal.'); return; }
+    var jrDate = document.getElementById('jr_date').value, jrProp = document.getElementById('jr_prop').value;
+    var jrDesc = document.getElementById('jr_desc').value.trim(), jrLines = [], jrD = 0, jrC = 0, jrI;
+    for(jrI=1;jrI<=4;jrI++){
+      var jrA = document.getElementById('jr_a'+jrI).value, jrDb = accNum(document.getElementById('jr_d'+jrI).value), jrCr = accNum(document.getElementById('jr_c'+jrI).value);
+      if(!jrA && !jrDb && !jrCr) continue;
+      if(!jrA || (!jrDb && !jrCr) || (jrDb && jrCr)){ toast('Baris '+jrI+': pilih akun dan isi salah satu debit atau kredit.'); return; }
+      jrLines.push({acc:jrA, debit:jrDb, credit:jrCr}); jrD += jrDb; jrC += jrCr;
+    }
+    if(!jrDate){ toast('Isi tanggal.'); return; }
+    if(!jrDesc){ toast('Isi keterangan jurnal.'); return; }
+    if(jrLines.length<2){ toast('Minimal 2 baris jurnal.'); return; }
+    if(Math.round(jrD*100)!==Math.round(jrC*100)){ toast('Debit ('+rupiah(jrD)+') belum sama dengan kredit ('+rupiah(jrC)+').'); return; }
+    accInit();
+    var jrNow = new Date().toISOString();
+    DB.accJournals.unshift({id:uid('JR'), date:jrDate, property:jrProp, category:document.getElementById('jr_cat').value||'', desc:jrDesc, lines:jrLines,
+      createdById:todoSelfKey(), createdAt:jrNow, updatedAt:jrNow});
+    logActivity('Jurnal baru: '+jrDesc+' ('+jrProp+').');
+    STATE.currentMonth = accYm(jrDate);
+    saveDB(); toast('Jurnal disimpan.'); render();
+  } else if(action==='acc-journal-del'){
+    if(!canAccounting()) return;
+    var jdId = el.getAttribute('data-id');
+    var jdJ = (DB.accJournals||[]).filter(function(j){ return j.id===jdId; })[0];
+    if(jdJ){
+      jdJ.deleted = true; jdJ.updatedAt = new Date().toISOString();
+      (DB.accPOs||[]).forEach(function(p){ if(p.journalId===jdId){ p.journalId = null; p.updatedAt = jdJ.updatedAt; } });
+      logActivity('Jurnal dihapus: '+(jdJ.desc||'')+'.');
+      saveDB(); toast('Jurnal dihapus.'); render();
+    }
+  } else if(action==='acc-po-add'){
+    if(!canPurchasing()){ toast('Hanya Purchasing yang bisa membuat PO.'); return; }
+    var poDate = document.getElementById('po_date').value, poProp = document.getElementById('po_prop').value;
+    var poVendor = document.getElementById('po_vendor').value.trim(), poItems = [], poI;
+    for(poI=1;poI<=5;poI++){
+      var poN = document.getElementById('poi_n'+poI).value.trim(), poQ = accNum(document.getElementById('poi_q'+poI).value), poP = accNum(document.getElementById('poi_p'+poI).value);
+      if(!poN && !poQ && !poP) continue;
+      if(!poN || poQ<=0){ toast('Item '+poI+': isi nama dan qty.'); return; }
+      poItems.push({name:poN, qty:poQ, unit:document.getElementById('poi_u'+poI).value.trim(), price:poP});
+    }
+    if(!poDate || !poVendor){ toast('Isi tanggal dan vendor.'); return; }
+    if(!poItems.length){ toast('Tambahkan minimal 1 item.'); return; }
+    accInit();
+    var poYm = accYm(poDate), poSeq = (DB.accPOs||[]).filter(function(p){ return accYm(p.date)===poYm; }).length + 1;
+    var poNow = new Date().toISOString();
+    var poNew = {id:uid('PO'), no:'PO-'+poYm.replace('-','')+'-'+(poSeq<10?'00':poSeq<100?'0':'')+poSeq, date:poDate, property:poProp, category:document.getElementById('po_cat').value||'',
+      vendor:poVendor, note:document.getElementById('po_note').value.trim(), items:poItems, status:'diajukan', createdById:todoSelfKey(), createdAt:poNow, updatedAt:poNow, journalId:null};
+    DB.accPOs.unshift(poNew);
+    logActivity('PO diajukan: '+poNew.no+' ('+poVendor+').');
+    accNotifyDept(ACC_DEPTS, 'PO baru menunggu persetujuan: '+poNew.no+' - '+poVendor+' ('+rupiah(poTotal(poNew))+').');
+    STATE.currentMonth = poYm;
+    saveDB(); toast('PO '+poNew.no+' diajukan.'); render();
+  } else if(action==='acc-po-status'){
+    var psId = el.getAttribute('data-id'), psTo = el.getAttribute('data-to');
+    var psP = (DB.accPOs||[]).filter(function(p){ return p.id===psId; })[0];
+    if(!psP || !PO_STATUS[psTo]) return;
+    if((psTo==='disetujui' || psTo==='ditolak') ? !canAccounting() : !canPurchasing()){ toast('Tidak punya akses untuk aksi ini.'); return; }
+    psP.status = psTo; psP.updatedAt = new Date().toISOString();
+    logActivity('PO '+psP.no+' '+PO_STATUS[psTo][0].toLowerCase()+'.');
+    if(psTo==='diterima') accNotifyDept(ACC_DEPTS, 'PO '+psP.no+' sudah diterima. Silakan buat jurnalnya.');
+    else if(psP.createdById && psP.createdById!=='hr' && psP.createdById!==SESSION.empId) addNotification({type:'emp', empId:psP.createdById}, 'PO '+psP.no+' '+PO_STATUS[psTo][0].toLowerCase()+'.', 'accounting', 'general');
+    saveDB(); toast('Status PO diperbarui.'); render();
+  } else if(action==='acc-po-journal'){
+    if(!canAccounting()) return;
+    var pjP = (DB.accPOs||[]).filter(function(p){ return p.id===el.getAttribute('data-id'); })[0];
+    if(!pjP || pjP.status!=='diterima' || pjP.journalId) return;
+    var pjTot = poTotal(pjP), pjNow = new Date().toISOString(), pjId = uid('JR');
+    if(pjTot<=0){ toast('Total PO nol, tidak bisa dijurnal.'); return; }
+    DB.accJournals.unshift({id:pjId, date:todayISO(), property:pjP.property, category:pjP.category||'', desc:'Penerimaan barang '+pjP.no+' - '+pjP.vendor,
+      lines:[{acc:'1300',debit:pjTot,credit:0},{acc:'2100',debit:0,credit:pjTot}], poId:pjP.id, poNo:pjP.no, createdById:todoSelfKey(), createdAt:pjNow, updatedAt:pjNow});
+    pjP.journalId = pjId; pjP.updatedAt = pjNow;
+    logActivity('Jurnal dibuat dari PO '+pjP.no+'.');
+    STATE.currentMonth = accYm(todayISO());
+    saveDB(); toast('Jurnal dibuat dari PO.'); render();
+  } else if(action==='acc-po-del'){
+    if(!canPurchasing()) return;
+    var pdP = (DB.accPOs||[]).filter(function(p){ return p.id===el.getAttribute('data-id'); })[0];
+    if(pdP && (pdP.status==='diajukan' || pdP.status==='ditolak')){
+      pdP.deleted = true; pdP.updatedAt = new Date().toISOString(); saveDB(); toast('PO dihapus.'); render();
+    }
+  } else if(action==='acc-cat-add'){
+    if(!canAccounting()) return;
+    var caProp = el.getAttribute('data-prop'), caInp = document.getElementById('catNew'+el.getAttribute('data-idx'));
+    var caName = caInp ? caInp.value.trim() : '';
+    if(!caName){ toast('Isi nama kategori.'); return; }
+    accInit();
+    if(DB.accCats[caProp].some(function(c){ return c.toLowerCase()===caName.toLowerCase(); })){ toast('Kategori sudah ada.'); return; }
+    DB.accCats[caProp].push(caName); saveDB(); toast('Kategori ditambahkan.'); render();
+  } else if(action==='acc-cat-del'){
+    if(!canAccounting()) return;
+    var cdProp = el.getAttribute('data-prop'), cdCat = el.getAttribute('data-cat');
+    accInit();
+    DB.accCats[cdProp] = (DB.accCats[cdProp]||[]).filter(function(c){ return c!==cdCat; });
+    saveDB(); render();
+  } else if(action==='acc-coa-add'){
+    if(!canAccounting()) return;
+    var coCode = document.getElementById('coaCode').value.trim(), coName = document.getElementById('coaName').value.trim(), coType = document.getElementById('coaType').value;
+    if(!coCode || !coName){ toast('Isi kode dan nama akun.'); return; }
+    accInit();
+    if(DB.accCoa.some(function(a){ return a.code===coCode; })){ toast('Kode akun sudah dipakai.'); return; }
+    DB.accCoa.push({code:coCode, name:coName, type:coType}); saveDB(); toast('Akun ditambahkan.'); render();
   } else if(action==='todo-tab'){
     STATE.todoTab = el.getAttribute('data-tab');
     render();
@@ -8534,6 +9096,13 @@ document.addEventListener('change', function(e){
   if(t.id==='photoFile'){
     var pfFile = t.files && t.files[0];
     if(pfFile && STATE.photoTarget) setEmployeePhotoFromFile(STATE.photoTarget, pfFile);
+    return;
+  }
+  if(t.id==='boardImportFile'){ var biF = t.files && t.files[0]; if(biF) boardImportFromFile(biF); return; }
+  if(t.id==='accProp'){ STATE.accProp = t.value; render(); return; }
+  if(t.id==='jr_prop' || t.id==='po_prop'){
+    var wrapId = t.id==='jr_prop' ? 'jr_catWrap' : 'po_catWrap', catId = t.id==='jr_prop' ? 'jr_cat' : 'po_cat';
+    var w = document.getElementById(wrapId); if(w) w.innerHTML = accCatSelectHtml(catId, t.value, '');
     return;
   }
   if(t.id==='reportDept'){ STATE.reportDept = t.value; STATE.reportEmp = ''; render(); return; }
