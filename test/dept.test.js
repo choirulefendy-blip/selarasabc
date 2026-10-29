@@ -58,7 +58,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   ok(w.parseBoardRows([['a','b']]).error, 'tanpa kolom Judul -> error');
   w.STATE.boardImport = {rows:res.rows, fileName:'bulan-lalu.xlsx'};
   w.openModal(w.boardImportModalHtml());
-  ok(/3<\/b> tugas siap/.test(d.getElementById('modalRoot').innerHTML), 'preview menampilkan jumlah tugas');
+  ok(/3<\/b> tugas terbaca/.test(d.getElementById('modalRoot').innerHTML), 'preview menampilkan jumlah tugas');
   var before = w.DB.todos.length;
   await click('[data-action="board-import-confirm"]');
   ok(w.DB.todos.length===before+3, '3 tugas masuk ke board');
@@ -69,12 +69,13 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   await click(d.createElement('span')).catch(function(){});
   var r2 = w.boardImportConfirm();
   ok(r2.added===0 && r2.skipped===3, 'impor ulang: duplikat dilewati');
-  /* HOD/HR dapat menugaskan lewat kolom Penanggung Jawab */
+  /* HOD/HR dapat menugaskan lewat kolom Penanggung Jawab; PIC di luar cakupan dilewati */
   w.DB.departmentHods = {Marketing:['M1']};
-  as('hod','M1'); w.STATE.boardImport = {rows:[{title:'Tugas untuk Sandi',note:'',due:'',priority:'normal',status:'todo',project:'',owner:'Sandi Sales'}], fileName:'x'};
-  w.boardImportConfirm();
-  var tSL = w.DB.todos.filter(function(t){ return t.title==='Tugas untuk Sandi'; })[0];
-  ok(tSL && (tSL.ownerId==='SL' || tSL.ownerId==='M1'), 'kolom Penanggung Jawab diproses sesuai cakupan');
+  as('hod','M1'); w.STATE.boardImport = {rows:[{title:'Tugas untuk Mira',note:'',due:'',priority:'normal',status:'todo',project:'',owner:'Mira Marketing'},{title:'Tugas untuk Sandi',note:'',due:'',priority:'normal',status:'todo',project:'',owner:'Sandi Sales'}], fileName:'x', map:{}};
+  var rHod = w.boardImportConfirm();
+  ok(rHod.added===1 && rHod.noOwner===1 && w.DB.todos.some(function(t){ return t.title==='Tugas untuk Mira' && t.ownerId==='M1'; }), 'HOD: PIC di luar timnya dilewati, bukan dialihkan');
+  as('hr',null,'todo'); w.STATE.boardImport = {rows:[{title:'Tugas untuk Sandi',note:'',due:'',priority:'normal',status:'todo',project:'',owner:'Sandi Sales'}], fileName:'x', map:{}};
+  w.boardImportConfirm(); ok(w.DB.todos.some(function(t){ return t.title==='Tugas untuk Sandi' && t.ownerId==='SL'; }), 'HR: tugas masuk ke akun PIC yang dituju');
 
   console.log('\n[Dashboard Accounting: akses]');
   as('staff','K1','accounting'); ok(/hanya untuk departemen/i.test(app()), 'Kitchen ditolak');

@@ -6217,7 +6217,7 @@ function deptShortcutsHtml(){
 /* ---- Impor spreadsheet ke Selaras Board ---- */
 var BOARD_IMPORT_HEADERS = ['Judul','Catatan','Tenggat','Prioritas','Status','Project','Penanggung Jawab'];
 var BOARD_IMPORT_SYN = {
-  title:['judul','tugas','task','title','pekerjaan','aktivitas','kegiatan','nama tugas'],
+  title:['judul','tugas','task','title','pekerjaan','aktivitas','kegiatan','nama tugas','uraian pekerjaan','uraian','action item / program','action item','program'],
   note:['catatan','note','notes','keterangan','deskripsi','description'],
   due:['tenggat','due','deadline','tanggal','target','due date','batas waktu'],
   prio:['prioritas','priority','prio'],
@@ -6257,40 +6257,89 @@ function importPrioOf(v){
   if(/(rendah|low)/.test(s)) return 'rendah';
   return 'normal';
 }
-function parseBoardRows(aoa){
-  /* aoa = array of arrays; baris pertama (yang berisi "judul"/"tugas") dianggap header */
+function parseBoardRows(aoa, sheetName){
+  /* aoa = array of arrays; baris pertama (yang berisi "judul"/"uraian pekerjaan"/dst) dianggap header */
   var hi = -1, i, j;
   for(i=0;i<Math.min(aoa.length,10) && hi<0;i++){
+    /* baris header = ada kolom judul DAN minimal satu kolom lain yang dikenal (hindari salah baca baris data) */
+    var seen = {}, hasTitle = false;
     for(j=0;j<(aoa[i]||[]).length;j++){
-      if(BOARD_IMPORT_SYN.title.indexOf(String(aoa[i][j]||'').toLowerCase().trim())!==-1){ hi = i; break; }
+      var hv = String(aoa[i][j]||'').toLowerCase().trim();
+      Object.keys(BOARD_IMPORT_SYN).forEach(function(f){ if(BOARD_IMPORT_SYN[f].indexOf(hv)!==-1){ seen[f] = true; if(f==='title') hasTitle = true; } });
     }
+    if(hasTitle && Object.keys(seen).length>=2) hi = i;
   }
   if(hi<0) return {error:'Kolom "Judul" tidak ditemukan. Pakai template yang disediakan.'};
-  var col = {};
+  var col = {}, weekCol;
   (aoa[hi]||[]).forEach(function(h,idx){
     var k = String(h||'').toLowerCase().trim();
+    if(k==='minggu') weekCol = idx;
     Object.keys(BOARD_IMPORT_SYN).forEach(function(f){ if(col[f]===undefined && BOARD_IMPORT_SYN[f].indexOf(k)!==-1) col[f] = idx; });
   });
-  var rows = [];
+  var rows = [], cancelled = 0, noDue = col.due===undefined;
   for(i=hi+1;i<aoa.length;i++){
     var r = aoa[i]||[];
     var title = String(col.title!==undefined && r[col.title]!==undefined ? r[col.title] : '').trim();
     if(!title) continue;
-    function cell(f){ return col[f]!==undefined && r[col[f]]!==undefined ? r[col[f]] : ''; }
+    var cell = function(f){ return col[f]!==undefined && r[col[f]]!==undefined ? r[col[f]] : ''; };
+    if(/(batal|cancel)/i.test(String(cell('status')))){ cancelled++; continue; }
+    var note = String(cell('note')).trim();
+    if(noDue && weekCol!==undefined && r[weekCol]) note = (String(r[weekCol])+(note?' - '+note:'')).trim();
     rows.push({
-      title: title.slice(0,200), note: String(cell('note')).trim().slice(0,1000), due: parseDateLoose(cell('due')),
+      title: title.slice(0,200), note: note.slice(0,1000), due: parseDateLoose(cell('due')),
       priority: importPrioOf(cell('prio')), status: importStatusOf(cell('status')),
-      project: String(cell('project')).trim(), owner: String(cell('owner')).trim()
+      project: String(cell('project')).trim() || (noDue && sheetName ? sheetName : ''), owner: String(cell('owner')).trim()
     });
   }
-  return {rows: rows};
+  return {rows: rows, cancelled: cancelled};
+}
+function parseBoardWorkbook(wb){
+  var all = [], cancelled = 0, found = false;
+  wb.SheetNames.forEach(function(n){
+    var aoa = XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, defval:'', raw:true});
+    var res = parseBoardRows(aoa, n);
+    if(res.error) return;
+    found = true; all = all.concat(res.rows); cancelled += res.cancelled;
+  });
+  if(!found) return {error:'Kolom "Judul" / "Uraian Pekerjaan" tidak ditemukan di sheet mana pun. Pakai template yang disediakan.'};
+  return {rows: all, cancelled: cancelled};
+}
+function normPersonName(s){ return String(s||'').toLowerCase().replace(/\([^)]*\)/g,' ').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); }
+function personNick(s){ var m = String(s||'').match(/\(([^)]+)\)/); return m ? normPersonName(m[1]) : ''; }
+function matchImportOwner(name, scope){
+  var q = normPersonName(name), qn = personNick(name), best = null, bs = 0;
+  if(!q && !qn) return null;
+  scope.forEach(function(e){
+    var en = normPersonName(e.name), enick = personNick(e.name), code = String(e.empCode||'').toLowerCase(), sc = 0;
+    if(code && code===String(name).toLowerCase().trim()) sc = 100;
+    else if(q && en===q) sc = 90;
+    else if(qn && (qn===enick || qn===en || en.split(' ').indexOf(qn)!==-1)) sc = 80;
+    else if(q && enick && q===enick) sc = 80;
+    else if(q && q.split(' ').length>=2 && en.split(' ').length>=2 && (en.indexOf(q)!==-1 || q.indexOf(en)!==-1)) sc = 70;
+    else if(q && q.split(' ').length===1 && en.split(' ')[0]===q) sc = 60;
+    if(sc>bs){ bs = sc; best = e; }
+  });
+  return best;
+}
+/* kembalikan id pemilik tugas, atau null bila PIC tidak dikenal */
+function importOwnerScope(){
+  var list = todoMonitorScope().slice(), me = SESSION.role==='hr' ? null : getEmployee(SESSION.empId);
+  if(me && list.every(function(e){ return e.id!==me.id; })) list.unshift(me);
+  return list;
 }
 function resolveImportOwner(name){
   var self = todoSelfKey();
   if(!name || SESSION.role==='staff') return self;
-  var n = name.toLowerCase();
-  var hit = todoMonitorScope().filter(function(e){ return String(e.name||'').toLowerCase()===n || String(e.empCode||'').toLowerCase()===n; })[0];
-  return hit ? hit.id : self;
+  var map = (STATE.boardImport && STATE.boardImport.map) || {};
+  if(map[name]) return map[name];
+  var hit = matchImportOwner(name, importOwnerScope());
+  return hit ? hit.id : null;
+}
+function importUnmatched(rows){
+  var out = {};
+  if(SESSION.role==='staff') return out;
+  rows.forEach(function(r){ if(r.owner && resolveImportOwner(r.owner)===null) out[r.owner] = (out[r.owner]||0)+1; });
+  return out;
 }
 function boardImportModalHtml(){
   var imp = STATE.boardImport || {};
@@ -6299,7 +6348,13 @@ function boardImportModalHtml(){
     var prev = imp.rows.slice(0,8).map(function(r){
       return '<tr><td>'+escapeHtml(r.title)+'</td><td>'+escapeHtml(r.due?formatDateID(r.due):'-')+'</td><td>'+escapeHtml(TODO_STATUS[r.status]?TODO_STATUS[r.status].label:r.status)+'</td><td>'+escapeHtml(r.project||'-')+'</td></tr>';
     }).join('');
-    body = '<div class="card-sub" style="margin:10px 0;"><b>'+imp.rows.length+'</b> tugas siap diimpor dari <b>'+escapeHtml(imp.fileName||'')+'</b>. Tugas yang sama (judul + tenggat) otomatis dilewati.</div>'+
+    var um = importUnmatched(imp.rows), umKeys = Object.keys(um), scopeList = importOwnerScope(), perOwner = {};
+    imp.rows.forEach(function(r){ var oid = resolveImportOwner(r.owner); if(oid){ perOwner[oid] = (perOwner[oid]||0)+1; } });
+    var ownerSum = Object.keys(perOwner).map(function(k){ return escapeHtml(todoOwnerName(k))+': <b>'+perOwner[k]+'</b>'; }).join(' &middot; ');
+    var mapHtml = umKeys.length ? '<div class="card" style="margin:10px 0;"><div class="card-sub" style="margin-bottom:8px;"><b>PIC belum dikenali.</b> Pilih karyawannya (yang tidak dipilih akan dilewati):</div>'+
+      umKeys.map(function(k, i){ return '<div class="form-row" style="grid-template-columns:1fr 1.4fr;gap:8px;margin-bottom:6px;align-items:center;"><span>'+escapeHtml(k)+' <span class="muted">('+um[k]+' tugas)</span></span><select data-bimap="'+escapeHtml(k)+'"><option value="">- Lewati -</option>'+
+        scopeList.map(function(e){ return '<option value="'+e.id+'">'+escapeHtml(e.name)+'</option>'; }).join('')+'</select></div>'; }).join('')+'</div>' : '';
+    body = '<div class="card-sub" style="margin:10px 0;"><b>'+imp.rows.length+'</b> tugas terbaca dari <b>'+escapeHtml(imp.fileName||'')+'</b>'+(imp.cancelled?' ('+imp.cancelled+' berstatus Batal tidak diikutkan)':'')+'. Tugas yang sudah ada di Board (judul + tenggat + pemilik sama) otomatis dilewati.'+(ownerSum?'<br>Akan masuk ke: '+ownerSum:'')+'</div>'+mapHtml+
       '<div class="table-wrap" style="max-height:220px;overflow:auto;"><table><thead><tr><th>Judul</th><th>Tenggat</th><th>Status</th><th>Project</th></tr></thead><tbody>'+prev+'</tbody></table></div>'+
       (imp.rows.length>8 ? '<div class="muted" style="font-size:12px;margin-top:4px;">...dan '+(imp.rows.length-8)+' lainnya</div>' : '')+
       '<div class="modal-actions" style="margin-top:14px;"><button class="btn btn-secondary" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="board-import-confirm">Impor '+imp.rows.length+' Tugas</button></div>';
@@ -6318,12 +6373,10 @@ function boardImportFromFile(file){
   fr.onload = function(){
     try{
       var wb = isCsv ? XLSX.read(fr.result, {type:'string', cellDates:true}) : XLSX.read(fr.result, {type:'array', cellDates:true});
-      var ws = wb.Sheets[wb.SheetNames[0]];
-      var aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
-      var res = parseBoardRows(aoa);
+      var res = parseBoardWorkbook(wb);
       if(res.error) STATE.boardImport = {error:res.error};
       else if(!res.rows.length) STATE.boardImport = {error:'Tidak ada baris tugas yang bisa dibaca.'};
-      else STATE.boardImport = {rows:res.rows, fileName:file.name};
+      else STATE.boardImport = {rows:res.rows, fileName:file.name, cancelled:res.cancelled, map:{}};
     }catch(err){ console.error('import board', err); STATE.boardImport = {error:'File tidak bisa dibaca. Pastikan formatnya xlsx/csv.'}; }
     openModal(boardImportModalHtml());
   };
@@ -6350,19 +6403,22 @@ function boardImportConfirm(){
   var now = new Date().toISOString(), self = todoSelfKey();
   var selfEmp = SESSION.role==='hr' ? null : getEmployee(SESSION.empId);
   var label = 'oleh '+(SESSION.role==='hr' ? 'HR' : (selfEmp?selfEmp.name:''))+' (impor)';
-  var added = 0, skipped = 0, newProj = 0;
+  var added = 0, skipped = 0, newProj = 0, noOwner = 0;
+  var existing = {};
+  DB.todos.forEach(function(t){ if(!t.deleted) existing[t.ownerId+'|'+String(t.title||'').toLowerCase()+'|'+(t.due||'')] = true; });
   imp.rows.forEach(function(r){
     var owner = resolveImportOwner(r.owner);
-    var dupe = DB.todos.some(function(t){ return !t.deleted && t.ownerId===owner && t.title.toLowerCase()===r.title.toLowerCase() && (t.due||'')===(r.due||''); });
-    if(dupe){ skipped++; return; }
+    if(owner===null){ noOwner++; return; }
+    if(existing[owner+'|'+r.title.toLowerCase()+'|'+(r.due||'')]){ skipped++; return; }
     var pid = null;
     if(r.project){
       var pn = r.project.toLowerCase();
-      var p = projectsVisible().filter(function(x){ return String(x.name||'').toLowerCase()===pn; })[0];
+      var p = (DB.projects||[]).filter(function(x){ return !x.deleted && String(x.name||'').toLowerCase()===pn; })[0];
       if(!p){
-        p = {id:uid('PJ'), name:r.project, client:'', description:'', due:'', status:'aktif', ownerId:self, memberIds:[self], createdAt:now, updatedAt:now};
+        var members = [self]; if(owner!==self) members.push(owner);
+        p = {id:uid('PJ'), name:r.project, client:'', description:'', due:'', status:'aktif', ownerId:self, memberIds:members, createdAt:now, updatedAt:now};
         DB.projects.unshift(p); newProj++;
-      }
+      } else if(owner!==self && (p.memberIds||[]).indexOf(owner)===-1){ p.memberIds = (p.memberIds||[]).concat([owner]); p.updatedAt = now; }
       pid = p.id;
     }
     DB.todos.unshift({id:uid('TD'), ownerId:owner, title:r.title, note:r.note, due:r.due, priority:r.priority, status:r.status,
@@ -6370,8 +6426,8 @@ function boardImportConfirm(){
     added++;
   });
   STATE.boardImport = null;
-  logActivity('Impor spreadsheet ke Selaras Board: '+added+' tugas'+(skipped?' ('+skipped+' dilewati)':'')+'.');
-  return {added:added, skipped:skipped, newProj:newProj};
+  logActivity('Impor spreadsheet ke Selaras Board: '+added+' tugas'+(skipped?' ('+skipped+' dilewati karena sudah ada)':'')+(noOwner?' ('+noOwner+' dilewati: PIC tidak dikenal)':'')+'.');
+  return {added:added, skipped:skipped, newProj:newProj, noOwner:noOwner};
 }
 
 /* ---- Dashboard Accounting ---- */
@@ -7997,7 +8053,7 @@ document.addEventListener('click', function(e){
     closeModal();
     if(!biRes){ return; }
     saveDB();
-    toast(biRes.added+' tugas diimpor'+(biRes.skipped?', '+biRes.skipped+' dilewati (sudah ada)':'')+(biRes.newProj?', '+biRes.newProj+' project baru':'')+'.');
+    toast(biRes.added+' tugas diimpor'+(biRes.skipped?', '+biRes.skipped+' dilewati (sudah ada)':'')+(biRes.noOwner?', '+biRes.noOwner+' dilewati (PIC tidak dikenal)':'')+(biRes.newProj?', '+biRes.newProj+' project baru':'')+'.');
     STATE.boardTab = 'board'; render();
   } else if(action==='acc-tab'){
     STATE.accTab = el.getAttribute('data-tab'); render();
@@ -9492,6 +9548,13 @@ document.addEventListener('change', function(e){
   if(t.id==='photoFile'){
     var pfFile = t.files && t.files[0];
     if(pfFile && STATE.photoTarget) setEmployeePhotoFromFile(STATE.photoTarget, pfFile);
+    return;
+  }
+  if(t.getAttribute && t.getAttribute('data-bimap')!==null && STATE.boardImport){
+    STATE.boardImport.map = STATE.boardImport.map || {}; STATE.boardImport.map[t.getAttribute('data-bimap')] = t.value;
+    var keep = {}; Array.prototype.forEach.call(document.querySelectorAll('[data-bimap]'), function(x){ keep[x.getAttribute('data-bimap')] = x.value; });
+    openModal(boardImportModalHtml());
+    Array.prototype.forEach.call(document.querySelectorAll('[data-bimap]'), function(x){ if(keep[x.getAttribute('data-bimap')]) x.value = keep[x.getAttribute('data-bimap')]; });
     return;
   }
   if(t.id==='boardImportFile'){ var biF = t.files && t.files[0]; if(biF) boardImportFromFile(biF); return; }
