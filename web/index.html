@@ -109,6 +109,10 @@
   .chart-tip-r span{flex:1;color:#A9C1D6;}
   .chart-tip-r b{font-variant-numeric:tabular-nums;}
   @keyframes tipIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+  body.dark{--chart-bg:transparent;--chart-title:#E6F1FB;--chart-label:#A9C1D6;--chart-axis:#7F9AB3;--chart-grid:#1D3A54;}
+  body.dark svg [fill="#296290"]{fill:#3980C4;}
+  body.dark .acc-svg .chit.sel{fill:rgba(74,163,244,.16);}
+  body.dark .chart-tip{background:#133451;border:1px solid #296290;}
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -6821,18 +6825,18 @@ function svgBarChart(title, cats, series, fmt){
   series.forEach(function(s){ s.values.forEach(function(v){ max = Math.max(max, v); }); });
   max = niceMax(max);
   var cw = (W-pl-pr)/cats.length, bw = Math.min(46, cw*0.8/series.length), out = '';
-  out += '<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="#ffffff"/>';
-  out += '<text x="'+pl+'" y="22" font-size="14" font-weight="700" fill="#14243a" font-family="Arial,sans-serif">'+escapeHtml(title)+'</text>';
+  out += '<rect x="0" y="0" width="'+W+'" height="'+H+'" style="fill:var(--chart-bg,#ffffff)"/>';
+  out += '<text x="'+pl+'" y="22" font-size="14" font-weight="700" style="fill:var(--chart-title,#14243a)" font-family="Arial,sans-serif">'+escapeHtml(title)+'</text>';
   var lx = W-pr;
   series.slice().reverse().forEach(function(s, i){
     var idx = series.length-1-i, label = s.name;
     lx -= label.length*6.2 + 22;
-    out += '<rect x="'+lx+'" y="12" width="10" height="10" rx="2" fill="'+CHART_COLORS[idx%4]+'"/><text x="'+(lx+14)+'" y="21" font-size="11" fill="#475569" font-family="Arial,sans-serif">'+escapeHtml(label)+'</text>';
+    out += '<rect x="'+lx+'" y="12" width="10" height="10" rx="2" fill="'+CHART_COLORS[idx%4]+'"/><text x="'+(lx+14)+'" y="21" font-size="11" style="fill:var(--chart-label,#475569)" font-family="Arial,sans-serif">'+escapeHtml(label)+'</text>';
   });
   [0, .25, .5, .75, 1].forEach(function(f){
     var y = H-pb - f*(H-pb-pt);
-    out += '<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y+'" y2="'+y+'" stroke="#e2e8f0" stroke-width="1"/>'+
-      '<text x="'+(pl-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" fill="#64748b" font-family="Arial,sans-serif">'+fmt(max*f)+'</text>';
+    out += '<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y+'" y2="'+y+'" style="stroke:var(--chart-grid,#e2e8f0)" stroke-width="1"/>'+
+      '<text x="'+(pl-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" style="fill:var(--chart-axis,#64748b)" font-family="Arial,sans-serif">'+fmt(max*f)+'</text>';
   });
   var ckey = title+'|'+JSON.stringify(series.map(function(s){ return s.values; }));
   var anim = !CHART_SEEN[ckey]; CHART_SEEN[ckey] = 1;
@@ -6851,7 +6855,7 @@ function svgBarChart(title, cats, series, fmt){
     hits += '<rect class="chit" data-i="'+i+'" data-top="'+topY.toFixed(1)+'" data-tip="'+escapeHtml(tip.join('^'))+'" x="'+(pl+i*cw).toFixed(1)+'" y="'+pt+'" width="'+cw.toFixed(1)+'" height="'+(H-pb-pt)+'" fill="transparent"/>';
     var lab = String(c).length>14 ? String(c).slice(0,13)+'…' : String(c);
     if(cats.length>12 && i % Math.ceil(cats.length/10) !== 0) lab = '';
-    out += '<text x="'+(pl+i*cw+cw/2).toFixed(1)+'" y="'+(H-pb+16)+'" text-anchor="middle" font-size="10.5" fill="#475569" font-family="Arial,sans-serif">'+escapeHtml(lab)+'</text>';
+    out += '<text x="'+(pl+i*cw+cw/2).toFixed(1)+'" y="'+(H-pb+16)+'" text-anchor="middle" font-size="10.5" style="fill:var(--chart-label,#475569)" font-family="Arial,sans-serif">'+escapeHtml(lab)+'</text>';
   });
   out = out.slice(0, hitPos) + hits + out.slice(hitPos);
   return '<svg xmlns="http://www.w3.org/2000/svg" class="acc-svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="'+escapeHtml(title)+'" style="width:100%;height:auto;max-width:'+W+'px;">'+out+'</svg>';
