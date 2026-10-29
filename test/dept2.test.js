@@ -48,7 +48,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   });
   as('staff','A1','accounting','jurnal'); setv('jr_date',day); setv('jr_prop','Kaly'); setv('jr_desc','Pendapatan'); setv('jr_a1','1100'); setv('jr_d1','4000000'); setv('jr_a2','4100'); setv('jr_c2','4000000');
   await click('[data-action="acc-journal-add"]');
-  as('staff','A1','accounting','labarugi'); ok(!!d.querySelector('.acc-chart svg rect[fill="#1565A8"]'), 'grafik Laba Rugi berisi batang data');
+  as('staff','A1','accounting','labarugi'); ok(!!d.querySelector('.acc-chart svg rect[fill="#296290"]'), 'grafik Laba Rugi berisi batang data');
   await click('[data-action="acc-dl-xlsx"]');
   ok(saved && /Laba Rugi/.test(saved.file) && /\.xlsx$/.test(saved.file) && saved.wb.sheets[0].rows.some(function(r){ return r[0]==='Total Pendapatan' && r[1]===4000000; }), 'unduh Excel Laba Rugi berisi total pendapatan');
   as('staff','A1','accounting','petty'); await click('[data-action="acc-dl-xlsx"]');
