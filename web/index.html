@@ -6189,7 +6189,9 @@ function canSales(){ return inDeptList(SALES_DEPTS); }
 function canAccounting(){ return inDeptList(ACC_DEPTS); }
 function canPurchasing(){ return inDeptList(PUR_DEPTS); }
 function canAccDashboard(){ return canAccounting() || canPurchasing() || SESSION.role==='hod'; }
-function canCreatePO(){ return SESSION.role==='hod' || SESSION.role==='hr'; }
+function canCreatePO(){ return SESSION.role==='hod'; }
+function canProcessPO(){ return SESSION.role!=='hr' && canPurchasing(); }
+function canJournalPO(){ return SESSION.role!=='hr' && canAccounting(); }
 function canImportBoard(){ return canSales(); }
 function employeesInDepts(list){
   return (DB.employees||[]).filter(function(e){ return e.active!==false && list.indexOf(deptKey(e.department))!==-1; });
@@ -6580,11 +6582,11 @@ function renderAccPO(prop){
     .sort(function(a,b){ return (b.date||'').localeCompare(a.date||'') || (b.no||'').localeCompare(a.no||''); });
   var body = list.length ? list.map(function(p){
     var st = PO_STATUS[p.status] || [p.status,'badge-info'], acts = [];
-    if(p.status==='diajukan' && canPurchasing()) acts.push('<button class="btn btn-primary btn-sm" data-action="acc-po-status" data-id="'+p.id+'" data-to="disetujui">Setujui</button><button class="btn btn-ghost btn-sm" data-action="acc-po-status" data-id="'+p.id+'" data-to="ditolak">Tolak</button>');
-    if(p.status==='disetujui' && canPurchasing()) acts.push('<button class="btn btn-primary btn-sm" data-action="acc-po-status" data-id="'+p.id+'" data-to="diterima">Barang Diterima</button>');
-    if(p.status==='diterima' && !p.journalId && canAccounting()) acts.push('<button class="btn btn-secondary btn-sm" data-action="acc-po-journal" data-id="'+p.id+'">Buat Jurnal</button>');
+    if(p.status==='diajukan' && canProcessPO()) acts.push('<button class="btn btn-primary btn-sm" data-action="acc-po-status" data-id="'+p.id+'" data-to="disetujui">Setujui</button><button class="btn btn-ghost btn-sm" data-action="acc-po-status" data-id="'+p.id+'" data-to="ditolak">Tolak</button>');
+    if(p.status==='disetujui' && canProcessPO()) acts.push('<button class="btn btn-primary btn-sm" data-action="acc-po-status" data-id="'+p.id+'" data-to="diterima">Barang Diterima</button>');
+    if(p.status==='diterima' && !p.journalId && canJournalPO()) acts.push('<button class="btn btn-secondary btn-sm" data-action="acc-po-journal" data-id="'+p.id+'">Buat Jurnal</button>');
     if(p.journalId) acts.push('<span class="badge badge-success">Sudah dijurnal</span>');
-    if((p.status==='diajukan' || p.status==='ditolak') && (SESSION.role==='hr' || p.createdById===todoSelfKey())) acts.push('<button class="btn btn-ghost btn-sm" data-action="acc-po-del" data-id="'+p.id+'">Hapus</button>');
+    if((p.status==='diajukan' || p.status==='ditolak') && p.createdById===todoSelfKey()) acts.push('<button class="btn btn-ghost btn-sm" data-action="acc-po-del" data-id="'+p.id+'">Hapus</button>');
     var items = (p.items||[]).map(function(x){ return escapeHtml(x.name)+' &times; '+escapeHtml(String(x.qty))+(x.unit?' '+escapeHtml(x.unit):'')+' @ '+rupiah(x.price); }).join('<br>');
     return '<tr><td><b>'+escapeHtml(p.no)+'</b><div class="muted" style="font-size:11.5px;">'+escapeHtml(formatDateID(p.date))+'</div></td>'+
       '<td>'+escapeHtml(p.property||'')+'<div class="muted" style="font-size:11.5px;">'+escapeHtml(p.category||'-')+'</div></td>'+
@@ -6615,7 +6617,6 @@ function renderAccKategori(){
 
 function accNotifyDept(list, msg){
   employeesInDepts(list).forEach(function(e){ if(e.id!==SESSION.empId) addNotification({type:'emp', empId:e.id}, msg, 'accounting', 'general'); });
-  if(SESSION.role!=='hr') addNotification({type:'hr'}, msg, 'accounting', 'general');
 }
 
 /* ---------------------------- SINKRONISASI LIVE ---------------------------- */
@@ -7724,7 +7725,7 @@ document.addEventListener('click', function(e){
     STATE.currentMonth = accYm(qDate);
     saveDB(); toast('Tersimpan ke laporan.'); render();
   } else if(action==='acc-po-add'){
-    if(!canCreatePO()){ toast('Hanya HOD yang bisa mengajukan PO ke Purchasing.'); return; }
+    if(!canCreatePO()){ toast('Hanya HOD yang bisa mengajukan PO ke Purchasing (HR hanya memantau).'); return; }
     var poDate = document.getElementById('po_date').value, poProp = document.getElementById('po_prop').value;
     var poVendor = document.getElementById('po_vendor').value.trim(), poItems = [], poI;
     for(poI=1;poI<=5;poI++){
@@ -7742,21 +7743,21 @@ document.addEventListener('click', function(e){
       vendor:poVendor, note:document.getElementById('po_note').value.trim(), items:poItems, status:'diajukan', createdById:todoSelfKey(), createdAt:poNow, updatedAt:poNow, journalId:null};
     DB.accPOs.unshift(poNew);
     logActivity('PO diajukan: '+poNew.no+' ('+poVendor+').');
-    accNotifyDept(PUR_DEPTS, 'PO baru dari '+(SESSION.role==='hr'?'HR':'HOD '+((getEmployee(SESSION.empId)||{}).name||''))+' menunggu diproses: '+poNew.no+' - '+poVendor+' ('+rupiah(poTotal(poNew))+').');
+    accNotifyDept(PUR_DEPTS, 'PO baru dari HOD '+((getEmployee(SESSION.empId)||{}).name||'')+' menunggu diproses: '+poNew.no+' - '+poVendor+' ('+rupiah(poTotal(poNew))+').');
     STATE.currentMonth = poYm;
     saveDB(); toast('PO '+poNew.no+' diajukan.'); render();
   } else if(action==='acc-po-status'){
     var psId = el.getAttribute('data-id'), psTo = el.getAttribute('data-to');
     var psP = (DB.accPOs||[]).filter(function(p){ return p.id===psId; })[0];
     if(!psP || !PO_STATUS[psTo]) return;
-    if(!canPurchasing()){ toast('Hanya Purchasing yang bisa memproses PO.'); return; }
+    if(!canProcessPO()){ toast('Hanya Purchasing yang bisa memproses PO.'); return; }
     psP.status = psTo; psP.updatedAt = new Date().toISOString();
     logActivity('PO '+psP.no+' '+PO_STATUS[psTo][0].toLowerCase()+'.');
     if(psTo==='diterima') accNotifyDept(ACC_DEPTS, 'PO '+psP.no+' sudah diterima. Silakan buat jurnalnya.');
     else if(psP.createdById && psP.createdById!=='hr' && psP.createdById!==SESSION.empId) addNotification({type:'emp', empId:psP.createdById}, 'PO '+psP.no+' '+PO_STATUS[psTo][0].toLowerCase()+'.', 'accounting', 'general');
     saveDB(); toast('Status PO diperbarui.'); render();
   } else if(action==='acc-po-journal'){
-    if(!canAccounting()) return;
+    if(!canJournalPO()) return;
     var pjP = (DB.accPOs||[]).filter(function(p){ return p.id===el.getAttribute('data-id'); })[0];
     if(!pjP || pjP.status!=='diterima' || pjP.journalId) return;
     var pjTot = poTotal(pjP), pjNow = new Date().toISOString(), pjId = uid('JR');
@@ -7769,7 +7770,7 @@ document.addEventListener('click', function(e){
     saveDB(); toast('Jurnal dibuat dari PO.'); render();
   } else if(action==='acc-po-del'){
     var pdP = (DB.accPOs||[]).filter(function(p){ return p.id===el.getAttribute('data-id'); })[0];
-    if(pdP && (pdP.status==='diajukan' || pdP.status==='ditolak') && (SESSION.role==='hr' || pdP.createdById===todoSelfKey())){
+    if(pdP && (pdP.status==='diajukan' || pdP.status==='ditolak') && pdP.createdById===todoSelfKey()){
       pdP.deleted = true; pdP.updatedAt = new Date().toISOString(); saveDB(); toast('PO dihapus.'); render();
     }
   } else if(action==='acc-cat-add'){

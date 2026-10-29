@@ -184,6 +184,8 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   as('hr',null,'accounting','po'); w.STATE.currentMonth = day.slice(0,7); w.render();
   ok(/PO-\d{6}-001/.test(app()), 'HR melihat PO milik HOD');
   ok(Array.prototype.map.call(d.querySelectorAll('.board-tabs .todo-tab'), function(x){ return x.textContent; }).join('|')==='Jurnal|Neraca|Laba Rugi|Purchase Order|Kategori & Akun', 'HR melihat semua tab');
+  ok(!d.querySelector('[data-action="acc-po-add"]') && !d.querySelector('[data-action="acc-po-status"]') && !d.querySelector('[data-action="acc-po-journal"]') && !d.querySelector('[data-action="acc-po-del"]'), 'HR hanya memantau PO: tanpa form ajukan & tombol proses');
+  ok(!w.DB.notifications.some(function(n){ return n.audience.type==='hr' && /PO /.test(n.message); }), 'HR tidak dikirimi notifikasi PO (hanya memantau)');
   as('hr',null,'accounting','jurnal'); w.STATE.currentMonth = day.slice(0,7); w.render();
   ok(/Pendapatan kamar|Beban listrik/.test(app()), 'HR melihat jurnal');
   as('hr',null,'activity-log'); ok(/Input laporan keuangan|PO .* diterima|Jurnal baru/.test(app()), 'Riwayat Aktivitas HR mencatat aktivitas keuangan');
