@@ -90,3 +90,5 @@ sinkronisasi live, dan render semua halaman semua peran. Tes juga jalan otomatis
   log aktivitas, dan absen agar tidak saling menimpa, tetapi modul lain (cuti, lembur, KPI, jadwal) masih bisa tertimpa bila dua orang
   menyimpan bersamaan.
 - Login masih sebatas pemisah tampilan (password tersimpan apa adanya di data). Cukup untuk pemakaian internal; belum setingkat produksi.
+
+| Grafik Selaras Board | Semua akun (staf, HOD, HR) punya grafik di tiap tab Board: tugas per status/prioritas/tren 6 bulan, jam per project, agenda per minggu, pekerjaan per hari (Rekap Kerja). Bisa diunduh PNG. |

@@ -5429,8 +5429,8 @@ function renderTodoPage(){
   var bt = STATE.boardTab || 'board';
   var head = boardTabsHtml(bt) + deptShortcutsHtml();
   if(bt==='board' && canImportBoard()) head += '<div class="no-print" style="margin-bottom:12px;"><button class="btn btn-secondary btn-sm" data-action="board-import-open">&#8682; Import Spreadsheet</button></div>';
-  if(bt==='project') return head + renderProjectTab();
-  if(bt==='agenda') return head + renderAgendaTab();
+  if(bt==='project') return head + boardChartsHtml('project') + renderProjectTab();
+  if(bt==='agenda') return head + boardChartsHtml('agenda') + renderAgendaTab();
   if(bt==='rekap') return head + renderRekapTab();
   var canMonitor = SESSION.role==='hr' || SESSION.role==='hod';
   var tab = (canMonitor && STATE.todoTab==='monitor') ? 'monitor' : 'mine';
@@ -5440,7 +5440,7 @@ function renderTodoPage(){
         '<button class="todo-tab'+(tab==='monitor'?' active':'')+'" data-action="todo-tab" data-tab="monitor">'+(SESSION.role==='hr'?'Board Semua':'Board Tim')+'</button>'+
       '</div>'
     : '';
-  return head + tabs + (tab==='monitor' ? renderTodoMonitor() : renderTodoMine());
+  return head + tabs + boardChartsHtml('board') + (tab==='monitor' ? renderTodoMonitor() : renderTodoMine());
 }
 
 function renderTodoMine(){
@@ -6698,7 +6698,8 @@ function niceMax(v){
   return (f<=1 ? 1 : f<=2 ? 2 : f<=5 ? 5 : 10) * p;
 }
 var CHART_COLORS = ['#1565A8','#F59E0B','#16A34A','#DC2626'];
-function svgBarChart(title, cats, series){
+function svgBarChart(title, cats, series, fmt){
+  fmt = fmt || fmtCompactRp;
   var any = false;
   series.forEach(function(s){ s.values.forEach(function(v){ if(v>0) any = true; }); });
   if(!cats.length || !any) return '<div class="empty-state">Belum ada data untuk grafik.</div>';
@@ -6717,15 +6718,16 @@ function svgBarChart(title, cats, series){
   [0, .25, .5, .75, 1].forEach(function(f){
     var y = H-pb - f*(H-pb-pt);
     out += '<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y+'" y2="'+y+'" stroke="#e2e8f0" stroke-width="1"/>'+
-      '<text x="'+(pl-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" fill="#64748b" font-family="Arial,sans-serif">'+fmtCompactRp(max*f)+'</text>';
+      '<text x="'+(pl-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" fill="#64748b" font-family="Arial,sans-serif">'+fmt(max*f)+'</text>';
   });
   cats.forEach(function(c, i){
     var gx = pl + i*cw + (cw - bw*series.length)/2;
     series.forEach(function(s, k){
       var v = Math.max(0, s.values[i]||0), h = v/max*(H-pb-pt), x = gx + k*bw;
-      if(h>0) out += '<rect x="'+x.toFixed(1)+'" y="'+(H-pb-h).toFixed(1)+'" width="'+(bw-2).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="3" fill="'+CHART_COLORS[k%4]+'"><title>'+escapeHtml(s.name+' - '+c+': '+rupiah(v))+'</title></rect>';
+      if(h>0) out += '<rect x="'+x.toFixed(1)+'" y="'+(H-pb-h).toFixed(1)+'" width="'+(bw-2).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="3" fill="'+CHART_COLORS[k%4]+'"><title>'+escapeHtml(s.name+' - '+c+': '+fmt(v))+'</title></rect>';
     });
     var lab = String(c).length>14 ? String(c).slice(0,13)+'…' : String(c);
+    if(cats.length>12 && i % Math.ceil(cats.length/10) !== 0) lab = '';
     out += '<text x="'+(pl+i*cw+cw/2).toFixed(1)+'" y="'+(H-pb+16)+'" text-anchor="middle" font-size="10.5" fill="#475569" font-family="Arial,sans-serif">'+escapeHtml(lab)+'</text>';
   });
   return '<svg xmlns="http://www.w3.org/2000/svg" class="acc-svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="'+escapeHtml(title)+'" style="width:100%;height:auto;max-width:'+W+'px;">'+out+'</svg>';
@@ -7005,6 +7007,64 @@ function downloadEmpReportPdf(){
   doc.save('Report Karyawan '+d.label.replace(/\s+/g,'_')+'.pdf');
 }
 
+/* ---- Grafik Selaras Board ---- */
+function fmtCount(n){ return String(Math.round(n*10)/10).replace('.',','); }
+function boardChartCard(svg){
+  return '<div class="card chart-card"><div class="toolbar no-print" style="margin:0 0 8px;"><div class="toolbar-left"><b>Grafik</b></div>'+
+    '<button class="btn btn-secondary btn-sm" data-action="chart-dl-png">Unduh Grafik (PNG)</button></div>'+svg+'</div>';
+}
+function boardChartsHtml(tab){
+  var me = todoSelfKey(), ym = boardMonth(), svgs = [];
+  if(tab==='board'){
+    var monitor = (SESSION.role==='hr' || SESSION.role==='hod') && STATE.todoTab==='monitor';
+    var order = BOARD_COLUMNS, names = order.map(function(k){ return TODO_STATUS[k].label; });
+    if(monitor){
+      var people = todoMonitorScope().map(function(e){ return {e:e, l:todosOf(e.id)}; }).filter(function(x){ return x.l.length; })
+        .sort(function(a,b){ return b.l.length-a.l.length; }).slice(0,10);
+      svgs.push(svgBarChart('Tugas per Anggota & Status', people.map(function(x){ return x.e.name.split(' ')[0]; }),
+        order.map(function(k){ return {name:TODO_STATUS[k].label, values:people.map(function(x){ return x.l.filter(function(t){ return (TODO_STATUS[t.status]?t.status:'todo')===k; }).length; })}; }), fmtCount));
+    } else {
+      var mine = todosOf(me);
+      svgs.push(svgBarChart('Tugas per Status', names, [{name:'Jumlah tugas', values:order.map(function(k){ return mine.filter(function(t){ return (TODO_STATUS[t.status]?t.status:'todo')===k; }).length; })}], fmtCount));
+      var pr = ['tinggi','normal','rendah'], prl = ['Tinggi','Sedang','Rendah'];
+      svgs.push(svgBarChart('Tugas Aktif vs Selesai per Prioritas', prl, [
+        {name:'Aktif', values:pr.map(function(k){ return mine.filter(function(t){ return (t.priority||'normal')===k && t.status!=='done'; }).length; })},
+        {name:'Selesai', values:pr.map(function(k){ return mine.filter(function(t){ return (t.priority||'normal')===k && t.status==='done'; }).length; })}], fmtCount));
+    }
+    var scopeIds = monitor ? todoMonitorScope().map(function(e){ return e.id; }) : [me], ms = monthsBack(todayParts().ym, 6);
+    var all = (DB.todos||[]).filter(function(t){ return !t.deleted && scopeIds.indexOf(t.ownerId)!==-1; });
+    svgs.push(svgBarChart('Tugas Dibuat vs Selesai (6 Bulan)', ms.map(monthShort), [
+      {name:'Dibuat', values:ms.map(function(m){ return all.filter(function(t){ return String(t.createdAt||'').slice(0,7)===m; }).length; })},
+      {name:'Selesai', values:ms.map(function(m){ return all.filter(function(t){ return t.status==='done' && String(t.doneAt||t.updatedAt||'').slice(0,7)===m; }).length; })}], fmtCount));
+  } else if(tab==='project'){
+    var ts = tsEntries().filter(function(t){ return String(t.date||'').slice(0,7)===ym; });
+    var byP = {}; ts.forEach(function(t){ byP[t.projectId] = (byP[t.projectId]||0) + (+t.hours||0); });
+    var pk = Object.keys(byP).sort(function(a,b){ return byP[b]-byP[a]; }).slice(0,10);
+    svgs.push(svgBarChart('Jam Kerja per Project - '+monthLabel(ym), pk.map(function(k){ var p = getProjectById(k); return p ? p.name : 'Dihapus'; }), [{name:'Jam', values:pk.map(function(k){ return byP[k]; })}], fmtCount));
+    if(SESSION.role!=='staff'){
+      var byE = {}; ts.forEach(function(t){ byE[t.empId] = (byE[t.empId]||0) + (+t.hours||0); });
+      var ek = Object.keys(byE).sort(function(a,b){ return byE[b]-byE[a]; }).slice(0,10);
+      svgs.push(svgBarChart('Jam Kerja per Orang - '+monthLabel(ym), ek.map(function(k){ return todoOwnerName(k).split(' ')[0]; }), [{name:'Jam', values:ek.map(function(k){ return byE[k]; })}], fmtCount));
+    }
+  } else if(tab==='agenda'){
+    var evs = agendaEventsIn(ym), wk = [0,0,0,0,0];
+    evs.forEach(function(e){ var i = Math.min(4, Math.floor(((parseInt(String(e.date).slice(8,10),10)||1)-1)/7)); wk[i]++; });
+    svgs.push(svgBarChart('Agenda per Minggu - '+monthLabel(ym), ['Minggu 1','Minggu 2','Minggu 3','Minggu 4','Minggu 5'], [{name:'Agenda', values:wk}], fmtCount));
+  }
+  svgs = svgs.filter(function(x){ return x.indexOf('<svg')!==-1; });
+  if(!svgs.length) return '';
+  return '<div class="'+(svgs.length>1?'grid grid-2':'')+'">'+svgs.map(boardChartCard).join('')+'</div>';
+}
+function rekapChartHtml(list, ym){
+  var n = daysInMonth(ym), done = [], other = [], cats = [], i;
+  for(i=1;i<=n;i++){
+    var iso = ym+'-'+pad2(i), l = list.filter(function(t){ return rekapDateOf(t)===iso; });
+    cats.push(String(i)); done.push(l.filter(function(t){ return t.status==='done'; }).length); other.push(l.filter(function(t){ return t.status!=='done'; }).length);
+  }
+  var svg = svgBarChart('Pekerjaan per Hari - '+monthLabel(ym), cats, [{name:'Selesai', values:done},{name:'Belum selesai', values:other}], fmtCount);
+  return svg.indexOf('<svg')===-1 ? '' : boardChartCard(svg);
+}
+
 /* ---------------------------- REKAP KERJA (Selaras Board) ---------------------------- */
 var REKAP_STATUS = [['done','Selesai'],['doing','On Progress'],['todo','Belum Mulai'],['pending','Pending']];
 var REKAP_PRIO = [['tinggi','Tinggi'],['normal','Sedang'],['rendah','Rendah']];
@@ -7083,7 +7143,7 @@ function renderRekapTab(){
     '<div class="stat-card"><div class="label">Selesai</div><div class="value">'+done+'</div></div>'+
     '<div class="stat-card"><div class="label">% Selesai</div><div class="value">'+pct+'%</div></div>'+
     '<div class="stat-card"><div class="label">Hari Tercatat</div><div class="value">'+Object.keys(dayset).length+'</div></div></div>'+
-    form + days;
+    rekapChartHtml(list, ym) + form + days;
 }
 function rekapDownload(){
   var ym = boardMonth(), owner = rekapViewOwner(), e = owner==='hr' ? null : getEmployee(owner);
@@ -8215,6 +8275,9 @@ document.addEventListener('click', function(e){
     if(rdT && rdT.ownerId===todoSelfKey()){ rdT.deleted = true; rdT.updatedAt = new Date().toISOString(); saveDB(); toast('Pekerjaan dihapus.'); render(); }
   } else if(action==='rekap-dl'){
     rekapDownload();
+  } else if(action==='chart-dl-png'){
+    var cdCard = el.closest('.chart-card'), cdSvg = cdCard && cdCard.querySelector('svg');
+    downloadSvgPng(cdSvg, 'Grafik '+(cdSvg ? String(cdSvg.getAttribute('aria-label')||'Selaras Board') : 'Selaras Board')+'.png');
   } else if(action==='acc-petty-add'){
     if(!canPettyEntry()){ toast('Hanya Accounting dan Purchasing yang bisa mencatat petty cash.'); return; }
     var pcDate = document.getElementById('pc_date').value, pcProp = document.getElementById('pc_prop').value, pcType = document.getElementById('pc_type').value;
