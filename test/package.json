@@ -1,6 +1,6 @@
 {
   "name": "abc-selaras-tests",
   "private": true,
-  "scripts": { "test": "node features.test.js && node chat.test.js && node fcm.test.js && node nav.test.js && node timer.test.js && node report.test.js" },
+  "scripts": { "test": "node features.test.js && node chat.test.js && node fcm.test.js && node nav.test.js && node timer.test.js && node report.test.js && node board.test.js" },
   "devDependencies": { "jsdom": "^24.0.0" }
 }

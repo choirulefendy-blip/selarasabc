@@ -114,7 +114,7 @@ function login(w, who){
   var td1 = w.DB.todos[0];
   ok(td1 && td1.ownerId==='E1' && td1.title==='Siapkan konten IG', 'Staff: menambah tugas sendiri');
   ok(w.DB.notifications.some(function(n){ return n.audience.type==='hr' && n.message.indexOf('Budi Staff menambahkan tugas')!==-1; }), 'HR dapat notifikasi saat staf menambah tugas');
-  ok(text(w).indexOf('Lewat tenggat')!==-1, 'Staff: tugas lewat tenggat ditandai');
+  ok(text(w).indexOf('Lewat ')!==-1, 'Staff: tugas lewat tenggat ditandai');
   await click(w, 'todo-set-status', {id:td1.id, status:'doing'});
   ok(td1.status==='doing', 'Staff: ubah status ke Dikerjakan');
   var nBefore = w.DB.notifications.length;
@@ -123,7 +123,7 @@ function login(w, who){
   ok(w.DB.notifications.length===nBefore+1 && w.DB.notifications[0].message.indexOf('menyelesaikan tugas')!==-1 && w.DB.notifications[0].audience.type==='hr', 'HR dapat notifikasi saat tugas selesai');
   /* HR memantau & menugaskan */
   await login(w, 'hr'); await nav(w, 'todo');
-  ok(text(w).indexOf('Tugas Saya')!==-1 && text(w).indexOf('Pantau Semua')!==-1, 'HR: ada tab Tugas Saya dan Pantau Semua');
+  ok(text(w).indexOf('Board Saya')!==-1 && text(w).indexOf('Board Semua')!==-1, 'HR: ada tab Board Saya dan Board Semua');
   await click(w, 'todo-tab', {tab:'monitor'});
   ok(text(w).indexOf('Budi Staff')!==-1 && text(w).indexOf('Siapkan konten IG')!==-1, 'HR: memantau tugas semua karyawan');
   setVal(w, 'ta_owner', 'E3'); setVal(w, 'ta_title', 'Rapikan lobby display'); setVal(w, 'ta_due', '2030-01-01');
@@ -146,9 +146,9 @@ function login(w, who){
   await click(w, 'todo-set-status', {id:td3.id, status:'done'});
   ok(w.DB.notifications.some(function(n){ return n.audience.type==='emp' && n.audience.empId==='E2' && n.message.indexOf('menyelesaikan tugas yang kamu berikan')!==-1; }), 'HOD dapat notifikasi saat stafnya menyelesaikan tugas');
   await nav(w, 'dashboard');
-  ok(text(w).indexOf('To-Do Saya')!==-1, 'Staff: widget To-Do di dashboard');
+  ok(text(w).indexOf('Board Saya')!==-1, 'Staff: widget Board di dashboard');
   await login(w, 'hr');
-  ok(text(w).indexOf('Pantauan To-Do')!==-1, 'HR: widget Pantauan To-Do di dashboard');
+  ok(text(w).indexOf('Pantauan Selaras Board')!==-1, 'HR: widget Pantauan Selaras Board di dashboard');
   /* keamanan: staf tidak bisa mengubah tugas milik orang lain */
   await login(w, 'E1'); await nav(w, 'todo');
   w.document.getElementById('app').insertAdjacentHTML('beforeend', '<button data-action="todo-set-status" data-id="'+td2.id+'" data-status="done" id="hack"></button>');
@@ -208,7 +208,7 @@ function login(w, who){
   ok(w.DB.notifPrefs.hr.enabled===false && w.DB.notifications.length===beforeAll, 'saklar utama mematikan semua notifikasi HR');
   await click(w, 'toggle-notif-pref', {key:'enabled'});
   await login(w, 'E1'); await nav(w, 'notif-settings');
-  ok(text(w).indexOf('Tugas To-Do')!==-1 && text(w).indexOf('Karyawan absen telat')===-1, 'Staff: kategori notifikasi khusus staf');
+  ok(text(w).indexOf('Tugas Selaras Board')!==-1 && text(w).indexOf('Karyawan absen telat')===-1, 'Staff: kategori notifikasi khusus staf');
   await click(w, 'toggle-notif-pref', {key:'todo'});
   ok(w.DB.notifPrefs.emp.E1.todo===false, 'Staff: matikan notifikasi To-Do');
   var nb = w.DB.notifications.length;

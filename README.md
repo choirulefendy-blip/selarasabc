@@ -1,6 +1,6 @@
 # ABC Selaras — HR & Penggajian ABC Hospitality Group
 
-Aplikasi web (PWA) untuk absensi, jadwal, cuti, lembur, KPI, penggajian, **banner**, **To-Do List**, dan **notifikasi**,
+Aplikasi web (PWA) untuk absensi, jadwal, cuti, lembur, KPI, penggajian, **banner**, **Selaras Board**, dan **notifikasi**,
 dengan backend Supabase, hosting GitHub Pages, dan **paket APK Android** (Capacitor) yang dibuild otomatis oleh GitHub Actions.
 
 ```
@@ -37,7 +37,7 @@ sistem selama aplikasi/tab terbuka (lihat bagian 4).
 | Fitur | Cara kerja |
 |---|---|
 | **Banner** | Menu **HR → Banner**: tambah/ubah/hapus, judul + teks, warna atau gambar (≤1.5 MB), tampil/sembunyikan, atur urutan. Tampil sebagai carousel otomatis di dashboard **HR, HOD, dan Staff**. |
-| **To-Do List** | Setiap akun punya daftar tugas sendiri (prioritas, tenggat, status Belum/Dikerjakan/Selesai). **HR** memantau semua karyawan (filter departemen/karyawan/status, ringkasan progres) dan bisa menugaskan; **HOD** memantau & menugaskan timnya. Widget ringkasan ada di dashboard. |
+| **Selaras Board** | Pengganti To-Do List, 3 tab: **Board** (kanban To Do / In Progress / Finish / Pending, bisa drag & drop, foto, kaitkan ke project; HR memantau semua staf, HOD timnya), **Project & Timesheet** (HR/HOD membuat project & anggota; semua akun mencatat jam kerja per project; rekap jam per project dan per orang), **Agenda & Kalender** (agenda pribadi/departemen/semua karyawan, tenggat tugas tampil di kalender, tombol *+ Google Kalender*, unduh `.ics`, dan sinkron langsung ke Google Kalender di versi web — lihat `docs/panduan-google-kalender.md`). |
 | **Notifikasi To-Do** | HR dinotifikasi saat staf menambah/menyelesaikan tugas; staf dinotifikasi saat ditugaskan; HOD dinotifikasi saat tugas yang ia berikan selesai. |
 | **Aktivitas Saya** | Menu staf & HOD: timeline pribadi 3 bulan — absen masuk/pulang (telat, lokasi, catatan) dan aktivitas akun (tugas dsb.). Bisa difilter. |
 | **Peringatan absen** | Saat absen masuk **telat**, atau absen masuk/pulang **di luar radius kantor / GPS tidak terdeteksi**, HR langsung dapat notifikasi. Dashboard HR juga punya kartu *Peringatan Absen Hari Ini*. |
