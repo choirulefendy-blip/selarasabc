@@ -79,9 +79,9 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   console.log('\n[Dashboard Accounting: akses]');
   as('staff','K1','accounting'); ok(/hanya untuk departemen/i.test(app()), 'Kitchen ditolak');
   as('staff','P1','accounting'); var tabsP = Array.prototype.map.call(d.querySelectorAll('.board-tabs .todo-tab'), function(x){ return x.textContent; });
-  ok(JSON.stringify(tabsP)===JSON.stringify(['Purchase Order']), 'Purchasing hanya melihat tab Purchase Order');
+  ok(JSON.stringify(tabsP)===JSON.stringify(['Purchase Order','Petty Cash']), 'Purchasing melihat tab Purchase Order & Petty Cash');
   as('staff','A1','accounting'); var tabsA = Array.prototype.map.call(d.querySelectorAll('.board-tabs .todo-tab'), function(x){ return x.textContent; });
-  ok(tabsA.join('|')==='Jurnal|Neraca|Laba Rugi|Purchase Order|Kategori & Akun', 'Accounting melihat semua tab');
+  ok(tabsA.join('|')==='Jurnal|Neraca|Laba Rugi|Purchase Order|Petty Cash|Kategori & Akun', 'Accounting melihat semua tab');
 
   console.log('\n[Kategori per properti]');
   w.DB.properties = ['Kaly','Padi Heritage','Briggs Inn Surabaya','Briggs Inn Batu']; w.accInit();
@@ -183,7 +183,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   w.DB.departmentHods = {Kitchen:['K1']};
   as('hr',null,'accounting','po'); w.STATE.currentMonth = day.slice(0,7); w.render();
   ok(/PO-\d{6}-001/.test(app()), 'HR melihat PO milik HOD');
-  ok(Array.prototype.map.call(d.querySelectorAll('.board-tabs .todo-tab'), function(x){ return x.textContent; }).join('|')==='Jurnal|Neraca|Laba Rugi|Purchase Order|Kategori & Akun', 'HR melihat semua tab');
+  ok(Array.prototype.map.call(d.querySelectorAll('.board-tabs .todo-tab'), function(x){ return x.textContent; }).join('|')==='Jurnal|Neraca|Laba Rugi|Purchase Order|Petty Cash|Kategori & Akun', 'HR melihat semua tab');
   ok(!d.querySelector('[data-action="acc-po-add"]') && !d.querySelector('[data-action="acc-po-status"]') && !d.querySelector('[data-action="acc-po-journal"]') && !d.querySelector('[data-action="acc-po-del"]'), 'HR hanya memantau PO: tanpa form ajukan & tombol proses');
   ok(!w.DB.notifications.some(function(n){ return n.audience.type==='hr' && /PO /.test(n.message); }), 'HR tidak dikirimi notifikasi PO (hanya memantau)');
   as('hr',null,'accounting','jurnal'); w.STATE.currentMonth = day.slice(0,7); w.render();

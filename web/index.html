@@ -2549,7 +2549,8 @@ function teamKpiScores(team, period){
   return out.sort(function(a,b){ return b.value - a.value; });
 }
 
-function renderAdminDashboard(){
+function renderAdminDashboard(){ return deptShortcutsHtml() + renderAdminDashboardBase(); }
+function renderAdminDashboardBase(){
   var ym = STATE.currentMonth;
   var emps = activeEmployees();
   var totalPayroll = 0, totalLateMin = 0, totalLateDeduction = 0;
@@ -3090,7 +3091,8 @@ function renderHodAttendanceMonthlyDetail(team){
   '</div>';
 }
 
-function renderHodKpiPage(){
+function renderHodKpiPage(){ return renderHodKpiPageBase() + renderEmpReportCard(); }
+function renderHodKpiPageBase(){
   var myDepts = getHodDepartments(SESSION.empId);
   if(myDepts.length===0){
     return '<div class="card"><div class="empty-state">Anda belum ditunjuk sebagai HOD departemen mana pun.</div></div>';
@@ -4352,7 +4354,8 @@ function renderLeaveRequestPage(){
   '</div>';
 }
 
-function renderKpiApprovalPage(){
+function renderKpiApprovalPage(){ return renderEmpReportCard() + renderKpiApprovalPageBase(); }
+function renderKpiApprovalPageBase(){
   var filterDept = STATE.kpiFilterDept || '';
   var deptOptions = '<option value="">Semua Departemen</option>'+getDepartments().map(function(d){
     return '<option value="'+escapeHtml(d)+'" '+(filterDept===d?'selected':'')+'>'+escapeHtml(d)+'</option>';
@@ -6390,6 +6393,7 @@ function accInit(){
   if(!DB.accJournals) DB.accJournals = [];
   if(!DB.accPOs) DB.accPOs = [];
   if(!DB.accCats) DB.accCats = {};
+  if(!DB.accPetty) DB.accPetty = [];
   getProperties().forEach(function(p){ if(!DB.accCats[p]) DB.accCats[p] = ACC_DEFAULT_CATS.slice(); });
 }
 function accCatsOf(prop){ accInit(); return (DB.accCats[prop]||[]); }
@@ -6400,6 +6404,7 @@ function accAllowedTabs(){
   var t = [];
   if(canAccounting()) t = t.concat([['jurnal','Jurnal'],['neraca','Neraca'],['labarugi','Laba Rugi']]);
   if(canAccDashboard()) t.push(['po','Purchase Order']);
+  if(canPettyView()) t.push(['petty','Petty Cash']);
   if(canAccounting()) t.push(['kategori','Kategori & Akun']);
   return t;
 }
@@ -6459,6 +6464,7 @@ function renderAccountingPage(){
   var tabs = accAllowedTabs();
   var cur = STATE.accTab;
   if(!tabs.some(function(t){ return t[0]===cur; })) cur = tabs[0][0];
+  STATE.accTab = cur;
   var prop = STATE.accProp || '';
   var head = '<div class="todo-tabs board-tabs">'+tabs.map(function(t){
     return '<button class="todo-tab'+(cur===t[0]?' active':'')+'" data-action="acc-tab" data-tab="'+t[0]+'">'+t[1]+'</button>'; }).join('')+'</div>';
@@ -6470,8 +6476,9 @@ function renderAccountingPage(){
   else if(cur==='neraca') body = renderAccNeraca(prop);
   else if(cur==='labarugi') body = renderAccLabaRugi(prop);
   else if(cur==='po') body = renderAccPO(prop);
+  else if(cur==='petty') body = renderAccPetty(prop);
   else body = renderAccKategori();
-  return head + filter + body;
+  return head + filter + accChartHtml(cur, prop) + body;
 }
 
 function renderAccJurnal(prop){
@@ -6619,6 +6626,327 @@ function accNotifyDept(list, msg){
   employeesInDepts(list).forEach(function(e){ if(e.id!==SESSION.empId) addNotification({type:'emp', empId:e.id}, msg, 'accounting', 'general'); });
 }
 
+/* ---------------------------- GRAFIK & UNDUH (UMUM) ---------------------------- */
+function fmtCompactRp(n){
+  var a = Math.abs(n), s = n<0 ? '-' : '';
+  if(a>=1e9) return s+(Math.round(a/1e8)/10).toString().replace('.',',')+' M';
+  if(a>=1e6) return s+(Math.round(a/1e5)/10).toString().replace('.',',')+' jt';
+  if(a>=1e3) return s+Math.round(a/1e3)+' rb';
+  return s+Math.round(a);
+}
+function niceMax(v){
+  if(v<=0) return 1;
+  var p = Math.pow(10, Math.floor(Math.log(v)/Math.LN10)), f = v/p;
+  return (f<=1 ? 1 : f<=2 ? 2 : f<=5 ? 5 : 10) * p;
+}
+var CHART_COLORS = ['#1565A8','#F59E0B','#16A34A','#DC2626'];
+function svgBarChart(title, cats, series){
+  var any = false;
+  series.forEach(function(s){ s.values.forEach(function(v){ if(v>0) any = true; }); });
+  if(!cats.length || !any) return '<div class="empty-state">Belum ada data untuk grafik.</div>';
+  var W = 640, H = 290, pl = 62, pr = 14, pt = 44, pb = 52, max = 0;
+  series.forEach(function(s){ s.values.forEach(function(v){ max = Math.max(max, v); }); });
+  max = niceMax(max);
+  var cw = (W-pl-pr)/cats.length, bw = Math.min(46, cw*0.8/series.length), out = '';
+  out += '<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="#ffffff"/>';
+  out += '<text x="'+pl+'" y="22" font-size="14" font-weight="700" fill="#14243a" font-family="Arial,sans-serif">'+escapeHtml(title)+'</text>';
+  var lx = W-pr;
+  series.slice().reverse().forEach(function(s, i){
+    var idx = series.length-1-i, label = s.name;
+    lx -= label.length*6.2 + 22;
+    out += '<rect x="'+lx+'" y="12" width="10" height="10" rx="2" fill="'+CHART_COLORS[idx%4]+'"/><text x="'+(lx+14)+'" y="21" font-size="11" fill="#475569" font-family="Arial,sans-serif">'+escapeHtml(label)+'</text>';
+  });
+  [0, .25, .5, .75, 1].forEach(function(f){
+    var y = H-pb - f*(H-pb-pt);
+    out += '<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+y+'" y2="'+y+'" stroke="#e2e8f0" stroke-width="1"/>'+
+      '<text x="'+(pl-6)+'" y="'+(y+4)+'" text-anchor="end" font-size="10" fill="#64748b" font-family="Arial,sans-serif">'+fmtCompactRp(max*f)+'</text>';
+  });
+  cats.forEach(function(c, i){
+    var gx = pl + i*cw + (cw - bw*series.length)/2;
+    series.forEach(function(s, k){
+      var v = Math.max(0, s.values[i]||0), h = v/max*(H-pb-pt), x = gx + k*bw;
+      if(h>0) out += '<rect x="'+x.toFixed(1)+'" y="'+(H-pb-h).toFixed(1)+'" width="'+(bw-2).toFixed(1)+'" height="'+h.toFixed(1)+'" rx="3" fill="'+CHART_COLORS[k%4]+'"><title>'+escapeHtml(s.name+' - '+c+': '+rupiah(v))+'</title></rect>';
+    });
+    var lab = String(c).length>14 ? String(c).slice(0,13)+'…' : String(c);
+    out += '<text x="'+(pl+i*cw+cw/2).toFixed(1)+'" y="'+(H-pb+16)+'" text-anchor="middle" font-size="10.5" fill="#475569" font-family="Arial,sans-serif">'+escapeHtml(lab)+'</text>';
+  });
+  return '<svg xmlns="http://www.w3.org/2000/svg" class="acc-svg" viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" role="img" aria-label="'+escapeHtml(title)+'" style="width:100%;height:auto;max-width:'+W+'px;">'+out+'</svg>';
+}
+function saveBlobAs(blob, name){
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click();
+  setTimeout(function(){ try{ URL.revokeObjectURL(a.href); }catch(e){} a.remove(); }, 1500);
+}
+function downloadSvgPng(svg, filename){
+  if(!svg){ toast('Belum ada grafik untuk diunduh.'); return; }
+  try{
+    var xml = new XMLSerializer().serializeToString(svg);
+    var vb = String(svg.getAttribute('viewBox')||'0 0 640 290').split(/\s+/), W = (+vb[2]||640)*2, H = (+vb[3]||290)*2;
+    var img = new Image();
+    img.onload = function(){
+      var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      var cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0,0,W,H); cx.drawImage(img, 0, 0, W, H);
+      cv.toBlob(function(b){ if(b) saveBlobAs(b, filename); else toast('Gagal membuat gambar.'); }, 'image/png');
+    };
+    img.onerror = function(){ toast('Gagal membuat gambar grafik.'); };
+    img.src = 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(xml);
+  }catch(err){ console.error('png', err); toast('Gagal mengunduh grafik.'); }
+}
+function downloadXlsx(filename, sheets){
+  if(typeof XLSX==='undefined'){ toast('Modul Excel belum siap, cek koneksi internet lalu coba lagi.'); return false; }
+  var wb = XLSX.utils.book_new();
+  sheets.forEach(function(sh){
+    var ws = XLSX.utils.aoa_to_sheet(sh.rows);
+    ws['!cols'] = (sh.rows[0]||[]).map(function(_, i){ var m = 8; sh.rows.slice(0,60).forEach(function(r){ m = Math.max(m, String(r[i]===undefined?'':r[i]).length); }); return {wch:Math.min(48, m+2)}; });
+    XLSX.utils.book_append_sheet(wb, ws, sh.name.slice(0,31));
+  });
+  XLSX.writeFile(wb, filename);
+  return true;
+}
+function monthsBack(ym, n){
+  var p = ymParts(ym), out = [], y = p.y, m = p.m, i;
+  for(i=0;i<n;i++){ out.unshift(y+'-'+pad2(m)); m--; if(m<1){ m = 12; y--; } }
+  return out;
+}
+function monthShort(ym){ var p = ymParts(ym); return MONTHS_ID[p.m-1].slice(0,3)+' '+String(p.y).slice(2); }
+
+/* ---- Accounting: Petty Cash + grafik + unduh ---- */
+function canPettyView(){ return canAccounting() || canPurchasing(); }
+function canPettyEntry(){ return SESSION.role!=='hr' && (canAccounting() || canPurchasing()); }
+function pettyList(prop){
+  return (DB.accPetty||[]).filter(function(x){ return !x.deleted && (!prop || x.property===prop); });
+}
+function pettyBalance(prop, untilISO){
+  return pettyList(prop).reduce(function(s,x){ return (x.date||'') <= untilISO ? s + (x.type==='in' ? 1 : -1)*accNum(x.amount) : s; }, 0);
+}
+function pettyMonthSum(prop, ym){
+  var r = {in:0, out:0};
+  pettyList(prop).forEach(function(x){ if(accYm(x.date)===ym){ if(x.type==='in') r.in += accNum(x.amount); else r.out += accNum(x.amount); } });
+  return r;
+}
+function lastDayISO(ym){ return ym+'-'+pad2(daysInMonth(ym)); }
+function renderAccPetty(prop){
+  var ym = STATE.currentMonth, defProp = prop || getProperties()[0];
+  var prevEnd = (function(){ var p = ymParts(ym), y = p.y, m = p.m-1; if(m<1){ m = 12; y--; } return lastDayISO(y+'-'+pad2(m)); })();
+  var open = pettyBalance(prop, prevEnd), ms = pettyMonthSum(prop, ym), close = open + ms.in - ms.out;
+  var form = canPettyEntry() ? '<details class="card bd-add no-print"><summary>+ Catat Petty Cash</summary>'+
+    '<div class="form-row"><div class="form-group"><label>Tanggal</label><input type="date" id="pc_date" value="'+todayISO()+'"></div>'+
+    '<div class="form-group"><label>Properti</label>'+accPropSelect('pc_prop', defProp, false)+'</div>'+
+    '<div class="form-group"><label>Kategori</label><span id="pc_catWrap">'+accCatSelectHtml('pc_cat', defProp, '')+'</span></div></div>'+
+    '<div class="form-row"><div class="form-group"><label>Jenis</label><select id="pc_type"><option value="out">Pengeluaran</option><option value="in">Isi Dana / Top-up</option></select></div>'+
+    '<div class="form-group"><label>Nominal (Rp)</label><input type="number" min="0" step="any" id="pc_amt"></div></div>'+
+    '<div class="form-group"><label>Keterangan</label><input type="text" id="pc_desc" placeholder="Contoh: Beli galon & ATK"></div>'+
+    '<button class="btn btn-primary" data-action="acc-petty-add">Simpan</button></details>' : '';
+  var list = pettyList(prop).filter(function(x){ return accYm(x.date)===ym; }).sort(function(a,b){ return (b.date||'').localeCompare(a.date||'') || (b.createdAt||'').localeCompare(a.createdAt||''); });
+  var rows = list.length ? list.map(function(x){
+    return '<tr><td>'+escapeHtml(formatDateID(x.date))+'</td><td>'+escapeHtml(x.property||'')+'<div class="muted" style="font-size:11.5px;">'+escapeHtml(x.category||'-')+'</div></td><td>'+escapeHtml(x.desc||'')+'</td>'+
+      '<td class="num">'+(x.type==='in'?rupiah(x.amount):'')+'</td><td class="num">'+(x.type==='out'?rupiah(x.amount):'')+'</td>'+
+      '<td>'+(canPettyEntry() && x.createdById===todoSelfKey() ? '<button class="btn btn-ghost btn-sm" data-action="acc-petty-del" data-id="'+x.id+'">Hapus</button>' : '')+'</td></tr>';
+  }).join('') : '<tr><td colspan="6" class="muted" style="text-align:center;padding:18px;">Belum ada catatan petty cash di '+monthLabel(ym)+'.</td></tr>';
+  return form+
+    '<div class="grid grid-4"><div class="stat-card"><div class="label">Saldo Awal</div><div class="value" style="font-size:20px;">'+rupiah(open)+'</div></div>'+
+    '<div class="stat-card"><div class="label">Dana Masuk</div><div class="value" style="font-size:20px;">'+rupiah(ms.in)+'</div></div>'+
+    '<div class="stat-card"><div class="label">Pengeluaran</div><div class="value" style="font-size:20px;">'+rupiah(ms.out)+'</div></div>'+
+    '<div class="stat-card"><div class="label">Saldo Akhir</div><div class="value" style="font-size:20px;color:'+(close<0?'var(--danger)':'var(--success)')+';">'+rupiah(close)+'</div></div></div>'+
+    '<div class="card"><div class="card-title">Buku Petty Cash &middot; '+monthLabel(ym)+'</div><div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Properti / Kategori</th><th>Keterangan</th><th class="num">Masuk</th><th class="num">Keluar</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+}
+
+function accChartHtml(tab, prop){
+  var ym = STATE.currentMonth, svg = '';
+  if(tab==='jurnal' || tab==='labarugi' && prop){
+    if(tab==='labarugi'){
+      var cat = {};
+      accJournalsFor(prop, ym, ym).forEach(function(j){ (j.lines||[]).forEach(function(l){
+        var a = accAccount(l.acc); if(a.type!=='pendapatan' && a.type!=='beban') return;
+        var k = j.category || 'Tanpa kategori'; cat[k] = cat[k] || {p:0,b:0};
+        if(a.type==='pendapatan') cat[k].p += accNum(l.credit)-accNum(l.debit); else cat[k].b += accNum(l.debit)-accNum(l.credit); }); });
+      var ks = Object.keys(cat).sort();
+      svg = svgBarChart('Pendapatan vs Beban per Kategori - '+prop+' ('+monthLabel(ym)+')', ks, [{name:'Pendapatan',values:ks.map(function(k){ return cat[k].p; })},{name:'Beban',values:ks.map(function(k){ return cat[k].b; })}]);
+    } else {
+      var ms = monthsBack(ym, 6), rs = ms.map(function(m){ return accReport(prop, m).totals; });
+      svg = svgBarChart('Pendapatan vs Beban 6 Bulan'+(prop?' - '+prop:''), ms.map(monthShort), [{name:'Pendapatan',values:rs.map(function(x){ return x.pendapatan; })},{name:'Beban',values:rs.map(function(x){ return x.beban; })}]);
+    }
+  } else if(tab==='labarugi'){
+    var pr = getProperties(), rp = pr.map(function(p){ return accReport(p, ym).totals; });
+    svg = svgBarChart('Pendapatan vs Beban per Properti - '+monthLabel(ym), pr, [{name:'Pendapatan',values:rp.map(function(x){ return x.pendapatan; })},{name:'Beban',values:rp.map(function(x){ return x.beban; })}]);
+  } else if(tab==='neraca'){
+    var t = accReport(prop, ym).totals;
+    svg = svgBarChart('Komposisi Neraca - '+monthLabel(ym)+(prop?' ('+prop+')':''), ['Aset','Kewajiban','Modal + Laba'], [{name:'Nilai (Rp)',values:[t.aset, t.kewajiban, t.modal+t.labaBerjalan]}]);
+  } else if(tab==='po'){
+    var pp = getProperties(), by = {diajukan:[],disetujui:[],diterima:[]};
+    pp.forEach(function(p){
+      ['diajukan','disetujui','diterima'].forEach(function(st){
+        by[st].push((DB.accPOs||[]).filter(function(x){ return !x.deleted && x.property===p && x.status===st && accYm(x.date)===ym; }).reduce(function(s,x){ return s+poTotal(x); },0));
+      });
+    });
+    svg = svgBarChart('Nilai PO per Properti - '+monthLabel(ym), pp, [{name:'Diajukan',values:by.diajukan},{name:'Disetujui',values:by.disetujui},{name:'Diterima',values:by.diterima}]);
+  } else if(tab==='petty'){
+    var pm = monthsBack(ym, 6), ps = pm.map(function(m){ return pettyMonthSum(prop, m); });
+    svg = svgBarChart('Petty Cash 6 Bulan'+(prop?' - '+prop:''), pm.map(monthShort), [{name:'Masuk',values:ps.map(function(x){ return x.in; })},{name:'Keluar',values:ps.map(function(x){ return x.out; })}]);
+  } else return '';
+  return '<div class="card acc-chart"><div class="toolbar no-print" style="margin:0 0 8px;"><div class="toolbar-left"><b>Grafik</b></div>'+
+    '<div><button class="btn btn-secondary btn-sm" data-action="acc-dl-png">Unduh Grafik (PNG)</button> <button class="btn btn-secondary btn-sm" data-action="acc-dl-xlsx">Unduh Data (Excel)</button></div></div>'+svg+'</div>';
+}
+function accExportData(tab, prop){
+  var ym = STATE.currentMonth, rows, name = tab;
+  if(tab==='jurnal'){
+    rows = [['Tanggal','Properti','Kategori','Keterangan','Kode Akun','Nama Akun','Debit','Kredit']];
+    accJournalsFor(prop, ym, ym).sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); }).forEach(function(j){
+      (j.lines||[]).forEach(function(l){ var a = accAccount(l.acc); rows.push([j.date, j.property||'', j.category||'', j.desc||'', a.code, a.name, accNum(l.debit), accNum(l.credit)]); });
+    });
+    name = 'Jurnal';
+  } else if(tab==='neraca'){
+    var r = accReport(prop, ym), t = r.totals;
+    rows = [['Neraca per akhir '+monthLabel(ym), prop||'Semua properti'],[],['ASET','']];
+    r.aset.forEach(function(x){ rows.push([x.acc.code+' '+x.acc.name, x.amt]); }); rows.push(['Total Aset', t.aset],[],['KEWAJIBAN','']);
+    r.kewajiban.forEach(function(x){ rows.push([x.acc.code+' '+x.acc.name, x.amt]); }); rows.push(['Total Kewajiban', t.kewajiban],[],['MODAL','']);
+    r.modal.forEach(function(x){ rows.push([x.acc.code+' '+x.acc.name, x.amt]); }); rows.push(['Laba Berjalan', t.labaBerjalan],['Total Modal', t.modal+t.labaBerjalan],[],['Total Kewajiban & Modal', t.pasiva]);
+    name = 'Neraca';
+  } else if(tab==='labarugi'){
+    var rr = accReport(prop, ym), tt = rr.totals;
+    rows = [['Laba Rugi '+monthLabel(ym), prop||'Semua properti'],[],['PENDAPATAN','']];
+    rr.pendapatan.forEach(function(x){ rows.push([x.acc.code+' '+x.acc.name, x.amt]); }); rows.push(['Total Pendapatan', tt.pendapatan],[],['BEBAN','']);
+    rr.beban.forEach(function(x){ rows.push([x.acc.code+' '+x.acc.name, x.amt]); }); rows.push(['Total Beban', tt.beban],[],[tt.laba>=0?'Laba Bersih':'Rugi Bersih', tt.laba],[],['PER PROPERTI','Pendapatan','Beban','Laba/Rugi']);
+    getProperties().forEach(function(p){ var x = accReport(p, ym).totals; rows.push([p, x.pendapatan, x.beban, x.laba]); });
+    name = 'Laba Rugi';
+  } else if(tab==='po'){
+    rows = [['No PO','Tanggal','Properti','Kategori','Vendor','Item','Qty','Satuan','Harga Satuan','Subtotal','Status']];
+    (DB.accPOs||[]).filter(function(p){ return !p.deleted && (!prop || p.property===prop) && accYm(p.date)===ym && (canAccounting() || canPurchasing() || p.createdById===todoSelfKey()); }).forEach(function(p){
+      (p.items||[]).forEach(function(i){ rows.push([p.no, p.date, p.property||'', p.category||'', p.vendor||'', i.name, accNum(i.qty), i.unit||'', accNum(i.price), accNum(i.qty)*accNum(i.price), (PO_STATUS[p.status]||[p.status])[0]]); });
+    });
+    name = 'Purchase Order';
+  } else if(tab==='petty'){
+    rows = [['Tanggal','Properti','Kategori','Keterangan','Masuk','Keluar']];
+    pettyList(prop).filter(function(x){ return accYm(x.date)===ym; }).sort(function(a,b){ return (a.date||'').localeCompare(b.date||''); }).forEach(function(x){
+      rows.push([x.date, x.property||'', x.category||'', x.desc||'', x.type==='in'?accNum(x.amount):'', x.type==='out'?accNum(x.amount):'']); });
+    name = 'Petty Cash';
+  } else return null;
+  return {name:name, rows:rows};
+}
+
+/* ---- Report Karyawan (unduh) ---- */
+function starsOf(score){ var raw = (score||0)*100, p = raw + 1e-6; return p>=100 ? 5 : p>=90 ? 4 : p>=80 ? 3 : p>=60 ? 2 : raw>1e-6 ? 1 : 0; }
+function starText(n){ return '★★★★★'.slice(0,n)+'☆☆☆☆☆'.slice(0,5-n); }
+function monthsRange(a, b){
+  if(a>b){ var t = a; a = b; b = t; }
+  var out = [], cur = a, guard = 0;
+  while(cur<=b && guard<36){ out.push(cur); var p = ymParts(cur), y = p.y, m = p.m+1; if(m>12){ m = 1; y++; } cur = y+'-'+pad2(m); guard++; }
+  return out;
+}
+function erPeriod(){
+  var f = STATE.erFrom || STATE.currentMonth, t = STATE.erTo || STATE.currentMonth;
+  if(f>t){ var x = f; f = t; t = x; }
+  return {from:f, to:t, months:monthsRange(f,t)};
+}
+function erScope(){
+  var list = SESSION.role==='hr' ? activeEmployees() : getTeamForHod(SESSION.empId);
+  if(SESSION.role==='hr' && STATE.erDept) list = list.filter(function(e){ return e.department===STATE.erDept; });
+  return list;
+}
+function empReport(emp, per){
+  var att = {hadir:0, telat:0, alpha:0, cuti:0, lateMin:0, overtime:0, hours:0}, daily = [];
+  per.months.forEach(function(ym){
+    var st = reportStatsFor(emp, ym);
+    att.hadir += st.hadir; att.telat += st.telat; att.alpha += st.alpha; att.cuti += st.cuti; att.lateMin += st.lateMin; att.overtime += st.overtime; att.hours += st.hours;
+    var sum = getMonthSummary(emp.id, ym);
+    sum.days.forEach(function(m){
+      if(m.status==='unset' || m.status==='akan_datang') return;
+      daily.push([ym+'-'+pad2(m.day), m.status, (m.att&&m.att.checkIn)||'', (m.att&&m.att.checkOut)||'', m.lateMinutes||0]);
+    });
+  });
+  var sched = att.hadir + att.telat + att.alpha;
+  att.rate = sched ? (att.hadir+att.telat)/sched : null;
+  var kpis = (DB.kpiRecords||[]).filter(function(r){ return r.empId===emp.id && r.status==='approved' && per.months.indexOf(r.period)!==-1; })
+    .sort(function(a,b){ return a.period.localeCompare(b.period); });
+  var kpiSum = kpis.reduce(function(s,r){ return s+(r.totalScore||0); }, 0);
+  var kpiAvg = kpis.length ? kpiSum/kpis.length : null;
+  var fromISO = per.from+'-01', toISO = lastDayISO(per.to), today = todayISO();
+  var tasks = (DB.todos||[]).filter(function(t){
+    if(t.deleted || t.ownerId!==emp.id) return false;
+    var d = t.due || String(t.createdAt||'').slice(0,10);
+    return d>=fromISO && d<=toISO;
+  });
+  var done = tasks.filter(function(t){ return t.status==='done'; }).length;
+  var overdue = tasks.filter(function(t){ return t.status!=='done' && t.due && t.due<today; }).length;
+  var tRate = tasks.length ? done/tasks.length : null;
+  var tsHours = (DB.timesheets||[]).filter(function(x){ return !x.deleted && x.empId===emp.id && x.date>=fromISO && x.date<=toISO; }).reduce(function(s,x){ return s+(Number(x.hours)||0); }, 0);
+  var comps = [[0.4, att.rate], [0.4, kpiAvg===null ? null : Math.min(1, kpiAvg)], [0.2, tRate]], wsum = 0, vsum = 0;
+  comps.forEach(function(c){ if(c[1]!==null && c[1]!==undefined){ wsum += c[0]; vsum += c[0]*c[1]; } });
+  var finalScore = wsum ? vsum/wsum : null;
+  return {emp:emp, att:att, daily:daily, kpis:kpis, kpiSum:kpiSum, kpiAvg:kpiAvg, tasks:tasks, done:done, overdue:overdue, tRate:tRate, tsHours:tsHours,
+    finalScore:finalScore, stars: finalScore===null ? 0 : starsOf(finalScore)};
+}
+function pctTxt(v){ return v===null||v===undefined ? '-' : Math.round(v*1000)/10+'%'; }
+function erSelected(){
+  var list = erScope();
+  if(STATE.erEmp) list = list.filter(function(e){ return e.id===STATE.erEmp; });
+  return list;
+}
+function renderEmpReportCard(){
+  var per = erPeriod(), scope = erScope();
+  var deptSel = SESSION.role==='hr' ? '<select id="erDept"><option value="">Semua departemen</option>'+getDepartments().map(function(d){ return '<option value="'+escapeHtml(d)+'"'+(d===STATE.erDept?' selected':'')+'>'+escapeHtml(d)+'</option>'; }).join('')+'</select>' : '';
+  var empSel = '<select id="erEmp"><option value="">Semua karyawan</option>'+scope.map(function(e){ return '<option value="'+e.id+'"'+(e.id===STATE.erEmp?' selected':'')+'>'+escapeHtml(e.name)+'</option>'; }).join('')+'</select>';
+  var rows = erSelected().slice(0,80).map(function(e){
+    var r = empReport(e, per);
+    return '<tr><td>'+escapeHtml(e.name)+'<div class="muted" style="font-size:11.5px;">'+escapeHtml(e.department||'')+'</div></td>'+
+      '<td class="num">'+r.att.hadir+'</td><td class="num">'+r.att.telat+'</td><td class="num">'+r.att.alpha+'</td><td class="num">'+pctTxt(r.att.rate)+'</td>'+
+      '<td class="num">'+pctTxt(r.kpiAvg)+'</td><td class="num">'+r.done+'/'+r.tasks.length+'</td>'+
+      '<td class="num"><b>'+(r.finalScore===null?'-':fmtNum(r.finalScore*100,1))+'</b></td><td style="white-space:nowrap;color:#d99a00;" title="'+r.stars+' dari 5">'+starText(r.stars)+'</td></tr>';
+  }).join('') || '<tr><td colspan="9" class="muted" style="text-align:center;padding:16px;">Tidak ada karyawan.</td></tr>';
+  return '<div class="card no-print" id="empReportCard"><div class="card-title">Report Karyawan</div>'+
+    '<div class="card-sub">Atur periode, lalu unduh. Isi: kehadiran, KPI (yang sudah disetujui HR), tugas Board, jam timesheet, lembur, akumulasi skor, dan bintang.</div>'+
+    '<div class="toolbar" style="flex-wrap:wrap;gap:8px;"><div class="toolbar-left" style="flex-wrap:wrap;gap:8px;">'+
+      '<label class="muted" style="font-size:12.5px;">Dari</label><input type="month" id="erFrom" class="month-input" value="'+per.from+'">'+
+      '<label class="muted" style="font-size:12.5px;">Sampai</label><input type="month" id="erTo" class="month-input" value="'+per.to+'">'+deptSel+empSel+'</div>'+
+      '<div><button class="btn btn-primary btn-sm" data-action="er-dl-xlsx">Unduh Excel</button> <button class="btn btn-secondary btn-sm" data-action="er-dl-pdf">Unduh PDF</button></div></div>'+
+    '<div class="table-wrap"><table><thead><tr><th>Karyawan</th><th class="num">Hadir</th><th class="num">Telat</th><th class="num">Alpha</th><th class="num">Hadir %</th><th class="num">KPI rata-rata</th><th class="num">Tugas</th><th class="num">Skor Akhir</th><th>Bintang</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div class="muted" style="font-size:11.5px;margin-top:8px;">Skor akhir = 40% kehadiran + 40% KPI + 20% tugas selesai (komponen yang kosong diabaikan, bobot disesuaikan). Bintang: 5 &ge; 100, 4 &ge; 90, 3 &ge; 80, 2 &ge; 60, 1 &gt; 0.</div></div>';
+}
+function erSheets(){
+  var per = erPeriod(), emps = erSelected(), reps = emps.map(function(e){ return empReport(e, per); });
+  var label = per.from===per.to ? monthLabel(per.from) : monthLabel(per.from)+' - '+monthLabel(per.to);
+  var sum = [['Report Karyawan ABC Selaras','Periode: '+label],[],['Nama','Kode','Departemen','Hadir','Telat','Alpha','Cuti','Menit Telat','Hadir %','Lembur Disetujui (jam)','Jam Kerja Total','KPI Rata-rata','Akumulasi Skor KPI (%)','Jumlah Tugas','Tugas Selesai','Tugas Lewat Tenggat','Tugas Selesai %','Jam Timesheet','Skor Akhir','Bintang','Bintang (angka)']];
+  reps.forEach(function(r){
+    sum.push([r.emp.name, r.emp.empCode||'', r.emp.department||'', r.att.hadir, r.att.telat, r.att.alpha, r.att.cuti, r.att.lateMin, pctTxt(r.att.rate), Math.round(r.att.overtime*10)/10, Math.round(r.att.hours*10)/10,
+      pctTxt(r.kpiAvg), Math.round(r.kpiSum*1000)/10, r.tasks.length, r.done, r.overdue, pctTxt(r.tRate), Math.round(r.tsHours*10)/10, r.finalScore===null?'':Math.round(r.finalScore*1000)/10, starText(r.stars), r.stars]);
+  });
+  var kp = [['Nama','Departemen','Periode','Skor KPI','Status','Bintang KPI']];
+  reps.forEach(function(r){ r.kpis.forEach(function(k){ kp.push([r.emp.name, r.emp.department||'', k.period, pctTxt(k.totalScore), (KPI_STATUS_META && KPI_STATUS_META[k.totalStatus] ? KPI_STATUS_META[k.totalStatus].label : (k.totalStatus||'')), starText(starsOf(k.totalScore))]); }); });
+  var tk = [['Nama','Judul Tugas','Status','Prioritas','Tenggat','Selesai Pada','Project']];
+  reps.forEach(function(r){ r.tasks.forEach(function(t){ var pj = (DB.projects||[]).filter(function(p){ return p.id===t.projectId; })[0];
+    tk.push([r.emp.name, t.title, TODO_STATUS[t.status] ? TODO_STATUS[t.status].label : t.status, t.priority||'', t.due||'', t.doneAt ? String(t.doneAt).slice(0,10) : '', pj ? pj.name : '']); }); });
+  var dl = [['Nama','Tanggal','Status','Masuk','Pulang','Menit Telat']];
+  reps.forEach(function(r){ r.daily.forEach(function(x){ dl.push([r.emp.name].concat(x)); }); });
+  var mt = [['Metode Penilaian'],['Skor akhir = 40% kehadiran + 40% KPI rata-rata + 20% tugas selesai. Komponen yang tidak punya data diabaikan dan bobotnya dibagi ulang.'],
+    ['Kehadiran % = (hadir + telat) / (hadir + telat + alpha).'],['KPI = skor KPI bulanan yang sudah disetujui HR pada periode terpilih (maksimal dihitung 100%).'],
+    ['Tugas selesai % = tugas Board berstatus Finish / semua tugas yang tenggatnya (atau dibuatnya) jatuh di periode.'],
+    ['Bintang: 5 jika skor >= 100, 4 jika >= 90, 3 jika >= 80, 2 jika >= 60, 1 jika > 0.'],['Dibuat: '+new Date().toLocaleString('id-ID')]];
+  return {label:label, sheets:[{name:'Ringkasan',rows:sum},{name:'KPI per Bulan',rows:kp},{name:'Tugas',rows:tk},{name:'Kehadiran Harian',rows:dl},{name:'Metode',rows:mt}], reps:reps};
+}
+function downloadEmpReportPdf(){
+  if(!window.jspdf){ toast('Modul PDF belum siap, coba lagi beberapa saat.'); return; }
+  var d = erSheets(); if(!d.reps.length){ toast('Tidak ada karyawan pada pilihan ini.'); return; }
+  var doc = new window.jspdf.jsPDF({unit:'pt', format:'a4', orientation:'landscape'});
+  var W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), m = 30, y = m;
+  var cols = [['Nama',150],['Departemen',100],['Hadir',40],['Telat',40],['Alpha',40],['Hadir %',55],['KPI',55],['Tugas',55],['Skor',45],['Bintang',60]];
+  function head(){
+    doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.text('Report Karyawan - ABC Selaras', m, y); y += 16;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.text('Periode: '+d.label, m, y); y += 16;
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); var x = m;
+    cols.forEach(function(c){ doc.text(c[0], x, y); x += c[1]; }); y += 4; doc.line(m, y, W-m, y); y += 12; doc.setFont('helvetica','normal');
+  }
+  head();
+  d.reps.forEach(function(r){
+    if(y>H-m-20){ doc.addPage(); y = m; head(); }
+    var vals = [r.emp.name, r.emp.department||'', r.att.hadir, r.att.telat, r.att.alpha, pctTxt(r.att.rate), pctTxt(r.kpiAvg), r.done+'/'+r.tasks.length, r.finalScore===null?'-':fmtNum(r.finalScore*100,1), r.stars+' / 5'], x = m;
+    vals.forEach(function(v, i){ doc.text(String(v).slice(0, i<2?28:12), x, y); x += cols[i][1]; });
+    y += 15;
+  });
+  y += 8; if(y>H-m-30){ doc.addPage(); y = m; }
+  doc.setFontSize(8); doc.text('Skor akhir = 40% kehadiran + 40% KPI + 20% tugas selesai. Bintang: 5 >= 100, 4 >= 90, 3 >= 80, 2 >= 60, 1 > 0.', m, y);
+  doc.save('Report Karyawan '+d.label.replace(/\s+/g,'_')+'.pdf');
+}
+
 /* ---------------------------- SINKRONISASI LIVE ---------------------------- */
 var LIVE_POLL_BUSY = false;
 var LIVE_STAMP_SEEN = null, LIVE_STAMP_PENDING = null, LIVE_TICKS = 0;
@@ -6644,7 +6972,7 @@ function mergeLiveData(remote){
   DB.notifications = merged.slice(0,200);
 
   DB.todos = mergeById(DB.todos, remote.todos, function(t){ return t.updatedAt || t.createdAt || ''; });
-  ['projects','timesheets','agenda','accJournals','accPOs'].forEach(function(k){
+  ['projects','timesheets','agenda','accJournals','accPOs','accPetty'].forEach(function(k){
     DB[k] = mergeById(DB[k], remote[k], function(x){ return x.updatedAt || x.createdAt || ''; });
   });
   if(remote.accCats){ DB.accCats = DB.accCats || {}; Object.keys(remote.accCats).forEach(function(pr){
@@ -7724,6 +8052,32 @@ document.addEventListener('click', function(e){
     logActivity('Input laporan keuangan: '+qName+' '+rupiah(qAmt)+'.');
     STATE.currentMonth = accYm(qDate);
     saveDB(); toast('Tersimpan ke laporan.'); render();
+  } else if(action==='acc-petty-add'){
+    if(!canPettyEntry()){ toast('Hanya Accounting dan Purchasing yang bisa mencatat petty cash.'); return; }
+    var pcDate = document.getElementById('pc_date').value, pcProp = document.getElementById('pc_prop').value, pcType = document.getElementById('pc_type').value;
+    var pcAmt = accNum(document.getElementById('pc_amt').value), pcDesc = document.getElementById('pc_desc').value.trim();
+    if(!pcDate || pcAmt<=0){ toast('Isi tanggal dan nominal.'); return; }
+    if(!pcDesc){ toast('Isi keterangan.'); return; }
+    accInit();
+    if(pcType==='out' && pettyBalance(pcProp, '9999-12-31') < pcAmt){ toast('Saldo petty cash '+pcProp+' tidak cukup ('+rupiah(pettyBalance(pcProp,'9999-12-31'))+').'); return; }
+    var pcNow = new Date().toISOString();
+    DB.accPetty.unshift({id:uid('PC'), date:pcDate, property:pcProp, category:document.getElementById('pc_cat').value||'', type:pcType, amount:pcAmt, desc:pcDesc, createdById:todoSelfKey(), createdAt:pcNow, updatedAt:pcNow});
+    logActivity('Petty cash '+(pcType==='in'?'masuk ':'keluar ')+rupiah(pcAmt)+' ('+pcProp+'): '+pcDesc+'.');
+    STATE.currentMonth = accYm(pcDate);
+    saveDB(); toast('Petty cash tersimpan.'); render();
+  } else if(action==='acc-petty-del'){
+    var pdX = (DB.accPetty||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
+    if(pdX && canPettyEntry() && pdX.createdById===todoSelfKey()){ pdX.deleted = true; pdX.updatedAt = new Date().toISOString(); saveDB(); toast('Catatan dihapus.'); render(); }
+  } else if(action==='acc-dl-png'){
+    downloadSvgPng(document.querySelector('.acc-chart svg'), 'Grafik '+(STATE.accTab||'accounting')+' '+STATE.currentMonth+'.png');
+  } else if(action==='acc-dl-xlsx'){
+    var dlTab = STATE.accTab, dlData = accExportData(dlTab, STATE.accProp||'');
+    if(dlData) downloadXlsx('Accounting '+dlData.name+' '+STATE.currentMonth+'.xlsx', [dlData]);
+  } else if(action==='er-dl-xlsx'){
+    var erD = erSheets(); if(!erD.reps.length){ toast('Tidak ada karyawan pada pilihan ini.'); return; }
+    downloadXlsx('Report Karyawan '+erD.label.replace(/\s+/g,'_')+'.xlsx', erD.sheets);
+  } else if(action==='er-dl-pdf'){
+    downloadEmpReportPdf();
   } else if(action==='acc-po-add'){
     if(!canCreatePO()){ toast('Hanya HOD yang bisa mengajukan PO ke Purchasing (HR hanya memantau).'); return; }
     var poDate = document.getElementById('po_date').value, poProp = document.getElementById('po_prop').value;
@@ -9141,9 +9495,13 @@ document.addEventListener('change', function(e){
     return;
   }
   if(t.id==='boardImportFile'){ var biF = t.files && t.files[0]; if(biF) boardImportFromFile(biF); return; }
+  if(t.id==='erFrom'){ STATE.erFrom = t.value || STATE.currentMonth; render(); return; }
+  if(t.id==='erTo'){ STATE.erTo = t.value || STATE.currentMonth; render(); return; }
+  if(t.id==='erDept'){ STATE.erDept = t.value; STATE.erEmp = ''; render(); return; }
+  if(t.id==='erEmp'){ STATE.erEmp = t.value; render(); return; }
   if(t.id==='accProp'){ STATE.accProp = t.value; render(); return; }
-  if(t.id==='jr_prop' || t.id==='po_prop' || t.id==='q_prop'){
-    var wrapId = t.id==='jr_prop' ? 'jr_catWrap' : t.id==='po_prop' ? 'po_catWrap' : 'q_catWrap', catId = t.id==='jr_prop' ? 'jr_cat' : t.id==='po_prop' ? 'po_cat' : 'q_cat';
+  if(t.id==='jr_prop' || t.id==='po_prop' || t.id==='q_prop' || t.id==='pc_prop'){
+    var pre = t.id.split('_')[0], wrapId = (pre==='q' ? 'q' : pre)+'_catWrap', catId = (pre==='q' ? 'q' : pre)+'_cat';
     var w = document.getElementById(wrapId); if(w) w.innerHTML = accCatSelectHtml(catId, t.value, '');
     return;
   }
