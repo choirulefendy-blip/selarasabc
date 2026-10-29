@@ -178,6 +178,16 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   ok(ns.aset===80000000 && ns.aset===ns.pasiva, 'saldo neraca langsung masuk dan tetap seimbang');
   as('staff','P1','accounting','po'); ok(!d.querySelector('[data-action="acc-quick-add"]'), 'Purchasing tidak bisa mengisi laporan');
 
+  console.log('\n[HR melihat semua aktivitas keuangan]');
+  ok(w.navItemsFor('hr').some(function(i){ return i.v==='accounting'; }), 'menu Dashboard Accounting ada untuk HR');
+  w.DB.departmentHods = {Kitchen:['K1']};
+  as('hr',null,'accounting','po'); w.STATE.currentMonth = day.slice(0,7); w.render();
+  ok(/PO-\d{6}-001/.test(app()), 'HR melihat PO milik HOD');
+  ok(Array.prototype.map.call(d.querySelectorAll('.board-tabs .todo-tab'), function(x){ return x.textContent; }).join('|')==='Jurnal|Neraca|Laba Rugi|Purchase Order|Kategori & Akun', 'HR melihat semua tab');
+  as('hr',null,'accounting','jurnal'); w.STATE.currentMonth = day.slice(0,7); w.render();
+  ok(/Pendapatan kamar|Beban listrik/.test(app()), 'HR melihat jurnal');
+  as('hr',null,'activity-log'); ok(/Input laporan keuangan|PO .* diterima|Jurnal baru/.test(app()), 'Riwayat Aktivitas HR mencatat aktivitas keuangan');
+
   console.log('\n[Dashboard HOD tanpa tim]');
   w.DB.departmentHods = {};
   as('hod','K1','dashboard');
