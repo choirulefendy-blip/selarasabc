@@ -8,7 +8,7 @@
   "plugins": {
     "LocalNotifications": {
       "smallIcon": "ic_stat_selaras",
-      "iconColor": "#146B5E"
+      "iconColor": "#1565A8"
     }
   }
 }

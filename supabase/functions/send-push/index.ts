@@ -101,7 +101,7 @@ async function sendFcm(token: string, accessToken: string, title: string, body: 
         data: { url },
         android: {
           priority: "HIGH",
-          notification: { channel_id: "selaras_default", icon: "ic_stat_selaras", color: "#146B5E" },
+          notification: { channel_id: "selaras_default", icon: "ic_stat_selaras", color: "#1565A8" },
         },
       },
     }),
