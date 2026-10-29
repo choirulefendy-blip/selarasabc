@@ -684,6 +684,52 @@ function toggleDarkMode(){
   render();
 }
 
+/* ---------------------------- NAVIGASI: tombol Back & refresh tetap di halaman terakhir ---------------------------- */
+var NAV = {stack:[], last:null, popping:false, ready:false};
+var NAV_KEYS = ['view','boardTab','todoTab','accTab','boardMonth','payrollDetailEmp'];
+function navSnap(){ var o = {}; NAV_KEYS.forEach(function(k){ o[k] = STATE[k]===undefined ? null : STATE[k]; }); return o; }
+function navSnapKey(o){ return JSON.stringify(o); }
+function navSaveView(){
+  try{
+    if(SESSION.role) localStorage.setItem('abcSelarasView', JSON.stringify({role:SESSION.role, empId:SESSION.empId||null, s:navSnap()}));
+  }catch(e){}
+}
+function navRestoreView(){
+  var v; try{ v = JSON.parse(localStorage.getItem('abcSelarasView')||'null'); }catch(e){ v = null; }
+  if(!v || !v.s || v.role!==SESSION.role || (v.empId||null)!==(SESSION.empId||null)) return;
+  NAV_KEYS.forEach(function(k){ if(v.s[k]!==null && v.s[k]!==undefined) STATE[k] = v.s[k]; });
+  NAV.last = navSnapKey(navSnap());
+}
+function navInit(){
+  if(NAV.ready) return; NAV.ready = true;
+  try{ history.replaceState({abcNav:0}, ''); history.pushState({abcNav:1}, ''); }catch(e){ return; }
+  window.addEventListener('popstate', function(){
+    if(!SESSION.role){ try{ history.pushState({abcNav:1}, ''); }catch(e){} return; }
+    try{ history.pushState({abcNav:1}, ''); }catch(e){}
+    var modal = document.getElementById('modalRoot');
+    if(modal && modal.innerHTML.trim()){ closeModal(); return; }
+    if(STATE.sidebarOpen || STATE.notifPanelOpen){ STATE.sidebarOpen = false; STATE.notifPanelOpen = false; render(); return; }
+    var prev = NAV.stack.pop();
+    if(!prev){ if(typeof toast==='function' && STATE.view!=='dashboard') toast('Sudah di halaman awal.'); return; }
+    NAV.popping = true;
+    NAV_KEYS.forEach(function(k){ STATE[k] = prev[k]===null ? STATE[k] : prev[k]; });
+    STATE.view = prev.view;
+    render();
+    NAV.popping = false;
+  });
+}
+function navTrack(){
+  if(!SESSION.role){ NAV.stack = []; NAV.last = null; return; }
+  var cur = navSnap(), key = navSnapKey(cur);
+  if(NAV.last!==null && NAV.last!==key && !NAV.popping){
+    var prev = JSON.parse(NAV.last);
+    if(prev.view!==cur.view || prev.boardTab!==cur.boardTab || prev.accTab!==cur.accTab){
+      NAV.stack.push(prev); if(NAV.stack.length>40) NAV.stack.shift();
+    }
+  }
+  NAV.last = key; navSaveView();
+}
+
 /* ---------------------------- SESI TERSIMPAN (tidak logout saat refresh) ---------------------------- */
 function saveSessionToStorage(){
   try{ localStorage.setItem('abcSelarasSession', JSON.stringify(SESSION)); }catch(e){}
@@ -2077,6 +2123,7 @@ function applyOtPrefill(){
 }
 
 function afterRender(){
+  navTrack();
   applyOtPrefill();
   var npanel = document.querySelector('.notif-panel');
   if(npanel && window.innerWidth<=860){
@@ -8499,6 +8546,7 @@ document.addEventListener('click', function(e){
     fcmUnregister();
     chatReset();
     SESSION = {role:null, empId:null};
+    try{ localStorage.removeItem('abcSelarasView'); }catch(e){}
     STATE.view = 'dashboard';
     STATE.loginError = '';
     STATE.notifPanelOpen = false;
@@ -10008,7 +10056,8 @@ applyDarkModeClass();
 render();
 try{
   loadDB().then(function(){
-    if(STATE.loaded && !STATE.loadError){ restoreSessionFromStorage(); }
+    if(STATE.loaded && !STATE.loadError){ restoreSessionFromStorage(); navRestoreView(); }
+    navInit();
     render();
   }).catch(function(err){
     /* loadDB() sendiri sudah menangani kegagalannya secara internal

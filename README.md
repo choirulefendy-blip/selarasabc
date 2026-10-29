@@ -92,3 +92,4 @@ sinkronisasi live, dan render semua halaman semua peran. Tes juga jalan otomatis
 - Login masih sebatas pemisah tampilan (password tersimpan apa adanya di data). Cukup untuk pemakaian internal; belum setingkat produksi.
 
 | Grafik Selaras Board | Semua akun (staf, HOD, HR) punya grafik di tiap tab Board: tugas per status/prioritas/tren 6 bulan, jam per project, agenda per minggu, pekerjaan per hari (Rekap Kerja). Bisa diunduh PNG. |
+| Tombol Back & Refresh | Back di HP kembali ke halaman sebelumnya (menutup popup/menu dulu), tidak keluar aplikasi. Refresh tetap di halaman terakhir (termasuk tab Board). |
