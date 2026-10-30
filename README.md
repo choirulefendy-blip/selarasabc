@@ -95,3 +95,4 @@ sinkronisasi live, dan render semua halaman semua peran. Tes juga jalan otomatis
 | Tombol Back & Refresh | Back di HP kembali ke halaman sebelumnya (menutup popup/menu dulu), tidak keluar aplikasi. Refresh tetap di halaman terakhir (termasuk tab Board). |
 | Tema Lumina Selaras | Palet biru: Sky #4AA3F4 (tombol utama/aksen), Ocean #3980C4 & #296290 (navigasi, grafik), Navy #133451 & Midnight #0A1922 (teks, dark mode). |
 | Grafik interaktif | Batang tumbuh beranimasi, sudut atas membulat. Klik/tap batang → tooltip berisi kategori, seri & nilai (Rupiah penuh untuk grafik uang); batang lain meredup. Tap di luar untuk menutup. |
+| Rekap Kerja v2 | Ringkasan % tuntas + jumlah per status (Selesai/On Progress/Belum Mulai/Pending/Batal) dengan bar bertumpuk; Status per PIC (donut + bar per orang); tabel Tanggal/Uraian/PIC/Tim/Prioritas/Status dengan tombol Edit & Hapus. HR/HOD bisa pilih 'Semua tim' dan mengedit rekap anggota tim. |

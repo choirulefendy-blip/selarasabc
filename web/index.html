@@ -113,6 +113,48 @@
   body.dark svg [fill="#296290"]{fill:#3980C4;}
   body.dark .acc-svg .chit.sel{fill:rgba(74,163,244,.16);}
   body.dark .chart-tip{background:#133451;border:1px solid #296290;}
+  .rk-sum{padding:22px 22px 16px;}
+  .rk-sum-top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:16px;}
+  .rk-pct{font-size:44px;font-weight:700;line-height:1;letter-spacing:-1px;}
+  .rk-pct small{font-size:16px;font-weight:500;color:var(--text-muted);margin-left:2px;}
+  .rk-sub{color:var(--text-muted);font-size:13px;margin-top:6px;}
+  .rk-counts{display:flex;gap:22px;flex-wrap:wrap;}
+  .rk-counts div{display:flex;flex-direction:column;align-items:flex-start;}
+  .rk-counts b{font-size:24px;font-weight:500;line-height:1.2;}
+  .rk-counts span{font-size:12.5px;color:var(--text-muted);}
+  .rk-bar{display:flex;height:12px;border-radius:999px;overflow:hidden;background:var(--surface-container-high);flex:1;min-width:60px;}
+  .rk-bar i{display:block;height:100%;}
+  .rk-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px;font-size:12.5px;color:var(--text-muted);}
+  .rk-legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;vertical-align:0;}
+  .rk-pic .card-title{margin-bottom:0;}
+  .rk-donuts{display:flex;flex-wrap:wrap;gap:18px 28px;justify-content:center;margin:18px 0 10px;}
+  .rk-donut-item{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:130px;}
+  .rk-donut-item b{font-size:14px;}
+  .rk-donut-item span{font-size:12px;color:var(--text-muted);}
+  .rk-rows{border-bottom:1px dashed var(--border);padding-bottom:8px;}
+  .rk-row{display:flex;align-items:center;gap:14px;padding:8px 0;}
+  .rk-row-n{width:110px;flex:0 0 110px;display:flex;flex-direction:column;min-width:0;}
+  .rk-row-n b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .rk-row-n span{font-size:11.5px;color:var(--text-muted);}
+  .rk-row-p{width:46px;text-align:right;font-size:13px;font-variant-numeric:tabular-nums;}
+  .rk-table-card{padding:0;overflow:hidden;}
+  .rk-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .rk-table{width:100%;min-width:760px;border-collapse:collapse;font-size:13.5px;}
+  .rk-table th{text-align:left;font-size:12px;font-weight:700;color:var(--text-muted);padding:14px 14px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  .rk-table td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:top;}
+  .rk-table tr:last-child td{border-bottom:none;}
+  .rk-table tbody tr:hover td{background:color-mix(in srgb, var(--primary) 5%, transparent);}
+  .rk-date{white-space:nowrap;}
+  .rk-date span,.rk-title span{display:block;font-size:12px;color:var(--text-muted);font-weight:400;margin-top:2px;}
+  .rk-title{min-width:220px;max-width:340px;}
+  .rk-title b{font-weight:600;}
+  .rk-chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:8px;font-size:12.5px;font-weight:600;white-space:nowrap;}
+  .rk-chip::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;}
+  .rk-act{white-space:nowrap;text-align:right;}
+  .rk-ibtn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:transparent;color:var(--text-muted);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;margin-left:6px;}
+  .rk-ibtn:hover{background:var(--surface-container-high);color:var(--primary);}
+  .rk-ibtn[data-action="rekap-del"]:hover{color:var(--danger);}
+  @media (max-width:640px){ .rk-pct{font-size:38px;} .rk-counts{gap:14px;} .rk-counts b{font-size:20px;} .rk-row-n{width:84px;flex-basis:84px;} }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -2240,6 +2282,7 @@ function renderLogin(){
 
 /* ---------------------------- RENDER: SHELL ---------------------------- */
 var ICONS = {
+  trash:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>',
   chart: '<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/>',
   eye: '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
   eyeOff: '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>',
@@ -5466,7 +5509,7 @@ function todoItemHtml(t, mode){
 }
 
 function renderKanban(list, mode){
-  list = list.filter(function(t){ return !(t.rekap && t.status==='done'); });
+  list = list.filter(function(t){ return !(t.rekap && (t.status==='done' || t.status==='batal')); });
   var cols = BOARD_COLUMNS.map(function(k){
     var items = list.filter(function(t){ return (TODO_STATUS[t.status] ? t.status : 'todo')===k; });
     items = k==='done'
@@ -7194,7 +7237,9 @@ function rekapChartHtml(list, ym){
 }
 
 /* ---------------------------- REKAP KERJA (Selaras Board) ---------------------------- */
-var REKAP_STATUS = [['done','Selesai'],['doing','On Progress'],['todo','Belum Mulai'],['pending','Pending']];
+var REKAP_STATUS = [['done','Selesai'],['doing','On Progress'],['todo','Belum Mulai'],['pending','Pending'],['batal','Batal']];
+var RK_COLORS = {done:'#22B07D', doing:'#F59E0B', todo:'#94A3B8', pending:'#8BC34A', batal:'#EF4444'};
+var RK_PRIO_COLORS = {tinggi:'#EF4444', normal:'#F59E0B', rendah:'#3980C4'};
 var REKAP_PRIO = [['tinggi','Tinggi'],['normal','Sedang'],['rendah','Rendah']];
 function rekapLabel(list, k){ var f = list.filter(function(x){ return x[0]===k; })[0]; return f ? f[1] : k; }
 function rekapDateOf(t){ return t.due || String(t.createdAt||'').slice(0,10); }
@@ -7206,8 +7251,53 @@ function rekapEntries(ownerId, ym){
 function rekapTodayEntries(ownerId){ var d = todayISO(); return todosOf(ownerId).filter(function(t){ return rekapDateOf(t)===d; }); }
 function rekapViewOwner(){
   var scope = todoMonitorScope();
+  if(STATE.rekapEmp==='__all' && scope.length) return '__all';
   if(STATE.rekapEmp && scope.some(function(e){ return e.id===STATE.rekapEmp; })) return STATE.rekapEmp;
   return todoSelfKey();
+}
+function rekapOwners(owner){ return owner==='__all' ? [todoSelfKey()].concat(todoMonitorScope().map(function(e){ return e.id; })) : [owner]; }
+function rekapListFor(owner, ym){
+  var out = [];
+  rekapOwners(owner).forEach(function(o){ out = out.concat(rekapEntries(o, ym)); });
+  return out.sort(function(a,b){ return rekapDateOf(a).localeCompare(rekapDateOf(b)) || (a.createdAt||'').localeCompare(b.createdAt||''); });
+}
+function rekapTeamOf(id){ if(id==='hr') return 'HR'; var e = getEmployee(id); return e ? (e.department||'-') : '-'; }
+function rekapShortName(id){ var n = todoOwnerName(id); return n.split(' ')[0]; }
+function canEditRekap(t){
+  if(!t) return false;
+  if(SESSION.role==='hr') return true;
+  if(t.ownerId===todoSelfKey()) return true;
+  return SESSION.role==='hod' && todoMonitorScope().some(function(e){ return e.id===t.ownerId; });
+}
+function rkCounts(list){
+  var c = {total:list.length}; REKAP_STATUS.forEach(function(s){ c[s[0]] = 0; });
+  list.forEach(function(t){ var k = RK_COLORS[t.status] ? t.status : 'todo'; c[k]++; });
+  var base = c.total - c.batal; c.pct = base>0 ? Math.round(c.done/base*100) : 0;
+  return c;
+}
+function rkBarHtml(c){
+  if(!c.total) return '<div class="rk-bar"></div>';
+  return '<div class="rk-bar">'+REKAP_STATUS.map(function(s){ var n = c[s[0]]; return n ? '<i style="width:'+(n/c.total*100).toFixed(2)+'%;background:'+RK_COLORS[s[0]]+'" title="'+s[1]+': '+n+'"></i>' : ''; }).join('')+'</div>';
+}
+function rkLegendHtml(){ return '<div class="rk-legend">'+REKAP_STATUS.map(function(s){ return '<span><i style="background:'+RK_COLORS[s[0]]+'"></i>'+s[1]+'</span>'; }).join('')+'</div>'; }
+function rkDonut(pct){
+  var r = 46, C = 2*Math.PI*r, d = (Math.max(0,Math.min(100,pct))/100*C).toFixed(1);
+  return '<svg class="rk-donut" viewBox="0 0 120 120" width="112" height="112"><circle cx="60" cy="60" r="'+r+'" fill="none" stroke-width="14" style="stroke:var(--surface-container-high)"/>'+
+    '<circle cx="60" cy="60" r="'+r+'" fill="none" stroke="'+RK_COLORS.done+'" stroke-width="14" stroke-linecap="round" stroke-dasharray="'+d+' '+C.toFixed(1)+'" transform="rotate(-90 60 60)"/>'+
+    '<text x="60" y="67" text-anchor="middle" font-size="22" font-weight="600" style="fill:var(--text)">'+pct+'%</text></svg>';
+}
+function rkChip(color, label){ return '<span class="rk-chip" style="color:'+color+';background:'+color+'22;">'+escapeHtml(label)+'</span>'; }
+function rkDateShort(iso){ var m = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']; return String(iso).slice(8,10)+' '+(m[(parseInt(String(iso).slice(5,7),10)||1)-1]); }
+function rekapEditModalHtml(t){
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:520px;">'+
+    '<h3>Edit Pekerjaan</h3><div class="card-sub">PIC: '+escapeHtml(todoOwnerName(t.ownerId))+'</div>'+
+    '<div class="form-row"><div class="form-group"><label>Tanggal</label><input type="date" id="rke_date" value="'+escapeHtml(rekapDateOf(t))+'"></div>'+
+    '<div class="form-group"><label>Prioritas</label><select id="rke_prio">'+REKAP_PRIO.map(function(p){ return '<option value="'+p[0]+'"'+((t.priority||'normal')===p[0]?' selected':'')+'>'+p[1]+'</option>'; }).join('')+'</select></div>'+
+    '<div class="form-group"><label>Status</label><select id="rke_status">'+REKAP_STATUS.map(function(p){ return '<option value="'+p[0]+'"'+(t.status===p[0]?' selected':'')+'>'+p[1]+'</option>'; }).join('')+'</select></div></div>'+
+    '<div class="form-group"><label>Uraian Pekerjaan</label><input type="text" id="rke_title" value="'+escapeHtml(t.title||'')+'"></div>'+
+    '<div class="form-group"><label>Keterangan</label><textarea id="rke_note" rows="3">'+escapeHtml(t.note||'')+'</textarea></div>'+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="rekap-save" data-id="'+t.id+'">Simpan</button></div>'+
+  '</div></div>';
 }
 function addRekapEntry(ownerId, f){
   DB.todos = DB.todos || [];
@@ -7241,12 +7331,10 @@ function rekapCheckoutHtml(){
 }
 function renderRekapTab(){
   var ym = boardMonth(), scope = todoMonitorScope(), self = todoSelfKey(), owner = rekapViewOwner(), mine = owner===self;
-  var list = rekapEntries(owner, ym);
-  var done = list.filter(function(t){ return t.status==='done'; }).length, dayset = {};
-  list.forEach(function(t){ dayset[rekapDateOf(t)] = true; });
-  var pct = list.length ? Math.round(done/list.length*100) : 0;
-  var empSel = scope.length ? '<select id="rekapEmp"><option value="">Rekap saya</option>'+scope.map(function(e){ return '<option value="'+e.id+'"'+(e.id===owner?' selected':'')+'>'+escapeHtml(e.name)+'</option>'; }).join('')+'</select>' : '';
-  var form = mine ? '<details class="card bd-add no-print" open><summary>+ Catat Pekerjaan</summary>'+
+  var list = rekapListFor(owner, ym), c = rkCounts(list);
+  var empSel = scope.length ? '<select id="rekapEmp"><option value="">Rekap saya</option><option value="__all"'+(owner==='__all'?' selected':'')+'>Semua tim</option>'+
+    scope.map(function(e){ return '<option value="'+e.id+'"'+(e.id===owner?' selected':'')+'>'+escapeHtml(e.name)+'</option>'; }).join('')+'</select>' : '';
+  var form = mine ? '<details class="card bd-add no-print"><summary>+ Catat Pekerjaan</summary>'+
     '<div class="card-sub" style="margin:8px 0;">Catat apa yang kamu kerjakan. Rekap hari ini juga ditulis saat <b>Absen Pulang</b>.</div>'+
     '<div class="form-row"><div class="form-group"><label>Tanggal</label><input type="date" id="rk_date" value="'+todayISO()+'"></div>'+
     '<div class="form-group"><label>Prioritas</label><select id="rk_prio">'+REKAP_PRIO.map(function(p){ return '<option value="'+p[0]+'"'+(p[0]==='normal'?' selected':'')+'>'+p[1]+'</option>'; }).join('')+'</select></div>'+
@@ -7254,35 +7342,41 @@ function renderRekapTab(){
     '<div class="form-group"><label>Uraian Pekerjaan</label><input type="text" id="rk_title" placeholder="Contoh: Desain announcement sosmed"></div>'+
     '<div class="form-group"><label>Keterangan (opsional)</label><input type="text" id="rk_note"></div>'+
     '<button class="btn btn-primary" data-action="rekap-add">Tambah ke Rekap</button></details>' : '';
-  var byDate = {}; list.forEach(function(t){ var d = rekapDateOf(t); (byDate[d] = byDate[d] || []).push(t); });
-  var days = Object.keys(byDate).sort().reverse().map(function(d){
-    return '<div class="card"><div class="card-title" style="display:flex;justify-content:space-between;gap:8px;"><span>'+escapeHtml(formatDateID(d))+' <span class="muted" style="font-weight:400;font-size:12px;">&middot; '+rekapWeek(d)+'</span></span><span class="muted" style="font-size:12px;">'+byDate[d].length+' pekerjaan</span></div>'+
-      byDate[d].map(function(t){
-        var st = TODO_STATUS[t.status] || TODO_STATUS.todo;
-        return '<div class="todo-item" style="padding:9px 0;"><div style="min-width:0;"><div>'+escapeHtml(t.title)+'</div>'+
-          '<div style="margin-top:3px;"><span class="badge '+st.cls+'">'+rekapLabel(REKAP_STATUS, t.status)+'</span> <span class="badge badge-neutral">'+rekapLabel(REKAP_PRIO, t.priority||'normal')+'</span></div>'+
-          (t.note ? '<div class="muted" style="font-size:12px;margin-top:3px;">'+escapeHtml(t.note)+'</div>' : '')+'</div>'+
-          (mine ? '<button class="btn btn-ghost btn-sm no-print" data-action="rekap-del" data-id="'+t.id+'">Hapus</button>' : '')+'</div>';
-      }).join('')+'</div>';
-  }).join('') || '<div class="card"><div class="empty-state">Belum ada rekap kerja di '+monthLabel(ym)+'.</div></div>';
+  var sum = '<div class="card rk-sum"><div class="rk-sum-top"><div><div class="rk-pct">'+c.pct+'<small>%</small></div><div class="rk-sub">tuntas bulan ini</div></div>'+
+    '<div class="rk-counts">'+REKAP_STATUS.map(function(st){ return '<div><b>'+c[st[0]]+'</b><span>'+st[1]+'</span></div>'; }).join('')+'</div></div>'+
+    rkBarHtml(c)+rkLegendHtml()+'</div>';
+  var people = rekapOwners(owner).map(function(id){ var l = list.filter(function(t){ return t.ownerId===id; }); return {id:id, l:l, c:rkCounts(l)}; })
+    .filter(function(p){ return p.l.length; });
+  var pic = people.length ? '<div class="card rk-pic"><div class="card-title">Status per PIC</div><div class="rk-sub">Porsi penyelesaian tiap orang pada '+escapeHtml(monthLabel(ym))+'</div>'+
+    '<div class="rk-donuts">'+people.map(function(p){ return '<div class="rk-donut-item">'+rkDonut(p.c.pct)+'<b>'+escapeHtml(rekapShortName(p.id))+'</b><span>'+p.c.total+' pekerjaan &middot; '+p.c.done+' selesai</span></div>'; }).join('')+'</div>'+
+    '<div class="rk-rows">'+people.map(function(p){ return '<div class="rk-row"><div class="rk-row-n"><b>'+escapeHtml(rekapShortName(p.id))+'</b><span>'+escapeHtml(rekapTeamOf(p.id))+'</span></div>'+rkBarHtml(p.c)+'<div class="rk-row-p">'+p.c.pct+'%</div></div>'; }).join('')+'</div>'+
+    rkLegendHtml()+'</div>' : '';
+  var rows = list.map(function(t){
+    var d = rekapDateOf(t), st = RK_COLORS[t.status] ? t.status : 'todo', pr = t.priority||'normal', ed = canEditRekap(t);
+    return '<tr><td class="rk-date">'+rkDateShort(d)+'<span>'+rekapWeek(d)+'</span></td>'+
+      '<td class="rk-title"><b>'+escapeHtml(t.title)+'</b>'+(t.note?'<span>'+escapeHtml(t.note)+'</span>':'')+'</td>'+
+      '<td>'+escapeHtml(rekapShortName(t.ownerId))+'</td><td>'+escapeHtml(rekapTeamOf(t.ownerId))+'</td>'+
+      '<td>'+rkChip(RK_PRIO_COLORS[pr]||RK_PRIO_COLORS.normal, rekapLabel(REKAP_PRIO, pr))+'</td>'+
+      '<td>'+rkChip(RK_COLORS[st], rekapLabel(REKAP_STATUS, st))+'</td>'+
+      '<td class="rk-act no-print">'+(ed ? '<button class="rk-ibtn" data-action="rekap-edit" data-id="'+t.id+'" title="Edit" aria-label="Edit">'+iconSvg('edit',15)+'</button>'+
+        '<button class="rk-ibtn" data-action="rekap-del" data-id="'+t.id+'" title="Hapus" aria-label="Hapus">'+iconSvg('trash',15)+'</button>' : '')+'</td></tr>';
+  }).join('');
+  var table = '<div class="card rk-table-card"><div class="rk-table-wrap"><table class="rk-table"><thead><tr><th>Tanggal</th><th>Uraian pekerjaan</th><th>PIC</th><th>Tim</th><th>Prioritas</th><th>Status</th><th class="no-print"></th></tr></thead><tbody>'+
+    (rows || '<tr><td colspan="7"><div class="empty-state">Belum ada rekap kerja di '+escapeHtml(monthLabel(ym))+'.</div></td></tr>')+'</tbody></table></div></div>';
   return '<div class="toolbar no-print" style="flex-wrap:wrap;gap:8px;"><div class="toolbar-left" style="gap:8px;flex-wrap:wrap;">'+boardMonthNavHtml()+empSel+'</div>'+
       '<button class="btn btn-secondary btn-sm" data-action="rekap-dl">Unduh Rekap (Excel)</button></div>'+
-    '<div class="grid grid-4"><div class="stat-card"><div class="label">Total Pekerjaan</div><div class="value">'+list.length+'</div></div>'+
-    '<div class="stat-card"><div class="label">Selesai</div><div class="value">'+done+'</div></div>'+
-    '<div class="stat-card"><div class="label">% Selesai</div><div class="value">'+pct+'%</div></div>'+
-    '<div class="stat-card"><div class="label">Hari Tercatat</div><div class="value">'+Object.keys(dayset).length+'</div></div></div>'+
-    rekapChartHtml(list, ym) + form + days;
+    sum + pic + rekapChartHtml(list, ym) + form + table;
 }
 function rekapDownload(){
-  var ym = boardMonth(), owner = rekapViewOwner(), e = owner==='hr' ? null : getEmployee(owner);
-  var name = e ? e.name : 'HR', team = e ? (e.department||'') : '';
-  var list = rekapEntries(owner, ym).slice().sort(function(a,b){ return rekapDateOf(a).localeCompare(rekapDateOf(b)) || (a.createdAt||'').localeCompare(b.createdAt||''); });
+  var ym = boardMonth(), owner = rekapViewOwner(), all = owner==='__all', e = (all || owner==='hr') ? null : getEmployee(owner);
+  var name = all ? 'Semua Tim' : (e ? e.name : 'HR'), team = all ? '' : (e ? (e.department||'') : 'HR');
+  var list = rekapListFor(owner, ym);
   var done = list.filter(function(t){ return t.status==='done'; }).length;
   var sum = [['REKAP PEKERJAAN', monthLabel(ym)],['Nama', name],['Tim', team],[],['Total pekerjaan', list.length],['Selesai', done]];
   REKAP_STATUS.slice(1).forEach(function(s){ sum.push([s[1], list.filter(function(t){ return t.status===s[0]; }).length]); });
   sum.push(['Persentase selesai', list.length ? Math.round(done/list.length*100)+'%' : '0%']);
   var det = [['Tanggal','Minggu','Uraian Pekerjaan','PIC','Tim','Prioritas','Status','Keterangan']];
-  list.forEach(function(t){ det.push([rekapDateOf(t), rekapWeek(rekapDateOf(t)), t.title, name, team, rekapLabel(REKAP_PRIO, t.priority||'normal'), rekapLabel(REKAP_STATUS, t.status), t.note||'']); });
+  list.forEach(function(t){ det.push([rekapDateOf(t), rekapWeek(rekapDateOf(t)), t.title, todoOwnerName(t.ownerId), rekapTeamOf(t.ownerId), rekapLabel(REKAP_PRIO, t.priority||'normal'), rekapLabel(REKAP_STATUS, t.status), t.note||'']); });
   downloadXlsx('Rekap Kerja '+name+' '+ym+'.xlsx', [{name:'Ringkasan', rows:sum},{name:'Detail Pekerjaan', rows:det}]);
 }
 
@@ -8400,7 +8494,26 @@ document.addEventListener('click', function(e){
     saveDB(); toast('Pekerjaan dicatat.'); render();
   } else if(action==='rekap-del'){
     var rdT = getTodoById(el.getAttribute('data-id'));
-    if(rdT && rdT.ownerId===todoSelfKey()){ rdT.deleted = true; rdT.updatedAt = new Date().toISOString(); saveDB(); toast('Pekerjaan dihapus.'); render(); }
+    if(rdT && canEditRekap(rdT)){
+      if(typeof window.confirm==='function' && window.navigator && !/jsdom/i.test(window.navigator.userAgent||'') && !window.confirm('Hapus pekerjaan "'+rdT.title+'"?')) return;
+      rdT.deleted = true; rdT.updatedAt = new Date().toISOString(); saveDB(); toast('Pekerjaan dihapus.'); render(); }
+  } else if(action==='rekap-edit'){
+    var reT = getTodoById(el.getAttribute('data-id'));
+    if(reT && canEditRekap(reT)) openModal(rekapEditModalHtml(reT));
+  } else if(action==='rekap-save'){
+    var rsT = getTodoById(el.getAttribute('data-id'));
+    if(!rsT || !canEditRekap(rsT)){ toast('Tidak punya akses untuk mengedit.'); return; }
+    var rsTitle = document.getElementById('rke_title').value.trim(), rsDate = document.getElementById('rke_date').value, rsSt = document.getElementById('rke_status').value;
+    if(!rsTitle){ toast('Isi uraian pekerjaan.'); return; }
+    if(!rsDate){ toast('Isi tanggal.'); return; }
+    var rsNow = new Date().toISOString();
+    if(rsSt==='done' && rsT.status!=='done') rsT.doneAt = rsNow;
+    if(rsSt!=='done') rsT.doneAt = null;
+    rsT.title = rsTitle.slice(0,200); rsT.note = document.getElementById('rke_note').value.trim().slice(0,1000); rsT.due = rsDate;
+    rsT.priority = document.getElementById('rke_prio').value; rsT.status = rsSt; rsT.updatedAt = rsNow;
+    if(rsT.ownerId!==todoSelfKey() && rsT.ownerId!=='hr') addNotification({type:'emp', empId:rsT.ownerId}, 'Rekap kerja kamu diperbarui: '+rsT.title+'.', 'todo', 'general');
+    logActivity('Rekap kerja diedit: '+rsT.title+'.');
+    closeModal(); saveDB(); toast('Perubahan disimpan.'); render();
   } else if(action==='rekap-dl'){
     rekapDownload();
   } else if(action==='chart-dl-png'){

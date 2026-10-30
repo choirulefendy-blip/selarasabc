@@ -22,7 +22,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
   console.log('\n[Tab Rekap Kerja]');
   ['staff:S1','staff:K1','hod:H1','hr:'].forEach(function(x){ var p = x.split(':'); as(p[0], p[1]);
-    ok(!!d.querySelector('[data-action="board-tab"][data-tab="rekap"]') && /Total Pekerjaan/.test(app()), 'akun '+p[0]+(p[1]?' ('+p[1]+')':'')+': tab Rekap Kerja tersedia'); });
+    ok(!!d.querySelector('[data-action="board-tab"][data-tab="rekap"]') && /tuntas bulan ini/.test(app()), 'akun '+p[0]+(p[1]?' ('+p[1]+')':'')+': tab Rekap Kerja tersedia'); });
   as('staff','S1');
   setv('rk_title','Desain announcement'); setv('rk_prio','tinggi'); setv('rk_status','done'); setv('rk_note','sudah dikirim');
   await click('[data-action="rekap-add"]');
@@ -30,7 +30,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   var mine = w.todosOf('S1');
   ok(mine.length===2 && mine[1].rekap===true && mine[1].due===today && mine[1].priority==='tinggi' && mine[1].status==='done', 'pekerjaan tercatat (tanggal, prioritas, status)');
   ok(/Desain announcement/.test(app()) && /Selesai/.test(app()) && /On Progress/.test(app()) && /Minggu \d/.test(app()), 'daftar dikelompokkan per tanggal + minggu');
-  ok(/% Selesai/.test(app()) && /50%/.test(app()), 'ringkasan 50% selesai');
+  ok(/tuntas bulan ini/.test(app()) && d.querySelector(".rk-pct").textContent==="50%", "ringkasan 50% selesai");
   w.STATE.boardTab='board'; w.render();
   ok(!d.querySelector('.bd-col[data-col="done"] .bd-card'), 'rekap yang sudah selesai tidak memenuhi kolom Finish Board');
   ok(d.querySelectorAll('.bd-col[data-col="doing"] .bd-card').length===1, 'rekap On Progress muncul di Board');
@@ -47,6 +47,19 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   as('hod','H1'); var sel = d.getElementById('rekapEmp'); ok(!!sel, 'HOD: pilihan melihat rekap anggota tim');
   sel.value = 'S1'; sel.dispatchEvent(new w.Event('change',{bubbles:true})); await sleep(50);
   ok(/Edit video reels|Desain announcement/.test(app()) && !d.getElementById('rk_title'), 'HOD melihat rekap Sari (hanya baca, tanpa form)');
+
+  console.log('\n[Tampilan tabel, edit & Status per PIC]');
+  ok(!!d.querySelector('.rk-table') && !!d.querySelector('.rk-sum .rk-bar') && !!d.querySelector('.rk-pic .rk-donut'), 'ringkasan + bar status + donut per PIC + tabel');
+  var eb = d.querySelector('[data-action="rekap-edit"]'); ok(!!eb, 'HOD bisa edit rekap anggota tim');
+  await click(eb); ok(!!d.getElementById('rke_title'), 'modal edit terbuka');
+  setv('rke_title','Edit video reels final'); setv('rke_status','batal'); setv('rke_prio','rendah');
+  await click('[data-action="rekap-save"]');
+  var ed = w.todosOf('S1')[0]; ok(ed.title==='Edit video reels final' && ed.status==='batal' && ed.priority==='rendah', 'perubahan tersimpan (judul, status Batal, prioritas)');
+  ok(/Batal/.test(app()) && /Edit video reels final/.test(app()), 'tabel menampilkan hasil edit');
+  sel = d.getElementById('rekapEmp'); sel.value='__all'; sel.dispatchEvent(new w.Event('change',{bubbles:true})); await sleep(50);
+  ok(/Semua tim/.test(app()) && /Edit video reels final/.test(app()), 'HOD: pilihan Semua tim');
+  as('staff','S2'); ok(!d.getElementById('rekapEmp') && !d.querySelector('[data-action="rekap-edit"]'), 'staf lain tidak bisa melihat/mengedit rekap orang lain');
+  as('hod','H1');
 
   console.log('\n[Absen Pulang + Rekap Kerja]');
   w.parseRekapLines && ok(true,'parser tersedia');
