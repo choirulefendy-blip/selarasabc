@@ -106,3 +106,6 @@ sinkronisasi live, dan render semua halaman semua peran. Tes juga jalan otomatis
 | Profil HR | HR ubah nama, foto, email, jabatan, no. HP, username, password. |
 | Bottom navigation | Di HP: Beranda, Absen/Karyawan, Board, Chat, Menu. |
 | Versi APK | versionName otomatis 1.<nomor build>, tampil di menu & banner update. |
+| Aset Inventaris | HOD/HR mendata aset per departemen: kode otomatis, kategori, lokasi, pemegang, kondisi, status, harga & penyusutan, garansi, jadwal servis (notifikasi), riwayat mutasi/perbaikan/audit, foto, label QR, unduh Excel. |
+| Notifikasi terjadwal | HR: kirim sekali (tanggal & jam), setiap hari, setiap minggu, atau setiap bulan (tgl 1–31). Dijalankan GitHub Actions `notif-schedule.yml` tiap ~10 menit (`scripts/run-schedules.mjs`). |
+| Push iPhone | PWA dari Safari (Tambah ke Layar Utama, iOS 16.4+) + Web Push VAPID. Panduan muncul otomatis di iPhone. Butuh secret VAPID_PUBLIC_KEY & VAPID_PRIVATE_KEY di Supabase + `supabase/webpush.sql`. |

@@ -219,6 +219,18 @@
     .hamburger{display:none !important;}
     .toast{bottom:calc(92px + env(safe-area-inset-bottom)) !important;}
   }
+  .toolbar select{padding:9px 14px;border:1px solid var(--outline);border-radius:999px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;max-width:100%;}
+  .as-row{cursor:pointer;}
+  .as-att{outline:2px solid var(--warning);}
+  .as-photo{width:84px;height:84px;border-radius:14px;overflow:hidden;background:var(--surface-container-high);flex:0 0 84px;}
+  .as-photo img{width:100%;height:100%;object-fit:cover;}
+  .as-qr{flex:0 0 88px;background:#fff;border-radius:8px;padding:4px;}
+  .as-hist{border-left:3px solid var(--primary-light);padding:4px 0 8px 12px;margin-bottom:6px;font-size:13px;}
+  .ios-guide{background:var(--primary-container);color:var(--on-primary-container);border-radius:16px;padding:14px 16px;margin:6px 0 12px;text-align:left;}
+  .ios-guide.compact{margin:0 0 16px;}
+  .ios-guide-title{font-weight:700;margin-bottom:6px;}
+  .ios-guide ol{margin:0 0 6px 18px;padding:0;line-height:1.7;font-size:13.5px;}
+  .ios-share{display:inline-block;border:1.5px solid currentColor;border-radius:5px;padding:0 4px;font-size:11px;line-height:1.4;}
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -292,7 +304,10 @@
   }
   .sidebar-brand{padding:0 20px 22px;border-bottom:1px solid rgba(255,255,255,.14);margin-bottom:14px;}
   .sidebar-brand .name{font-family:var(--font-serif);font-size:19px;font-weight:500;}
-  .sidebar-brand .role{font-size:11.5px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:1px;margin-top:4px;}
+  .sidebar-brand .role{font-size:11px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:.8px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sb-brand-row{display:flex;align-items:center;gap:12px;position:relative;}
+  .sb-logo{width:40px;height:40px;border-radius:11px;flex-shrink:0;}
+  .sb-brand-text{min-width:0;flex:1;text-align:left;}
   .sidebar-close{display:none;margin-left:auto;background:rgba(255,255,255,.12);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:22px;line-height:1;cursor:pointer;flex-shrink:0;align-self:flex-start;}
   .nav-item{
     display:flex;align-items:center;gap:12px;width:calc(100% - 24px);margin:2px 12px;text-align:left;background:none;border:none;color:rgba(255,255,255,.85);
@@ -583,7 +598,12 @@
   @media(max-width:860px){
     .sidebar{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);transition:transform .2s;z-index:90;box-shadow:0 0 0 100vmax rgba(0,0,0,0);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;max-height:100vh;max-height:100dvh;padding-bottom:calc(22px + env(safe-area-inset-bottom));}
     .sidebar > *{flex-shrink:0;}
-    .sidebar-brand .name{white-space:nowrap;}
+    .sidebar-brand .name{white-space:nowrap;font-size:18px;}
+    .sidebar-brand{padding:4px 16px 18px;}
+    .sidebar-brand .role{font-size:10px;letter-spacing:.4px;}
+    .sidebar-close{width:30px !important;height:30px !important;font-size:20px !important;align-self:center !important;}
+    .nav-item{width:calc(100% - 16px) !important;margin:2px 8px !important;padding:11px 14px !important;}
+    .nav-group-head{width:calc(100% - 16px) !important;margin:0 8px !important;padding:9px 14px !important;}
     body.sidebar-lock{overflow:hidden;}
     .sidebar.open{transform:translateX(0);box-shadow:0 0 0 100vmax rgba(0,0,0,.35);}
     .hamburger{display:inline-flex;align-items:center;justify-content:center;}
@@ -1415,7 +1435,7 @@ var SUPABASE_BUCKET = 'attachments';
    PUSH_FUNCTION_URL diisi setelah men-deploy Edge Function "send-push"
    (lihat README bagian "Notifikasi Push ke Perangkat"). Kosongkan
    PUSH_FUNCTION_URL untuk menonaktifkan fitur ini sepenuhnya. */
-var VAPID_PUBLIC_KEY = 'BMPhKJL68Parug2W_JsJRztuIQjDxd6Pd-OLngatqOWeaxLCj4qkr40_FDyUxsaukvqNTl6YgabVLLHwevtx6rg';
+var VAPID_PUBLIC_KEY = 'BEJ_hyqNV7WH7f5z36SXL-eV1xKniANE7LVCJt6cnupDhSLCAXTajDfh4JgnmvkVkD878DSkA2vfWhk_FYtGie8';
 /* FCM (notifikasi Android saat app tertutup). Biarkan false di sini: workflow APK
    otomatis mengubahnya jadi true hanya di build Android, jika secret GOOGLE_SERVICES_JSON diisi. */
 var APP_VERSION = 'dev';   /* diisi otomatis oleh build APK, mis. 1.57 */
@@ -2273,7 +2293,7 @@ function afterRender(){
     if(sbEl && STATE.sbScroll) sbEl.scrollTop = STATE.sbScroll;
   }catch(e){}
   navTrack();
-  try{ workReminderSync(); nativeNotifAutoAsk(); }catch(e){}
+  try{ workReminderSync(); nativeNotifAutoAsk(); assetServiceReminders(); assetHydratePhoto(); }catch(e){}
   applyOtPrefill();
   var npanel = document.querySelector('.notif-panel');
   if(npanel && window.innerWidth<=860){
@@ -2356,6 +2376,7 @@ function renderLogin(){
 
 /* ---------------------------- RENDER: SHELL ---------------------------- */
 var ICONS = {
+  box:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
   idcard:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7"/><path d="M15 10h3M15 14h3"/>',
   trash:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>',
   chart: '<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="5" width="3" height="13"/>',
@@ -2417,7 +2438,7 @@ function iconSvg(name, size){
   return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+body+'</svg>';
 }
 var NAV_ICON_MAP = {
-  sop:'clipboard', org:'users', 'id-card':'idcard', 'hr-profile':'user',
+  sop:'clipboard', org:'users', 'id-card':'idcard', 'hr-profile':'user', assets:'box',
   dashboard:'grid', report:'chart', employees:'users', attendance:'clock', 'hod-attendance':'clock', checkin:'clock',
   schedule:'calendar', 'schedule-approval':'calendarCheck', 'leave-request':'calendarCheck', 'leave-approval':'calendarCheck',
   'kpi':'chart', 'kpi-approval':'chart',
@@ -2449,6 +2470,7 @@ function navItemsFor(role){
       {v:'sop', label:'SOP & Peraturan'},
       {v:'org', label:'Struktur Organisasi'},
       {v:'id-card', label:'e-ID Card'},
+      {v:'assets', label:'Aset Inventaris'},
       {v:'notif-settings', label:'Notifikasi'},
       {v:'hr-profile', label:'Profil Saya'},
       {v:'settings', label:'Pengaturan'}
@@ -2462,6 +2484,7 @@ function navItemsFor(role){
       {v:'report', label:'Laporan & Grafik'},
       {v:'schedule', label:'Atur Jadwal Tim'},
       {v:'kpi', label:'KPI Tim'},
+      {v:'assets', label:'Aset Inventaris'},
       {v:'leave-request', label:'Pengajuan Cuti'},
       {v:'overtime-request', label:'Pengajuan Lembur'},
       {v:'form-request', label:'Form & Approval'},
@@ -2503,7 +2526,7 @@ function navItemsFor(role){
 function navGroupsFor(role){
   if(role==='hr'){
     return {top:['dashboard'], groups:[
-      {id:'sdm', label:'SDM', views:['employees','attendance','report','payroll','org','id-card']},
+      {id:'sdm', label:'SDM', views:['employees','attendance','report','payroll','org','id-card','assets']},
       {id:'persetujuan', label:'Persetujuan', views:['schedule-approval','kpi-approval','leave-approval','overtime-approval','form-approval']},
       {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','banners','sop']},
       {id:'tugas', label:'Tugas & Aktivitas', views:['todo','accounting','activity-log']},
@@ -2512,7 +2535,7 @@ function navGroupsFor(role){
   }
   if(role==='hod'){
     return {top:['dashboard','checkin'], groups:[
-      {id:'tim', label:'Tim Saya', views:['hod-attendance','report','schedule','kpi']},
+      {id:'tim', label:'Tim Saya', views:['hod-attendance','report','schedule','kpi','assets']},
       {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request']},
       {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','sop','org']},
       {id:'tugas', label:'Tugas & Aktivitas', views:['todo','my-activity']},
@@ -2584,7 +2607,7 @@ function viewTitle(v){
     'schedule-approval':'Persetujuan Jadwal', 'hod-attendance':'Absensi Tim', report:'Laporan & Grafik',
     'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI',
     'overtime-request':'Pengajuan Lembur', 'overtime-approval':'Pengajuan Lembur',
-    banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'Selaras Board', accounting:'Dashboard Accounting', sop:'SOP & Peraturan', org:'Struktur Organisasi', 'id-card':'e-ID Card', 'hr-profile':'Profil Saya', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
+    banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'Selaras Board', accounting:'Dashboard Accounting', assets:'Aset Inventaris', sop:'SOP & Peraturan', org:'Struktur Organisasi', 'id-card':'e-ID Card', 'hr-profile':'Profil Saya', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
   };
   return map[v] || 'Sistem HR';
 }
@@ -2626,6 +2649,7 @@ function renderShell(){
     else if(STATE.view==='todo') body = renderTodoPage();
     else if(STATE.view==='accounting') body = renderAccountingPage();
     else if(STATE.view==='sop') body = renderSopPage();
+    else if(STATE.view==='assets') body = renderAssetsPage();
     else if(STATE.view==='org') body = renderOrgPage();
     else if(STATE.view==='id-card') body = renderIdCardPage();
     else if(STATE.view==='hr-profile' && SESSION.role==='hr') body = renderHrProfilePage();
@@ -2647,6 +2671,7 @@ function renderShell(){
     else if(STATE.view==='todo') body = renderTodoPage();
     else if(STATE.view==='accounting') body = renderAccountingPage();
     else if(STATE.view==='sop') body = renderSopPage();
+    else if(STATE.view==='assets') body = renderAssetsPage();
     else if(STATE.view==='org') body = renderOrgPage();
     else if(STATE.view==='id-card') body = renderIdCardPage();
     else if(STATE.view==='hr-profile' && SESSION.role==='hr') body = renderHrProfilePage();
@@ -2669,6 +2694,7 @@ function renderShell(){
     else if(STATE.view==='todo') body = renderTodoPage();
     else if(STATE.view==='accounting') body = renderAccountingPage();
     else if(STATE.view==='sop') body = renderSopPage();
+    else if(STATE.view==='assets') body = renderAssetsPage();
     else if(STATE.view==='org') body = renderOrgPage();
     else if(STATE.view==='id-card') body = renderIdCardPage();
     else if(STATE.view==='hr-profile' && SESSION.role==='hr') body = renderHrProfilePage();
@@ -2683,9 +2709,9 @@ function renderShell(){
   '<div class="shell'+(STATE.sidebarHidden?' sidebar-collapsed':'')+'">'+
     '<div class="sidebar '+(STATE.sidebarOpen?'open':'')+'">'+
       '<div class="sidebar-brand">'+
-        '<div style="display:flex;align-items:center;gap:10px;">'+
-          '<img src="'+LOGO_DATA_URI+'" alt="" style="width:34px;height:34px;border-radius:10px;flex-shrink:0;">'+
-          '<div><div class="name">ABC Selaras</div>'+
+        '<div class="sb-brand-row">'+
+          '<img src="'+LOGO_DATA_URI+'" alt="" class="sb-logo">'+
+          '<div class="sb-brand-text"><div class="name">ABC Selaras</div>'+
           '<div class="role">'+escapeHtml(DB.company.name)+'</div></div>'+
           '<button class="sidebar-close" data-action="toggle-sidebar" aria-label="Tutup menu">&times;</button>'+
         '</div>'+
@@ -2711,7 +2737,7 @@ function renderShell(){
           (needsMonthPicker(STATE.view) ? '<input type="month" class="month-input" id="topbarMonth" value="'+STATE.currentMonth+'">' : '')+
         '</div>'+
       '</div>'+
-      '<div class="content">'+body+'<input type="file" id="photoFile" accept="image/*" style="display:none;"></div>'+
+      '<div class="content">'+(STATE.view==='dashboard' && iosNeedsInstall() && !iosGuideDismissed() ? iosInstallGuideHtml(true) : '')+body+'<input type="file" id="photoFile" accept="image/*" style="display:none;"></div>'+
       chatFabHtml()+
       '<div class="app-footer no-print">'+creditHtml()+'</div>'+
     '</div>'+
@@ -6272,6 +6298,17 @@ function checkAppUpdate(force){
 function nativeLocalNotif(){
   try{ return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.LocalNotifications) || null; }catch(e){ return null; }
 }
+function isIOS(){ var u = navigator.userAgent||''; return /iPhone|iPad|iPod/i.test(u) || (/Macintosh/.test(u) && (navigator.maxTouchPoints||0) > 1); }
+function isStandalonePwa(){ try{ return navigator.standalone===true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches); }catch(e){ return false; } }
+function iosNeedsInstall(){ return isIOS() && !isNativeApp() && !isStandalonePwa(); }
+function iosGuideDismissed(){ try{ return localStorage.getItem('abcIosGuide')==='1'; }catch(e){ return false; } }
+function iosInstallGuideHtml(compact){
+  return '<div class="ios-guide'+(compact?' compact':'')+'"><div class="ios-guide-title">📱 Pasang ABC Selaras di iPhone agar notifikasi masuk</div>'+
+    '<ol><li>Buka <b>abcselaras.my.id/web</b> di <b>Safari</b>.</li><li>Ketuk tombol <b>Bagikan</b> <span class="ios-share">⬆︎</span> di bawah layar.</li><li>Pilih <b>Tambah ke Layar Utama</b> (Add to Home Screen) → <b>Tambah</b>.</li>'+
+    '<li>Buka ABC Selaras dari <b>ikon di layar utama</b>, login, lalu ketuk <b>Aktifkan Notifikasi Perangkat</b>.</li></ol>'+
+    '<div class="muted" style="font-size:12px;">Butuh iOS 16.4 atau lebih baru. Notifikasi iPhone hanya bisa lewat aplikasi yang dipasang dari Safari, bukan dari tab browser biasa.</div>'+
+    (compact ? '<button class="btn btn-ghost btn-sm" data-action="ios-guide-dismiss" style="margin-top:6px;">Nanti saja</button>' : '')+'</div>';
+}
 function deviceNotifSupported(){ return isNativeApp() || ('Notification' in window); }
 function deviceNotifGranted(){
   if(isNativeApp()) return !!STATE.nativeNotifGranted;
@@ -6383,7 +6420,9 @@ function renderNotifSettingsPage(){
   }).join('');
 
   var deviceStatus, deviceBtn = '';
-  if(!deviceNotifSupported()){
+  if(iosNeedsInstall()){
+    deviceStatus = iosInstallGuideHtml(false);
+  } else if(!deviceNotifSupported()){
     deviceStatus = 'Perangkat/browser ini tidak mendukung notifikasi sistem. Notifikasi tetap muncul di ikon lonceng.';
   } else if(deviceNotifGranted()){
     deviceStatus = 'Aktif di perangkat ini. '+(isNativeApp() ? 'Pemberitahuan baru muncul di bilah notifikasi Android selama aplikasi berjalan.' : (pushConfigured() ? 'Push tetap diterima walau situs ditutup.' : 'Muncul saat situs/tab terbuka di latar belakang.'));
@@ -6481,11 +6520,87 @@ function renderNotifBroadcastCard(){
       '<optgroup label="Karyawan">'+emps.map(function(e){ return '<option value="emp:'+e.id+'">'+escapeHtml(e.name)+'</option>'; }).join('')+'</optgroup></select></div>'+
     '<div class="form-group"><label>Buka halaman saat diklik</label><select id="nb_link">'+NB_LINKS.map(function(l){ return '<option value="'+l[0]+'">'+l[1]+'</option>'; }).join('')+'</select></div></div>'+
     '<div class="form-group"><label>Pesan</label><textarea id="nb_msg" rows="3" maxlength="300" placeholder="Contoh: Besok briefing jam 08.00 di lobby Padi Heritage."></textarea></div>'+
+    '<div class="form-row"><div class="form-group"><label>Waktu kirim</label><select id="nb_freq"><option value="now">Kirim sekarang</option><option value="once">Sekali, pada tanggal &amp; jam tertentu</option><option value="daily">Setiap hari</option><option value="weekly">Setiap minggu</option><option value="monthly">Setiap bulan</option></select></div>'+
+      '<div class="form-group" data-nsf="once" style="display:none;"><label>Tanggal</label><input type="date" id="nb_date" value="'+todayISO()+'"></div>'+
+      '<div class="form-group" data-nsf="weekly" style="display:none;"><label>Hari</label><select id="nb_wday">'+NS_DAYS.map(function(d, i){ return '<option value="'+i+'"'+(i===1?' selected':'')+'>'+d+'</option>'; }).join('')+'</select></div>'+
+      '<div class="form-group" data-nsf="monthly" style="display:none;"><label>Tanggal tiap bulan</label><select id="nb_mday">'+Array.apply(null, Array(31)).map(function(_, i){ return '<option value="'+(i+1)+'"'+(i===0?' selected':'')+'>'+(i+1)+(i>=28?' (atau akhir bulan)':'')+'</option>'; }).join('')+'</select></div>'+
+      '<div class="form-group" data-nsf="once daily weekly monthly" style="display:none;"><label>Jam (WIB)</label><input type="time" id="nb_time" value="08:00"></div></div>'+
     '<button class="btn btn-primary" data-action="notif-broadcast-send">Kirim Notifikasi</button>'+
+    renderNotifSchedulesHtml()+
     (hist.length ? '<div class="table-wrap" style="margin-top:16px;"><table><thead><tr><th>Waktu</th><th>Ke</th><th>Pesan</th><th class="num">Penerima</th></tr></thead><tbody>'+
       hist.map(function(h){ return '<tr><td style="white-space:nowrap;">'+escapeHtml(formatDateID(h.createdAt.slice(0,10)))+' '+h.createdAt.slice(11,16)+'</td><td>'+escapeHtml(h.targetLabel)+'</td><td>'+escapeHtml(h.message)+'</td><td class="num">'+h.count+'</td></tr>'; }).join('')+
       '</tbody></table></div>' : '')+
   '</div>';
+}
+
+/* ---------------------------- NOTIFIKASI TERJADWAL ---------------------------- */
+var NS_DAYS = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+var NS_WIB = 7*3600*1000;
+function nsWib(ms){ var d = new Date(ms + NS_WIB); return {y:d.getUTCFullYear(), m:d.getUTCMonth(), d:d.getUTCDate(), wd:d.getUTCDay(), iso:d.toISOString().slice(0,10)}; }
+function nsOccMs(y, m, d, hm){ var p = String(hm||'08:00').split(':'); return Date.UTC(y, m, d, +p[0]||0, +p[1]||0) - NS_WIB; }
+/* kunci kejadian yang jatuh tempo sekarang (null kalau belum/tidak ada) */
+function nsDueKey(s, nowMs){
+  if(!s || s.deleted || s.active===false) return null;
+  var created = Date.parse(s.createdAt||'') || 0;
+  if(s.freq==='once'){
+    if(s.lastKey || !s.date) return null;
+    var dp = String(s.date).split('-'), occ = nsOccMs(+dp[0], (+dp[1])-1, +dp[2], s.time);
+    return nowMs >= occ ? s.date : null;
+  }
+  var w = nsWib(nowMs), match = false;
+  if(s.freq==='daily') match = true;
+  else if(s.freq==='weekly') match = w.wd===(+s.weekday||0);
+  else if(s.freq==='monthly'){ var dim = new Date(Date.UTC(w.y, w.m+1, 0)).getUTCDate(); match = w.d===Math.min(+s.monthDay||1, dim); }
+  if(!match) return null;
+  var occ2 = nsOccMs(w.y, w.m, w.d, s.time);
+  if(nowMs < occ2 || occ2 < created - 60000 || s.lastKey===w.iso) return null;
+  return w.iso;
+}
+function nsLabel(s){
+  var t = ' pukul '+(s.time||'08:00')+' WIB';
+  if(s.freq==='once') return 'Sekali, '+formatDateID(s.date)+t;
+  if(s.freq==='daily') return 'Setiap hari'+t;
+  if(s.freq==='weekly') return 'Setiap '+NS_DAYS[+s.weekday||0]+t;
+  if(s.freq==='monthly') return 'Setiap tanggal '+(s.monthDay||1)+t;
+  return '-';
+}
+function nsSend(s, key){
+  var to = nbRecipients(s.target);
+  var text = 'Pesan HR'+(s.fromName ? ' ('+s.fromName+')' : '')+': '+s.message;
+  to.forEach(function(e){ addNotification({type:'emp', empId:e.id}, text, s.link||null, 'hrmsg'); });
+  s.lastKey = key; s.lastRunAt = new Date().toISOString(); s.sentCount = (s.sentCount||0) + 1; s.updatedAt = s.lastRunAt;
+  if(s.freq==='once') s.active = false;
+  DB.notifBroadcasts = DB.notifBroadcasts || [];
+  DB.notifBroadcasts.unshift({id:uid('NB'), target:s.target, targetLabel:nbTargetLabel(s.target), message:s.message, link:s.link, count:to.length, by:'Jadwal: '+nsLabel(s), createdAt:s.lastRunAt});
+  DB.notifBroadcasts = DB.notifBroadcasts.slice(0,100);
+  return to.length;
+}
+function runDueSchedules(nowMs){
+  if(!DB || !DB.notifSchedules || !DB.notifSchedules.length) return 0;
+  var n = 0; nowMs = nowMs || Date.now();
+  DB.notifSchedules.forEach(function(s){ var k = nsDueKey(s, nowMs); if(k){ nsSend(s, k); n++; } });
+  return n;
+}
+function nsFieldsSync(){
+  var f = document.getElementById('nb_freq'); if(!f) return;
+  var v = f.value;
+  Array.prototype.forEach.call(document.querySelectorAll('[data-nsf]'), function(el){
+    el.style.display = el.getAttribute('data-nsf').split(' ').indexOf(v)!==-1 ? '' : 'none';
+  });
+  var b = document.querySelector('[data-action="notif-broadcast-send"]'); if(b) b.textContent = v==='now' ? 'Kirim Notifikasi' : 'Simpan Jadwal';
+}
+function renderNotifSchedulesHtml(){
+  var list = (DB.notifSchedules||[]).filter(function(s){ return !s.deleted; });
+  if(!list.length) return '';
+  return '<div class="card-title" style="margin-top:20px;">Notifikasi Terjadwal</div>'+
+    '<div class="table-wrap"><table><thead><tr><th>Jadwal</th><th>Ke</th><th>Pesan</th><th>Status</th><th class="num">Terkirim</th><th></th></tr></thead><tbody>'+
+    list.map(function(s){
+      var st = s.active===false ? (s.freq==='once' && s.lastKey ? '<span class="badge badge-success">Selesai</span>' : '<span class="badge badge-neutral">Dijeda</span>') : '<span class="badge badge-info">Aktif</span>';
+      return '<tr><td style="min-width:150px;">'+escapeHtml(nsLabel(s))+'</td><td>'+escapeHtml(nbTargetLabel(s.target))+'</td><td>'+escapeHtml(s.message)+'</td><td>'+st+'</td><td class="num">'+(s.sentCount||0)+'&times;</td>'+
+        '<td style="white-space:nowrap;">'+(s.freq==='once' && s.lastKey ? '' : '<button class="btn btn-ghost btn-sm" data-action="ns-toggle" data-id="'+s.id+'">'+(s.active===false?'Aktifkan':'Jeda')+'</button>')+
+        '<button class="btn btn-ghost btn-sm" style="color:var(--danger);" data-action="ns-del" data-id="'+s.id+'">Hapus</button></td></tr>';
+    }).join('')+'</tbody></table></div>'+
+    '<div class="card-sub" style="margin-top:8px;">Jadwal dijalankan otomatis oleh server tiap ~10 menit (waktu WIB), jadi notifikasi bisa terkirim beberapa menit setelah jam yang diatur.</div>';
 }
 
 /* ---------------------------- PERINGATAN ABSEN ---------------------------- */
@@ -7941,6 +8056,171 @@ function setHrPhotoFromFile(file){
     .catch(function(){ toast('Gagal mengunggah foto.'); return false; });
 }
 
+/* ---------------------------- ASET INVENTARIS ---------------------------- */
+var AS_CATS = ['Elektronik','Komputer & IT','Furnitur','Peralatan Dapur','Peralatan Kantor','Kendaraan','Mesin & Teknik','Linen & Amenities','Dekorasi','Lainnya'];
+var AS_COND = [['baik','Baik','badge-success'],['rusak_ringan','Rusak Ringan','badge-warning'],['rusak_berat','Rusak Berat','badge-danger'],['hilang','Hilang','badge-danger']];
+var AS_STAT = [['dipakai','Dipakai','badge-info'],['tersedia','Tersedia','badge-success'],['dipinjam','Dipinjam','badge-warning'],['perbaikan','Dalam Perbaikan','badge-warning'],['dihapus','Dihapusbukukan','badge-neutral']];
+function asLbl(list, k){ var f = list.filter(function(x){ return x[0]===k; })[0]; return f || list[0]; }
+function canAssets(){ return SESSION.role==='hr' || (SESSION.role==='hod' && getHodDepartments(SESSION.empId).length>0); }
+function assetDepts(){
+  if(SESSION.role==='hr'){ var d = getDepartments().slice(); activeEmployees().forEach(function(e){ if(e.department && d.indexOf(e.department)===-1) d.push(e.department); }); return d; }
+  return SESSION.role==='hod' ? getHodDepartments(SESSION.empId) : [];
+}
+function assetCanEdit(a){ return SESSION.role==='hr' || (a && assetDepts().indexOf(a.dept)!==-1); }
+function assetsAll(){ var ds = assetDepts(); return (DB.assets||[]).filter(function(a){ return !a.deleted && (SESSION.role==='hr' || ds.indexOf(a.dept)!==-1); }); }
+function assetBookValue(a, atMs){
+  var p = +a.price||0, life = +a.lifeYears||0;
+  if(!p || !life || !a.purchaseDate) return p;
+  var yrs = ((atMs||Date.now()) - Date.parse(a.purchaseDate)) / (365.25*86400000);
+  return Math.max(0, Math.round(p * (1 - Math.max(0, yrs)/life)));
+}
+function assetAttention(a){
+  var t = todayISO(), out = [];
+  if(a.condition==='rusak_ringan' || a.condition==='rusak_berat') out.push('Rusak');
+  if(a.condition==='hilang') out.push('Hilang');
+  if(a.status==='perbaikan') out.push('Perbaikan');
+  if(a.nextService && a.nextService <= t) out.push('Servis jatuh tempo');
+  if(a.warrantyUntil && a.warrantyUntil >= t && (Date.parse(a.warrantyUntil)-Date.now()) < 30*86400000) out.push('Garansi segera habis');
+  return out;
+}
+function assetNextCode(dept){
+  var pre = 'AST-'+(String(dept||'UMUM').replace(/[^A-Za-z]/g,'').slice(0,3).toUpperCase()||'UMM')+'-';
+  var n = 0; (DB.assets||[]).forEach(function(a){ if(String(a.code||'').indexOf(pre)===0){ n = Math.max(n, parseInt(a.code.slice(pre.length),10)||0); } });
+  return pre + ('000'+(n+1)).slice(-4);
+}
+function assetFiltered(){
+  var f = STATE.asF || {}, q = String(f.q||'').toLowerCase();
+  return assetsAll().filter(function(a){
+    if(f.dept && a.dept!==f.dept) return false;
+    if(f.prop && a.property!==f.prop) return false;
+    if(f.cat && a.category!==f.cat) return false;
+    if(f.cond && a.condition!==f.cond) return false;
+    if(f.stat && a.status!==f.stat) return false;
+    if(f.att && !assetAttention(a).length) return false;
+    if(q){ var h = getEmployee(a.holderEmpId); if((a.code+' '+a.name+' '+(a.brand||'')+' '+(a.model||'')+' '+(a.serial||'')+' '+(a.location||'')+' '+(h?h.name:'')).toLowerCase().indexOf(q)===-1) return false; }
+    return true;
+  }).sort(function(x,y){ return String(x.code).localeCompare(String(y.code)); });
+}
+function renderAssetsPage(){
+  if(!canAssets()) return '<div class="card"><div class="empty-state">Halaman ini untuk HOD / Manager dan HR.</div></div>';
+  var all = assetsAll(), list = assetFiltered(), f = STATE.asF || {}, ds = assetDepts();
+  var tot = all.filter(function(a){ return a.status!=='dihapus'; });
+  var val = tot.reduce(function(s,a){ return s+(+a.price||0); },0), bv = tot.reduce(function(s,a){ return s+assetBookValue(a); },0);
+  var att = tot.filter(function(a){ return assetAttention(a).length; }).length;
+  var opt = function(id, lbl, arr, cur){ return '<select id="'+id+'" data-asf="1"><option value="">'+lbl+'</option>'+arr.map(function(x){ var v = Array.isArray(x)?x[0]:x, t = Array.isArray(x)?x[1]:x; return '<option value="'+escapeHtml(v)+'"'+(cur===v?' selected':'')+'>'+escapeHtml(t)+'</option>'; }).join('')+'</select>'; };
+  var head = '<div class="toolbar no-print" style="flex-wrap:wrap;gap:8px;"><div class="toolbar-left" style="gap:8px;flex-wrap:wrap;">'+
+      '<input type="search" id="asQ" class="sop-search" style="max-width:260px;" placeholder="Cari kode, nama, serial, pemegang..." value="'+escapeHtml(f.q||'')+'">'+
+      (ds.length>1 ? opt('asf_dept','Semua departemen',ds,f.dept) : '')+opt('asf_prop','Semua properti',getProperties(),f.prop)+opt('asf_cat','Semua kategori',AS_CATS,f.cat)+
+      opt('asf_cond','Semua kondisi',AS_COND,f.cond)+opt('asf_stat','Semua status',AS_STAT,f.stat)+'</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm" data-action="as-new">+ Tambah Aset</button>'+
+    '<button class="btn btn-secondary btn-sm" data-action="as-labels">Cetak Label QR</button><button class="btn btn-secondary btn-sm" data-action="as-xlsx">Unduh Excel</button></div></div>';
+  var stats = '<div class="grid grid-4">'+
+    '<div class="stat-card"><div class="label">Total Aset</div><div class="value">'+tot.length+'</div><div class="sub">'+all.filter(function(a){ return a.status==='dihapus'; }).length+' dihapusbukukan</div></div>'+
+    '<div class="stat-card"><div class="label">Nilai Perolehan</div><div class="value" style="font-size:20px;">'+rupiah(val)+'</div></div>'+
+    '<div class="stat-card"><div class="label">Nilai Buku (penyusutan)</div><div class="value" style="font-size:20px;">'+rupiah(bv)+'</div></div>'+
+    '<div class="stat-card'+(att?' as-att':'')+'" data-action="as-att" style="cursor:pointer;"><div class="label">Perlu Perhatian</div><div class="value">'+att+'</div><div class="sub">'+(f.att?'Tampilkan semua':'rusak, perbaikan, servis, garansi')+'</div></div></div>';
+  var catsUsed = AS_CATS.filter(function(c){ return tot.some(function(a){ return a.category===c; }); });
+  var chart = catsUsed.length ? boardChartCard(svgBarChart('Aset per Kategori & Kondisi', catsUsed, AS_COND.map(function(k){ return {name:k[1], values:catsUsed.map(function(c){ return tot.filter(function(a){ return a.category===c && a.condition===k[0]; }).length; })}; }), fmtCount)) : '';
+  var rows = list.map(function(a){
+    var h = getEmployee(a.holderEmpId), c = asLbl(AS_COND, a.condition), st = asLbl(AS_STAT, a.status), at = assetAttention(a);
+    return '<tr class="as-row" data-action="as-detail" data-id="'+a.id+'"><td style="white-space:nowrap;"><b>'+escapeHtml(a.code)+'</b>'+(at.length?'<div><span class="badge badge-warning" style="font-size:10.5px;">'+escapeHtml(at[0])+'</span></div>':'')+'</td>'+
+      '<td class="rk-title"><b>'+escapeHtml(a.name)+'</b><span>'+escapeHtml([a.brand,a.model].filter(Boolean).join(' ')+(a.serial?' · SN '+a.serial:''))+'</span></td>'+
+      '<td>'+escapeHtml(a.category||'-')+'</td><td>'+escapeHtml(a.dept||'-')+'</td><td>'+escapeHtml([a.property,a.location].filter(Boolean).join(' · ')||'-')+'</td>'+
+      '<td>'+escapeHtml(h?h.name:'-')+'</td><td><span class="badge '+c[2]+'">'+c[1]+'</span></td><td><span class="badge '+st[2]+'">'+st[1]+'</span></td>'+
+      '<td class="num" style="white-space:nowrap;">'+rupiah(assetBookValue(a))+'</td></tr>';
+  }).join('');
+  var table = '<div class="card rk-table-card"><div class="rk-table-wrap"><table class="rk-table"><thead><tr><th>Kode</th><th>Nama Aset</th><th>Kategori</th><th>Departemen</th><th>Lokasi</th><th>Pemegang</th><th>Kondisi</th><th>Status</th><th class="num">Nilai Buku</th></tr></thead><tbody>'+
+    (rows || '<tr><td colspan="9"><div class="empty-state">'+(all.length?'Tidak ada aset yang cocok dengan filter.':'Belum ada aset. Klik <b>+ Tambah Aset</b> untuk mulai mendata inventaris departemen.')+'</div></td></tr>')+'</tbody></table></div></div>';
+  return head + stats + chart + table + '<div class="card-sub" style="margin-top:8px;">Ketuk baris untuk melihat detail, riwayat, mutasi, dan catatan perbaikan.</div>';
+}
+function assetFormHtml(a){
+  a = a || {}; var ds = assetDepts(), isNew = !a.id;
+  var emps = activeEmployees().filter(function(e){ return SESSION.role==='hr' || ds.indexOf(e.department)!==-1; }).sort(function(x,y){ return x.name.localeCompare(y.name); });
+  var sel = function(id, arr, cur){ return '<select id="'+id+'">'+arr.map(function(x){ var v = Array.isArray(x)?x[0]:x, t = Array.isArray(x)?x[1]:x; return '<option value="'+escapeHtml(v)+'"'+(cur===v?' selected':'')+'>'+escapeHtml(t)+'</option>'; }).join('')+'</select>'; };
+  var inp = function(id, lbl, v, type, ph){ return '<div class="form-group"><label>'+lbl+'</label><input id="'+id+'" type="'+(type||'text')+'" value="'+escapeHtml(v==null?'':v)+'"'+(ph?' placeholder="'+escapeHtml(ph)+'"':'')+'></div>'; };
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:640px;"><h3>'+(isNew?'Tambah Aset':'Edit Aset '+escapeHtml(a.code))+'</h3>'+
+    inp('as_name','Nama Aset',a.name,'text','Contoh: AC Split 1 PK Lobby')+
+    '<div class="form-row"><div class="form-group"><label>Kategori</label>'+sel('as_cat',AS_CATS,a.category||AS_CATS[0])+'</div>'+
+      '<div class="form-group"><label>Departemen</label>'+sel('as_dept',ds,a.dept||ds[0])+'</div></div>'+
+    '<div class="form-row">'+inp('as_brand','Merek',a.brand)+inp('as_model','Model / Tipe',a.model)+inp('as_serial','No. Seri',a.serial)+'</div>'+
+    '<div class="form-row"><div class="form-group"><label>Properti</label>'+sel('as_prop',[''].concat(getProperties()),a.property||'')+'</div>'+inp('as_loc','Lokasi / Ruangan',a.location,'text','Contoh: Lobby, Dapur, Kamar 203')+'</div>'+
+    '<div class="form-row"><div class="form-group"><label>Pemegang / PIC</label><select id="as_holder"><option value="">(Tidak ada)</option>'+emps.map(function(e){ return '<option value="'+e.id+'"'+(a.holderEmpId===e.id?' selected':'')+'>'+escapeHtml(e.name)+'</option>'; }).join('')+'</select></div>'+
+      '<div class="form-group"><label>Kondisi</label>'+sel('as_cond',AS_COND,a.condition||'baik')+'</div><div class="form-group"><label>Status</label>'+sel('as_stat',AS_STAT,a.status||'dipakai')+'</div></div>'+
+    '<div class="form-row">'+inp('as_pdate','Tanggal Perolehan',a.purchaseDate,'date')+inp('as_price','Harga Perolehan (Rp)',a.price,'number')+inp('as_life','Umur Ekonomis (tahun)',a.lifeYears||'','number','mis. 4')+'</div>'+
+    '<div class="form-row">'+inp('as_vendor','Vendor / Toko',a.vendor)+inp('as_warranty','Garansi sampai',a.warrantyUntil,'date')+inp('as_service','Servis berikutnya',a.nextService,'date')+'</div>'+
+    '<div class="form-group"><label>Catatan</label><textarea id="as_note" rows="2">'+escapeHtml(a.notes||'')+'</textarea></div>'+
+    '<div class="form-group"><label>Foto aset (opsional)</label><input type="file" id="as_photo" accept="image/*"></div>'+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="as-save" data-id="'+(a.id||'')+'">Simpan</button></div></div></div>';
+}
+function assetDetailHtml(a){
+  var h = getEmployee(a.holderEmpId), c = asLbl(AS_COND, a.condition), st = asLbl(AS_STAT, a.status), ed = assetCanEdit(a);
+  var row = function(k, v){ return v ? '<tr><td class="muted" style="width:40%;">'+k+'</td><td>'+v+'</td></tr>' : ''; };
+  var hist = (a.history||[]).slice().reverse().map(function(x){ return '<div class="as-hist"><b>'+escapeHtml(x.type)+'</b> &middot; <span class="muted">'+escapeHtml(formatDateID(String(x.at).slice(0,10)))+' &middot; '+escapeHtml(x.by||'')+'</span><div>'+escapeHtml(x.text)+(x.cost?' &middot; '+rupiah(x.cost):'')+'</div></div>'; }).join('');
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:640px;">'+
+    '<div style="display:flex;gap:14px;align-items:flex-start;">'+(a.photoUrl||a.photoKey ? '<span class="as-photo" data-asphoto="'+a.id+'"></span>' : '')+
+    '<div style="flex:1;min-width:0;"><div class="muted" style="font-size:12px;">'+escapeHtml(a.code)+' &middot; '+escapeHtml(a.category||'')+'</div><h3 style="margin:2px 0 6px;">'+escapeHtml(a.name)+'</h3>'+
+    '<span class="badge '+c[2]+'">'+c[1]+'</span> <span class="badge '+st[2]+'">'+st[1]+'</span> '+assetAttention(a).map(function(t){ return '<span class="badge badge-warning">'+escapeHtml(t)+'</span>'; }).join(' ')+'</div>'+
+    '<svg viewBox="0 0 96 96" width="88" height="88" class="as-qr">'+idcQrSvg('ABC-ASET|'+a.code+'|'+a.name, 0, 0, 96)+'</svg></div>'+
+    '<div class="table-wrap" style="margin-top:12px;"><table><tbody>'+
+      row('Departemen', escapeHtml(a.dept||''))+row('Properti / Lokasi', escapeHtml([a.property,a.location].filter(Boolean).join(' · ')))+row('Pemegang', escapeHtml(h?h.name:''))+
+      row('Merek / Model', escapeHtml([a.brand,a.model].filter(Boolean).join(' ')))+row('No. Seri', escapeHtml(a.serial||''))+
+      row('Perolehan', a.purchaseDate ? escapeHtml(formatDateID(a.purchaseDate))+(a.vendor?' &middot; '+escapeHtml(a.vendor):'') : '')+
+      row('Harga perolehan', a.price ? rupiah(+a.price) : '')+row('Nilai buku saat ini', a.price ? rupiah(assetBookValue(a))+(a.lifeYears?' <span class="muted">(umur '+a.lifeYears+' th)</span>':'') : '')+
+      row('Garansi s/d', a.warrantyUntil ? escapeHtml(formatDateID(a.warrantyUntil)) : '')+row('Servis berikutnya', a.nextService ? escapeHtml(formatDateID(a.nextService)) : '')+
+      row('Audit terakhir', a.lastAudit ? escapeHtml(formatDateID(a.lastAudit)) : '')+row('Catatan', escapeHtml(a.notes||''))+
+    '</tbody></table></div>'+
+    (ed ? '<div class="card-title" style="margin-top:14px;font-size:14px;">Catat Kegiatan</div><div class="form-row"><div class="form-group"><label>Jenis</label><select id="ash_type"><option>Perbaikan</option><option>Servis</option><option>Audit / Cek Fisik</option><option>Peminjaman</option><option>Pengembalian</option><option>Catatan</option></select></div>'+
+      '<div class="form-group"><label>Biaya (opsional)</label><input id="ash_cost" type="number"></div></div><div class="form-group"><label>Keterangan</label><input id="ash_text" placeholder="Contoh: Ganti kapasitor, sudah normal"></div>'+
+      '<button class="btn btn-secondary btn-sm" data-action="as-log" data-id="'+a.id+'">Simpan Kegiatan</button>' : '')+
+    '<div class="card-title" style="margin-top:16px;font-size:14px;">Riwayat</div>'+(hist || '<div class="muted" style="font-size:13px;">Belum ada riwayat.</div>')+
+    '<div class="modal-actions">'+(ed ? '<button class="btn btn-ghost" style="color:var(--danger);margin-right:auto;" data-action="as-del" data-id="'+a.id+'">Hapus</button><button class="btn btn-secondary" data-action="as-edit" data-id="'+a.id+'">Edit</button>' : '')+
+    '<button class="btn btn-primary" data-action="close-modal">Tutup</button></div></div></div>';
+}
+function assetHydratePhoto(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-asphoto]'), function(el){
+    var a = (DB.assets||[]).filter(function(x){ return x.id===el.getAttribute('data-asphoto'); })[0]; if(!a) return;
+    resolveAttachmentSrc(a.photoKey, a.photoUrl).then(function(src){ if(src) el.innerHTML = '<img src="'+escapeHtml(src)+'" alt="">'; }).catch(function(){});
+  });
+}
+function assetLabelsPrint(list){
+  if(!list.length){ toast('Tidak ada aset untuk dicetak.'); return; }
+  idcLoadQr();
+  var html = '<!doctype html><html><head><meta charset="utf-8"><title>Label Aset</title><style>@page{size:A4;margin:10mm}body{margin:0;font-family:Arial,sans-serif;display:grid;grid-template-columns:repeat(3,1fr);gap:4mm}'+
+    '.lb{border:0.3mm solid #999;border-radius:2mm;padding:3mm;display:flex;gap:3mm;align-items:center;break-inside:avoid;height:26mm;box-sizing:border-box}.lb svg{width:20mm;height:20mm;flex:0 0 20mm}'+
+    '.t{font-size:8pt;line-height:1.25;min-width:0}.t b{font-size:9.5pt;display:block}.c{color:#555}</style></head><body>'+
+    list.map(function(a){ return '<div class="lb"><svg viewBox="0 0 96 96">'+idcQrSvg('ABC-ASET|'+a.code+'|'+a.name,0,0,96)+'</svg><div class="t"><b>'+escapeHtml(a.code)+'</b>'+escapeHtml(a.name)+'<div class="c">'+escapeHtml([a.dept,a.property].filter(Boolean).join(' · '))+'</div><div class="c">Milik '+escapeHtml((DB.company&&DB.company.name)||'ABC Hospitality Group')+'</div></div></div>'; }).join('')+'</body></html>';
+  var fr = document.createElement('iframe'); fr.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;'; document.body.appendChild(fr);
+  try{ var dd = fr.contentWindow.document; dd.open(); dd.write(html); dd.close();
+    setTimeout(function(){ try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(e){ toast('Cetak tidak didukung di perangkat ini.'); } setTimeout(function(){ fr.remove(); }, 2000); }, 400);
+  }catch(e){ fr.remove(); toast('Cetak tidak didukung di perangkat ini.'); }
+}
+function assetXlsx(){
+  var list = assetFiltered();
+  var rows = [['Kode','Nama Aset','Kategori','Departemen','Properti','Lokasi','Pemegang','Merek','Model','No. Seri','Kondisi','Status','Tgl Perolehan','Harga Perolehan','Umur (th)','Nilai Buku','Vendor','Garansi s/d','Servis Berikutnya','Catatan']];
+  list.forEach(function(a){ var h = getEmployee(a.holderEmpId); rows.push([a.code,a.name,a.category,a.dept,a.property||'',a.location||'',h?h.name:'',a.brand||'',a.model||'',a.serial||'',asLbl(AS_COND,a.condition)[1],asLbl(AS_STAT,a.status)[1],a.purchaseDate||'',+a.price||0,+a.lifeYears||'',assetBookValue(a),a.vendor||'',a.warrantyUntil||'',a.nextService||'',a.notes||'']); });
+  var hist = [['Kode','Nama Aset','Tanggal','Jenis','Keterangan','Biaya','Oleh']];
+  list.forEach(function(a){ (a.history||[]).forEach(function(x){ hist.push([a.code,a.name,String(x.at).slice(0,10),x.type,x.text,+x.cost||'',x.by||'']); }); });
+  downloadXlsx('Aset Inventaris '+todayISO()+'.xlsx', [{name:'Daftar Aset', rows:rows},{name:'Riwayat', rows:hist}]);
+}
+function assetServiceReminders(){
+  if(!canAssets() || STATE.asRemDone) return;
+  STATE.asRemDone = true;
+  var t = todayISO(), changed = false;
+  assetsAll().forEach(function(a){
+    if(a.status==='dihapus' || !a.nextService || a.nextService > t || a.svcNotified===a.nextService) return;
+    a.svcNotified = a.nextService; a.updatedAt = new Date().toISOString(); changed = true;
+    var msg = 'Jadwal servis aset '+a.code+' - '+a.name+' ('+(a.dept||'-')+') jatuh tempo '+formatDateID(a.nextService)+'.';
+    getDepartmentHods(a.dept).forEach(function(id){ addNotification({type:'emp', empId:id}, msg, 'assets', 'general'); });
+    addNotification({type:'hr'}, msg, 'assets', 'general');
+  });
+  if(changed) saveDB(true);
+}
+function assetPushHistory(a, type, text, cost){
+  a.history = a.history || [];
+  a.history.push({at:new Date().toISOString(), by:currentActorLabel(), type:type, text:text, cost:cost||0});
+  if(a.history.length > 200) a.history = a.history.slice(-200);
+}
+
 /* ---------------------------- SINKRONISASI LIVE ---------------------------- */
 var LIVE_POLL_BUSY = false, LIVE_HIDDEN_TICKS = 0;
 var LIVE_STAMP_SEEN = null, LIVE_STAMP_PENDING = null, LIVE_TICKS = 0;
@@ -7966,7 +8246,7 @@ function mergeLiveData(remote){
   DB.notifications = merged.slice(0,200);
 
   DB.todos = mergeById(DB.todos, remote.todos, function(t){ return t.updatedAt || t.createdAt || ''; });
-  ['projects','timesheets','agenda','accJournals','accPOs','accPetty','sops','notifBroadcasts'].forEach(function(k){
+  ['projects','timesheets','agenda','accJournals','accPOs','accPetty','sops','notifBroadcasts','notifSchedules','assets'].forEach(function(k){
     DB[k] = mergeById(DB[k], remote[k], function(x){ return x.updatedAt || x.createdAt || ''; });
   });
   if(remote.accCats){ DB.accCats = DB.accCats || {}; Object.keys(remote.accCats).forEach(function(pr){
@@ -8040,6 +8320,7 @@ function refreshLiveData(){
     var before = {};
     myNotifications().forEach(function(n){ before[n.id] = true; });
     mergeLiveData(remote);
+    if(SESSION.role==='hr' && runDueSchedules(Date.now())) saveDB(true);
     var fresh = myNotifications().filter(function(n){ return !before[n.id] && !n.read; });
     fresh.slice(0,3).forEach(function(n){ systemNotify('ABC Selaras', n.message); });
     if(fresh.length){ toast(fresh[0].message); }
@@ -9452,12 +9733,90 @@ document.addEventListener('click', function(e){
     saveDB().then(function(){ toast('Profil disimpan.'); render(); });
   } else if(action==='hr-photo-remove'){
     var hrT = hrProfileTarget(); hrT.photoKey = null; hrT.photoUrl = null; saveDB().then(function(){ toast('Foto dihapus.'); render(); });
+  } else if(action==='as-new'){
+    if(!canAssets()) return; openModal(assetFormHtml(null));
+  } else if(action==='as-edit'){
+    var aeA = (DB.assets||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
+    if(aeA && assetCanEdit(aeA)) openModal(assetFormHtml(aeA));
+  } else if(action==='as-detail'){
+    var adA = (DB.assets||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
+    if(adA){ openModal(assetDetailHtml(adA)); assetHydratePhoto(); }
+  } else if(action==='as-att'){
+    STATE.asF = STATE.asF || {}; STATE.asF.att = !STATE.asF.att; render();
+  } else if(action==='as-save'){
+    if(!canAssets()) return;
+    var asId = el.getAttribute('data-id'), asName = document.getElementById('as_name').value.trim(), asDept = document.getElementById('as_dept').value;
+    if(!asName){ toast('Isi nama aset.'); return; }
+    if(!asDept || assetDepts().indexOf(asDept)===-1){ toast('Pilih departemen.'); return; }
+    var asA = asId ? (DB.assets||[]).filter(function(x){ return x.id===asId; })[0] : null, asNow = new Date().toISOString(), asOld = asA ? JSON.parse(JSON.stringify(asA)) : null;
+    if(asA && !assetCanEdit(asA)) return;
+    if(!asA){ asA = {id:uid('AS'), code:assetNextCode(asDept), createdAt:asNow, history:[]}; DB.assets = DB.assets || []; DB.assets.unshift(asA); }
+    var gv = function(id){ return (document.getElementById(id)||{}).value || ''; };
+    asA.name = asName.slice(0,120); asA.category = gv('as_cat'); asA.dept = asDept; asA.brand = gv('as_brand').trim(); asA.model = gv('as_model').trim(); asA.serial = gv('as_serial').trim();
+    asA.property = gv('as_prop'); asA.location = gv('as_loc').trim(); asA.holderEmpId = gv('as_holder') || null; asA.condition = gv('as_cond'); asA.status = gv('as_stat');
+    asA.purchaseDate = gv('as_pdate'); asA.price = Math.max(0, +gv('as_price')||0); asA.lifeYears = Math.max(0, +gv('as_life')||0); asA.vendor = gv('as_vendor').trim();
+    asA.warrantyUntil = gv('as_warranty'); if(asA.nextService!==gv('as_service')){ asA.nextService = gv('as_service'); asA.svcNotified = null; } asA.notes = gv('as_note').trim(); asA.updatedAt = asNow;
+    if(!asOld) assetPushHistory(asA, 'Didaftarkan', 'Aset dicatat ke inventaris '+asDept+'.');
+    else {
+      var ch = [];
+      if(asOld.holderEmpId!==asA.holderEmpId){ var o1 = getEmployee(asOld.holderEmpId), n1 = getEmployee(asA.holderEmpId); ch.push('Pemegang: '+(o1?o1.name:'-')+' → '+(n1?n1.name:'-')); }
+      if(asOld.dept!==asA.dept || asOld.property!==asA.property || asOld.location!==asA.location) ch.push('Lokasi: '+[asOld.dept,asOld.property,asOld.location].filter(Boolean).join(' · ')+' → '+[asA.dept,asA.property,asA.location].filter(Boolean).join(' · '));
+      if(asOld.condition!==asA.condition) ch.push('Kondisi: '+asLbl(AS_COND,asOld.condition)[1]+' → '+asLbl(AS_COND,asA.condition)[1]);
+      if(asOld.status!==asA.status) ch.push('Status: '+asLbl(AS_STAT,asOld.status)[1]+' → '+asLbl(AS_STAT,asA.status)[1]);
+      assetPushHistory(asA, ch.length ? 'Mutasi / Perubahan' : 'Diperbarui', ch.length ? ch.join('; ') : 'Data aset diperbarui.');
+    }
+    var asFile = (document.getElementById('as_photo').files||[])[0];
+    var asDone = function(){ STATE.asRemDone = false; logActivity('Aset '+(asOld?'diperbarui':'ditambahkan')+': '+asA.code+' '+asA.name+'.'); closeModal(); saveDB().then(function(){ toast('Aset '+asA.code+' disimpan.'); render(); }); };
+    if(asFile){ toast('Mengunggah foto...'); compressImageFile(asFile, 1000, 0.8).then(function(du){ return uploadAttachment('asset_'+asA.id+'_'+Date.now()+'.jpg', du, 'image/jpeg'); }).then(function(r){ asA.photoKey = r.key; asA.photoUrl = r.url||null; asDone(); }).catch(function(){ toast('Foto gagal diunggah, data tetap disimpan.'); asDone(); }); }
+    else asDone();
+  } else if(action==='as-log'){
+    var alA = (DB.assets||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
+    if(!alA || !assetCanEdit(alA)) return;
+    var alT = document.getElementById('ash_type').value, alX = document.getElementById('ash_text').value.trim();
+    if(!alX){ toast('Isi keterangan kegiatan.'); return; }
+    assetPushHistory(alA, alT, alX, Math.max(0, +document.getElementById('ash_cost').value||0));
+    if(/Audit/.test(alT)) alA.lastAudit = todayISO();
+    alA.updatedAt = new Date().toISOString(); saveDB(); toast('Kegiatan dicatat.'); openModal(assetDetailHtml(alA)); assetHydratePhoto();
+  } else if(action==='as-del'){
+    var dlA = (DB.assets||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
+    if(!dlA || !assetCanEdit(dlA)) return;
+    if(!/jsdom/i.test(navigator.userAgent||'') && !confirm('Hapus aset '+dlA.code+' dari daftar? (Untuk aset yang dijual/dibuang, sebaiknya ubah status ke "Dihapusbukukan".)')) return;
+    dlA.deleted = true; dlA.updatedAt = new Date().toISOString(); logActivity('Aset dihapus: '+dlA.code+' '+dlA.name+'.'); closeModal(); saveDB(); toast('Aset dihapus.'); render();
+  } else if(action==='as-labels'){
+    assetLabelsPrint(assetFiltered());
+  } else if(action==='as-xlsx'){
+    assetXlsx();
+  } else if(action==='ios-guide-dismiss'){
+    try{ localStorage.setItem('abcIosGuide','1'); }catch(e){} render();
+  } else if(action==='ns-toggle' || action==='ns-del'){
+    if(SESSION.role!=='hr') return;
+    var nsS = (DB.notifSchedules||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
+    if(!nsS) return;
+    if(action==='ns-del'){ nsS.deleted = true; } else { nsS.active = nsS.active===false; }
+    nsS.updatedAt = new Date().toISOString();
+    saveDB(); toast(action==='ns-del' ? 'Jadwal dihapus.' : (nsS.active===false ? 'Jadwal dijeda.' : 'Jadwal diaktifkan.')); render();
   } else if(action==='notif-broadcast-send'){
     if(SESSION.role!=='hr') return;
     var nbT = document.getElementById('nb_target').value, nbMsg = document.getElementById('nb_msg').value.trim(), nbLink = document.getElementById('nb_link').value;
     if(!nbMsg){ toast('Tulis pesan notifikasi dulu.'); return; }
     var nbTo = nbRecipients(nbT);
     if(!nbTo.length){ toast('Tidak ada penerima untuk pilihan ini.'); return; }
+    var nbFreq = (document.getElementById('nb_freq')||{}).value || 'now';
+    if(nbFreq!=='now'){
+      var nsNow = new Date().toISOString(), nsAcct = currentHrAccount();
+      var ns = {id:uid('NS'), target:nbT, message:nbMsg.slice(0,300), link:nbLink||'', freq:nbFreq, time:document.getElementById('nb_time').value||'08:00',
+        date:document.getElementById('nb_date').value, weekday:+document.getElementById('nb_wday').value, monthDay:+document.getElementById('nb_mday').value,
+        fromName:nsAcct && nsAcct.name || '', active:true, lastKey:'', sentCount:0, by:currentActorLabel(), createdAt:nsNow, updatedAt:nsNow};
+      if(nbFreq==='once'){
+        if(!ns.date){ toast('Pilih tanggal kirim.'); return; }
+        var nsDp = ns.date.split('-');
+        if(nsOccMs(+nsDp[0], (+nsDp[1])-1, +nsDp[2], ns.time) < Date.now()-60000){ toast('Tanggal & jam sudah lewat.'); return; }
+      }
+      DB.notifSchedules = DB.notifSchedules || []; DB.notifSchedules.unshift(ns);
+      logActivity('Jadwal notifikasi dibuat: '+nsLabel(ns)+' ke '+nbTargetLabel(nbT)+'.');
+      saveDB(); toast('Jadwal disimpan: '+nsLabel(ns)+'.'); render();
+      return;
+    }
     var nbFrom = currentHrAccount(), nbText = 'Pesan HR'+(nbFrom && nbFrom.name ? ' ('+nbFrom.name+')' : '')+': '+nbMsg;
     nbTo.forEach(function(e){ addNotification({type:'emp', empId:e.id}, nbText, nbLink||null, 'hrmsg'); });
     DB.notifBroadcasts = DB.notifBroadcasts || [];
@@ -10603,6 +10962,7 @@ document.addEventListener('input', function(e){
     }
   }
   if(t.getAttribute && t.getAttribute('data-role')==='ckrk'){ ckrkReadRows(); }
+  if(t.id==='asQ'){ STATE.asF = STATE.asF || {}; STATE.asF.q = t.value; clearTimeout(window.__asQt); window.__asQt = setTimeout(function(){ var pos = t.selectionStart; render(); var n = document.getElementById('asQ'); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} } }, 350); }
   if(t.id==='sopSearch'){ var sq = t.value.toLowerCase().trim(); Array.prototype.forEach.call(document.querySelectorAll('.sop-item'), function(it){ it.style.display = !sq || (it.getAttribute('data-q')||'').indexOf(sq)!==-1 ? '' : 'none'; }); }
   if(t.getAttribute && t.getAttribute('data-role')==='checkin-work-note'){
     CHECKIN_DRAFT.workNote = t.value;
@@ -10662,6 +11022,8 @@ document.addEventListener('change', function(e){
   if(t.id==='boardImportFile'){ var biF = t.files && t.files[0]; if(biF) boardImportFromFile(biF); return; }
   if(t.id==='rekapEmp'){ STATE.rekapEmp = t.value; render(); return; }
   if(t.id==='idcEmp'){ STATE.idEmp = t.value; render(); return; }
+  if(t.id==='nb_freq'){ nsFieldsSync(); return; }
+  if(t.getAttribute && t.getAttribute('data-asf')){ STATE.asF = STATE.asF || {}; STATE.asF[t.id.replace('asf_','')] = t.value; render(); return; }
   if(t.id==='erFrom'){ STATE.erFrom = t.value || STATE.currentMonth; render(); return; }
   if(t.id==='erTo'){ STATE.erTo = t.value || STATE.currentMonth; render(); return; }
   if(t.id==='erDept'){ STATE.erDept = t.value; STATE.erEmp = ''; render(); return; }

@@ -1,0 +1,22 @@
+name: Notifikasi Terjadwal
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'   # tiap ~10 menit (GitHub bisa terlambat beberapa menit)
+  workflow_dispatch:
+
+concurrency:
+  group: notif-schedule
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Kirim notifikasi yang jatuh tempo
+        run: node scripts/run-schedules.mjs

@@ -127,11 +127,23 @@ serve(async (req) => {
 
     // Web Push
     if (webPushReady) {
-      const supabase = createClient(SB_URL, SB_ANON_KEY);
-      const { data: subs, error } = await supabase.from("push_subscriptions").select("*").eq("recipient", recipient);
+      const supabase = createClient(SB_URL, SB_SERVICE_KEY || SB_ANON_KEY);
+      const { data: rows, error } = await supabase.from("push_subscriptions").select("*").eq("recipient", recipient);
       if (error) throw error;
-      const payload = JSON.stringify({ title: t, body: b, url: u === "#" ? "/" : u });
-      const results = await Promise.allSettled((subs || []).map((row: any) => webpush.sendNotification(row.subscription, payload)));
+      // satu perangkat bisa tersimpan berkali-kali -> kirim sekali per endpoint
+      const seen = new Set<string>();
+      const subs = (rows || []).filter((r: any) => { const ep = r.subscription && r.subscription.endpoint; if (!ep || seen.has(ep)) return false; seen.add(ep); return true; });
+      const payload = JSON.stringify({ title: t, body: b, url: u === "#" ? "/" : u, icon: "icon-192.png" });
+      const results = await Promise.allSettled(subs.map((row: any) => webpush.sendNotification(row.subscription, payload)));
+      // langganan kedaluwarsa (HP ganti / aplikasi dihapus) dibersihkan otomatis
+      if (SB_SERVICE_KEY) {
+        const dead = subs.filter((_: any, i: number) => { const r: any = results[i]; return r.status === "rejected" && [404, 410].includes(r.reason && r.reason.statusCode); })
+          .map((r: any) => r.subscription.endpoint);
+        if (dead.length) {
+          const all = (rows || []).filter((r: any) => dead.includes(r.subscription && r.subscription.endpoint)).map((r: any) => r.id);
+          if (all.length) await supabase.from("push_subscriptions").delete().in("id", all);
+        }
+      }
       const sent = results.filter((r) => r.status === "fulfilled").length;
       out.sent = sent;
       out.failed = results.length - sent;

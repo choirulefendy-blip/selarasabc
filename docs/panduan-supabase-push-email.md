@@ -672,7 +672,7 @@ itu), ikuti CLI di bawah ini:
 5. Set kunci VAPID (dipakai untuk menandatangani notifikasi) — pakai
    nilai ini persis (sudah dibuatkan, aman dipakai langsung):
    ```
-   supabase secrets set VAPID_PUBLIC_KEY=BMPhKJL68Parug2W_JsJRztuIQjDxd6Pd-OLngatqOWeaxLCj4qkr40_FDyUxsaukvqNTl6YgabVLLHwevtx6rg
+   supabase secrets set VAPID_PUBLIC_KEY=BEJ_hyqNV7WH7f5z36SXL-eV1xKniANE7LVCJt6cnupDhSLCAXTajDfh4JgnmvkVkD878DSkA2vfWhk_FYtGie8
    supabase secrets set VAPID_PRIVATE_KEY=ISI_KUNCI_PRIVAT_ANDA_DI_SINI
    ```
    > Ingin kunci sendiri (opsional, lebih aman)? Jalankan

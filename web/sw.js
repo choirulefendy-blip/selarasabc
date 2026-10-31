@@ -18,8 +18,8 @@ self.addEventListener('push', function(event){
   var title = data.title || 'ABC Selaras';
   var options = {
     body: data.body || '',
-    icon: data.icon || undefined,
-    badge: data.badge || undefined,
+    icon: data.icon || 'icon-192.png',
+    badge: data.badge || 'icon-192.png',
     data: { url: data.url || '/' }
   };
   event.waitUntil(self.registration.showNotification(title, options));
