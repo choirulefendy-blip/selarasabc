@@ -6474,6 +6474,19 @@ function fcmUnregister(){
   STATE.fcmRecipient = null;
   fcmRpc('unregister_fcm_token', {p_token: STATE.fcmToken}).catch(function(){});
 }
+function openLinkFromHash(){
+  var h = String(location.hash||'').replace(/^#/, '');
+  if(!h || !SESSION.role) return;
+  var items = navItemsFor(SESSION.role).map(function(it){ return it.v; });
+  if(items.indexOf(h)!==-1){ STATE.view = h; STATE.notifPanelOpen = false; }
+  try{ history.replaceState(history.state, '', location.pathname + location.search); }catch(e){}
+}
+if('serviceWorker' in navigator){
+  try{ navigator.serviceWorker.addEventListener('message', function(ev){
+    var d = ev.data || {};
+    if(d.type==='notif-open'){ fcmHandleLink(d.link ? '#'+d.link : ''); try{ liveTick(true); }catch(e){} }
+  }); }catch(e){}
+}
 function fcmHandleLink(url){
   if(!SESSION.role) return;
   var link = String(url||'').replace(/^#/, '');
@@ -11706,7 +11719,7 @@ applyDarkModeClass();
 render();
 try{
   loadDB().then(function(){
-    if(STATE.loaded && !STATE.loadError){ restoreSessionFromStorage(); navRestoreView(); }
+    if(STATE.loaded && !STATE.loadError){ restoreSessionFromStorage(); navRestoreView(); openLinkFromHash(); }
     navInit();
     render();
   }).catch(function(err){

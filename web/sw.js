@@ -27,13 +27,18 @@ self.addEventListener('push', function(event){
 
 self.addEventListener('notificationclick', function(event){
   event.notification.close();
-  var targetUrl = (event.notification.data && event.notification.data.url) || '/';
+  /* url dari server berupa '#nama-halaman' atau '/'. Harus diarahkan ke halaman aplikasi
+     (scope service worker), BUKAN relatif ke sw.js — kalau tidak, iPhone membuka isi sw.js. */
+  var raw = (event.notification.data && event.notification.data.url) || '';
+  var scope = self.registration.scope;              /* mis. https://abcselaras.my.id/web/ */
+  var link = String(raw).indexOf('#')===0 ? String(raw).slice(1) : '';
+  var targetUrl = scope + 'index.html' + (link ? '#' + link : '');
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList){
       for(var i=0;i<clientList.length;i++){
         var client = clientList[i];
-        if('focus' in client){
-          client.navigate ? client.navigate(targetUrl) : null;
+        if(client.url && client.url.indexOf(scope)===0 && 'focus' in client){
+          try{ client.postMessage({ type:'notif-open', link: link }); }catch(e){}
           return client.focus();
         }
       }
