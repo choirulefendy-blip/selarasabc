@@ -793,8 +793,10 @@
   .nav-badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--danger);color:#fff;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;}
   @media(min-width:861px){.shell.sidebar-collapsed .sidebar{display:none;}}
   /* ---- Chat ---- */
-  .chat-wrap{display:grid;grid-template-columns:320px 1fr;background:var(--surface-container-low);border-radius:var(--radius);overflow:hidden;height:calc(100vh - 190px);min-height:420px;}
-  .chat-list-pane{border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;}
+  .chat-wrap{display:grid;grid-template-columns:320px minmax(0,1fr);max-width:100%;background:var(--surface-container-low);border-radius:var(--radius);overflow:hidden;height:calc(100vh - 190px);min-height:420px;}
+  .chat-list-pane{border-right:1px solid var(--border);display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;}
+  .chat-thread-pane{min-width:0;}
+  .chat-list{min-width:0;overflow-x:hidden;}
   .chat-search{padding:12px;}
   .chat-search input{width:100%;box-sizing:border-box;}
   .chat-list{overflow-y:auto;flex:1;}
@@ -826,7 +828,7 @@
   .chat-compose textarea{flex:1;resize:none;max-height:120px;border-radius:20px;padding:10px 16px;font:inherit;border:1px solid var(--border);background:var(--surface-container-low);color:var(--text);}
   .chat-empty{margin:auto;text-align:center;color:var(--text-muted);display:flex;flex-direction:column;gap:10px;align-items:center;}
   @media(max-width:860px){
-    .chat-wrap{grid-template-columns:1fr;height:calc(100vh - 170px);}
+    .chat-wrap{grid-template-columns:minmax(0,1fr);height:calc(100vh - 170px);}
     .chat-wrap .chat-thread-pane{display:none;}
     .chat-wrap.has-thread .chat-list-pane{display:none;}
     .chat-wrap.has-thread .chat-thread-pane{display:flex;}
@@ -9922,7 +9924,7 @@ function chatJumpTo(id){
 
 /* tahan lama (HP) & klik kanan (laptop) */
 (function(){
-  var timer = null, startX = 0, startY = 0, fired = false;
+  var timer = null, startX = 0, startY = 0, fired = false, lastTouch = 0;
   function target(t){ return t && t.closest ? t.closest('[data-lp]') : null; }
   function fire(el){
     fired = true;
@@ -9933,21 +9935,30 @@ function chatJumpTo(id){
   }
   document.addEventListener('touchstart', function(e){
     var el = target(e.target); if(!el) return;
-    fired = false; startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    fired = false; lastTouch = Date.now(); startX = e.touches[0].clientX; startY = e.touches[0].clientY;
     clearTimeout(timer); timer = setTimeout(function(){ fire(el); }, 480);
   }, {passive:true});
+  document.addEventListener('touchcancel', function(){ clearTimeout(timer); timer = null; }, {passive:true});
   document.addEventListener('touchmove', function(e){
     if(!timer) return;
     if(Math.abs(e.touches[0].clientX-startX)>10 || Math.abs(e.touches[0].clientY-startY)>10){ clearTimeout(timer); timer = null; }
   }, {passive:true});
-  document.addEventListener('touchend', function(e){ clearTimeout(timer); timer = null; if(fired){ e.preventDefault(); } }, {passive:false});
+  var suppressUntil = 0;
+  document.addEventListener('touchend', function(e){
+    clearTimeout(timer); timer = null;
+    /* hanya sentuhan yang memicu menu yang dibatalkan; ketukan berikutnya (pilih menu) tetap normal */
+    if(fired){ fired = false; suppressUntil = Date.now() + 450; if(e.cancelable) e.preventDefault(); }
+  }, {passive:false});
   document.addEventListener('contextmenu', function(e){
     var el = target(e.target); if(!el) return;
     if(e.target.closest && e.target.closest('textarea,input')) return;
-    e.preventDefault(); fire(el); fired = false;
+    e.preventDefault();
+    /* di HP, tahan lama juga memicu contextmenu: biarkan penanganan sentuh yang bekerja (jangan buka dua kali) */
+    if(Date.now() - lastTouch < 1500) return;
+    fire(el); fired = false;
   });
   document.addEventListener('click', function(e){
-    if(fired && target(e.target)){ e.stopPropagation(); e.preventDefault(); fired = false; }
+    if(Date.now() < suppressUntil && !(e.target.closest && e.target.closest('.sheet'))){ e.stopPropagation(); e.preventDefault(); suppressUntil = 0; }
   }, true);
 })();
 
