@@ -245,6 +245,7 @@
   .chg{margin-bottom:8px;}
   .chg-date{font-size:12px;font-weight:700;color:var(--primary);margin-bottom:2px;}
   .chg ul{margin:0 0 0 18px;padding:0;font-size:13px;line-height:1.65;color:var(--text);}
+  .offline-banner{background:var(--warning-bg);color:var(--warning);padding:10px 16px;font-size:13px;line-height:1.5;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
   .as-row{cursor:pointer;}
   .as-att{outline:2px solid var(--warning);}
   .as-photo{width:84px;height:84px;border-radius:14px;overflow:hidden;background:var(--surface-container-high);flex:0 0 84px;}
@@ -1896,26 +1897,61 @@ function runDBMigrations(){
    server hanya karena koneksi sempat terputus sesaat. Sekarang: kalau
    server TIDAK bisa dihubungi, aplikasi berhenti di layar "Coba Lagi"
    dan TIDAK menulis apa pun sampai berhasil membaca data yang sebenarnya. */
+function remoteGetRetry(key, tries){
+  return remoteGet(key).catch(function(err){
+    if(tries<=1) throw err;
+    return new Promise(function(r){ setTimeout(r, 1500); }).then(function(){ return remoteGetRetry(key, tries-1); });
+  });
+}
+function offlineCacheSave(raw){ try{ localStorage.setItem('abcSelarasCache', raw); localStorage.setItem('abcSelarasCacheAt', new Date().toISOString()); }catch(e){} }
+function offlineCacheGet(){ try{ var v = localStorage.getItem('abcSelarasCache'); return v ? {value:v, at:localStorage.getItem('abcSelarasCacheAt')||''} : null; }catch(e){ return null; } }
+function offlineRetryLoop(){
+  if(window.__offlineRetry) return;
+  var tick = function(){
+    if(!(STATE.offline || STATE.loadError)){ clearInterval(window.__offlineRetry); window.__offlineRetry = null; return; }
+    if(STATE.offlineRetrying) return;
+    STATE.offlineRetrying = true;
+    remoteGet('hrdb').then(function(){ STATE.offlineRetrying = false; return loadDB().then(function(){ if(STATE.loaded && !STATE.loadError && !STATE.offline){ try{ restoreSessionFromStorage(); navRestoreView(); }catch(e){} } render(); }); })
+      .catch(function(){ STATE.offlineRetrying = false; });
+  };
+  window.__offlineRetry = setInterval(tick, 15000);
+  window.addEventListener('online', tick);
+}
+function offlineBannerHtml(){
+  if(!STATE.offline) return '';
+  var at = STATE.offlineAt ? new Date(STATE.offlineAt) : null;
+  return '<div class="offline-banner no-print"><b>Mode offline</b> &mdash; tidak terhubung ke server. Menampilkan data terakhir'+(at && !isNaN(at) ? ' ('+formatDateID(STATE.offlineAt.slice(0,10))+' '+pad2(at.getHours())+':'+pad2(at.getMinutes())+')' : '')+'. Perubahan belum bisa disimpan; aplikasi menyambung ulang otomatis. <button class="btn btn-secondary btn-sm" data-action="retry-load">Coba Sekarang</button></div>';
+}
 function loadDB(){
   STATE.loadError = false;
   if(hasRemoteStorage()){
-    return remoteGet('hrdb').then(function(res){
+    return remoteGetRetry('hrdb', 3).then(function(res){
       STORAGE_MODE = BACKEND==='supabase' ? 'remote-supabase' : 'remote-appsscript';
       if(res && res.value){
         try{ DB = JSON.parse(res.value); }
         catch(e){ DB = seedData(); }
+        offlineCacheSave(res.value);
       } else {
         DB = seedData();
       }
       runDBMigrations();
+      var wasOffline = STATE.offline;
+      STATE.offline = false;
       STATE.loaded = true;
       STATE.loadError = false;
+      if(wasOffline){ toast('Terhubung kembali ke server.'); }
       return saveDB(true);
     }).catch(function(err){
       console.error('Gagal memuat data dari server -- TIDAK menyimpan apa pun supaya data asli di server tidak tertimpa.', err);
+      STATE.loadErrorDetail = String((err && err.message) || err || '');
+      var cache = offlineCacheGet();
+      if(cache){
+        /* buka dengan data terakhir di perangkat (hanya baca) dan terus coba sambung ulang */
+        try{ DB = JSON.parse(cache.value); runDBMigrations(); STATE.loaded = true; STATE.loadError = false; STATE.offline = true; STATE.offlineAt = cache.at; offlineRetryLoop(); return; }catch(e){}
+      }
       STATE.loaded = false;
       STATE.loadError = true;
-      STATE.loadErrorDetail = String((err && err.message) || err || '');
+      offlineRetryLoop();
     });
   }
   return fallbackGet('hrdb').then(function(res){
@@ -1939,6 +1975,10 @@ function loadDB(){
 }
 
 function saveDB(silent){
+  if(STATE.offline){
+    if(!silent) toast('Sedang offline: perubahan belum bisa disimpan. Coba lagi setelah koneksi pulih.');
+    return Promise.reject(new Error('offline'));
+  }
   if(STATE.loadError){
     if(!silent) toast('Tidak bisa menyimpan: data belum berhasil dimuat dari server. Muat ulang halaman dan coba lagi.');
     return Promise.reject(new Error('Menolak menyimpan karena loadDB terakhir gagal (loadError).'));
@@ -2774,6 +2814,7 @@ function renderShell(){
       '</div>'+
     '</div>'+
     '<div class="main">'+
+      offlineBannerHtml()+
       '<div id="updateBannerHolder">'+updateBannerHtml()+'</div>'+
       '<div class="topbar">'+
         '<div style="display:flex;align-items:center;gap:10px;">'+
@@ -8437,6 +8478,7 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-10-31', items:[
+    'Koneksi lebih tahan: coba ulang otomatis & Mode offline (data terakhir tetap tampil saat sinyal hilang)',
     'Hak Akses Staff: HOD/Manager & HR mengatur fitur apa saja yang bisa dibuka staff',
     'Aset Inventaris: impor dari Excel, jumlah unit, kategori Kamera/Audio/Penyimpanan/Kabel',
     'Info aplikasi, link unduh APK, dan catatan pembaruan di halaman Profil',
@@ -8675,7 +8717,7 @@ function refreshLiveData(){
 /* Cek ringan (hanya updated_at) tiap ~5 detik; tarik data penuh hanya bila berubah.
    Setiap 6 putaran (~30 dtk) tetap tarik penuh sebagai jaring pengaman. */
 function liveTick(force){
-  if(!STATE.loaded || STATE.loadError || !SESSION.role || LIVE_POLL_BUSY) return Promise.resolve(false);
+  if(!STATE.loaded || STATE.loadError || STATE.offline || !SESSION.role || LIVE_POLL_BUSY) return Promise.resolve(false);
   if(document.hidden && !force){
     if(!isNativeApp()) return Promise.resolve(false);
     LIVE_HIDDEN_TICKS = (LIVE_HIDDEN_TICKS||0) + 1;
@@ -9974,7 +10016,7 @@ document.addEventListener('click', function(e){
     STATE.loadError = false;
     STATE.loaded = false;
     render();
-    loadDB().then(function(){ render(); });
+    loadDB().then(function(){ if(STATE.loaded && !STATE.loadError && !SESSION.role){ try{ restoreSessionFromStorage(); navRestoreView(); }catch(e){} } render(); });
   } else if(action==='toggle-notifications'){
     STATE.notifPanelOpen = !STATE.notifPanelOpen;
     render();
