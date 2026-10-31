@@ -20,8 +20,8 @@ import webpush from "npm:web-push@3.6.7";
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") || "";
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") || "";
 const SB_URL = Deno.env.get("SB_URL") || Deno.env.get("SUPABASE_URL") || "";
-const SB_ANON_KEY = Deno.env.get("SB_ANON_KEY") || "";
-const SB_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const SB_ANON_KEY = Deno.env.get("SB_ANON_KEY") || Deno.env.get("SUPABASE_ANON_KEY") || "";
+const SB_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SB_SERVICE_KEY") || "";
 const FCM_SA_RAW = Deno.env.get("FCM_SERVICE_ACCOUNT") || "";
 
 const webPushReady = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY);
@@ -101,7 +101,7 @@ async function sendFcm(token: string, accessToken: string, title: string, body: 
         data: { url },
         android: {
           priority: "HIGH",
-          notification: { channel_id: "selaras_default", icon: "ic_stat_selaras", color: "#1565A8" },
+          notification: { channel_id: "selaras_default", icon: "ic_stat_selaras", color: "#296290" },
         },
       },
     }),
@@ -125,8 +125,8 @@ serve(async (req) => {
     const u = url || "#";
     const out: Record<string, unknown> = { ok: true };
 
-    // Web Push
-    if (webPushReady) {
+    // Web Push (iPhone / browser) — kalau gagal, FCM Android tetap dikirim
+    if (webPushReady && SB_URL && (SB_SERVICE_KEY || SB_ANON_KEY)) try {
       const supabase = createClient(SB_URL, SB_SERVICE_KEY || SB_ANON_KEY);
       const { data: rows, error } = await supabase.from("push_subscriptions").select("*").eq("recipient", recipient);
       if (error) throw error;
@@ -147,10 +147,12 @@ serve(async (req) => {
       const sent = results.filter((r) => r.status === "fulfilled").length;
       out.sent = sent;
       out.failed = results.length - sent;
-    }
+    } catch (e) { out.webPushError = String(e); }
 
     // FCM (Android)
-    if (fcmSa && SB_URL && SB_SERVICE_KEY) {
+    if (!fcmSa) out.fcmError = FCM_SA_RAW ? "FCM_SERVICE_ACCOUNT tidak valid (bukan JSON)" : "FCM_SERVICE_ACCOUNT belum diisi";
+    else if (!SB_SERVICE_KEY) out.fcmError = "SUPABASE_SERVICE_ROLE_KEY tidak tersedia di Edge Function";
+    if (fcmSa && SB_URL && SB_SERVICE_KEY) try {
       const admin = createClient(SB_URL, SB_SERVICE_KEY);
       const { data: rows, error } = await admin.from("fcm_tokens").select("token").eq("recipient", recipient);
       if (error) {
@@ -167,8 +169,9 @@ serve(async (req) => {
         if (firstErr) out.fcmError = (firstErr as any).error;
       } else {
         out.fcmSent = 0;
+        out.fcmNote = "belum ada HP terdaftar untuk penerima ini";
       }
-    }
+    } catch (e) { out.fcmError = String(e); }
 
     return json(out);
   } catch (err) {
