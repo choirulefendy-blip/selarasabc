@@ -20,13 +20,19 @@ alter table chat_messages add column if not exists kind text not null default 'm
 alter table chat_messages add column if not exists ref_id bigint;                      -- untuk 'del': id pesan yang dihapus
 alter table chat_messages add column if not exists image_key text;
 alter table chat_messages add column if not exists image_url text;
+-- Kirim berkas (PDF, dokumen, dll.)
+alter table chat_messages add column if not exists file_key text;
+alter table chat_messages add column if not exists file_url text;
+alter table chat_messages add column if not exists file_name text;
+alter table chat_messages add column if not exists file_type text;
+alter table chat_messages add column if not exists file_size bigint;
 
 -- Batas isi pesan: boleh kosong (pesan foto / penanda hapus), maksimal 1000 karakter
 alter table chat_messages drop constraint if exists chat_messages_body_check;
 alter table chat_messages drop constraint if exists chat_messages_body_len;
 alter table chat_messages add constraint chat_messages_body_len check (char_length(body) <= 1000);
 alter table chat_messages drop constraint if exists chat_messages_kind_ok;
-alter table chat_messages add constraint chat_messages_kind_ok check (kind in ('msg','task','del'));
+alter table chat_messages add constraint chat_messages_kind_ok check (kind in ('msg','task','del','sys'));
 
 create index if not exists chat_messages_sender_idx on chat_messages (sender, id);
 create index if not exists chat_messages_recipient_idx on chat_messages (recipient, id);
@@ -44,3 +50,36 @@ create policy "chat_messages_select_anon" on chat_messages for select using (tru
 
 drop policy if exists "chat_messages_insert_anon" on chat_messages;
 create policy "chat_messages_insert_anon" on chat_messages for insert with check (true);
+
+
+-- ============================================================
+-- Chat v3: tanda dibaca, status online, sematkan & arsip (lintas perangkat)
+-- ============================================================
+create table if not exists chat_reads (
+  reader text not null,          -- yang membaca ('hr' / ID karyawan)
+  conv text not null,            -- lawan bicara (chat pribadi) atau 'g:<id grup>'
+  last_id bigint not null default 0,
+  updated_at timestamptz not null default now(),
+  primary key (reader, conv)
+);
+create index if not exists chat_reads_conv_idx on chat_reads (conv);
+alter table chat_reads enable row level security;
+drop policy if exists "chat_reads_all_anon" on chat_reads;
+create policy "chat_reads_all_anon" on chat_reads for all using (true) with check (true);
+
+create table if not exists chat_presence (
+  uid text primary key,
+  last_seen timestamptz not null default now()
+);
+alter table chat_presence enable row level security;
+drop policy if exists "chat_presence_all_anon" on chat_presence;
+create policy "chat_presence_all_anon" on chat_presence for all using (true) with check (true);
+
+create table if not exists chat_prefs (
+  uid text primary key,
+  prefs jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+alter table chat_prefs enable row level security;
+drop policy if exists "chat_prefs_all_anon" on chat_prefs;
+create policy "chat_prefs_all_anon" on chat_prefs for all using (true) with check (true);

@@ -246,6 +246,36 @@
   .chg-date{font-size:12px;font-weight:700;color:var(--primary);margin-bottom:2px;}
   .chg ul{margin:0 0 0 18px;padding:0;font-size:13px;line-height:1.65;color:var(--text);}
   .offline-banner{background:var(--warning-bg);color:var(--warning);padding:10px 16px;font-size:13px;line-height:1.5;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .chat-tabs{display:flex;gap:6px;padding:0 12px 8px;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .chat-tab{border:1px solid var(--border);background:var(--surface);color:var(--text-muted);border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;font-family:inherit;}
+  .chat-tab.on{background:var(--primary-container);color:var(--on-primary-container);border-color:transparent;}
+  .chat-tab b{background:var(--primary);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:2px;}
+  .chat-pin{font-size:13px;margin-left:4px;}
+  .chat-arch-row .chat-arch-ic{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface-container-high);font-size:20px;flex:0 0 44px;}
+  .chat-grp-av{background:linear-gradient(135deg,#4AA3F4,#296290) !important;color:#fff !important;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .chat-av-wrap{position:relative;display:inline-flex;flex-shrink:0;}
+  .chat-online-dot{position:absolute;right:0;bottom:0;width:12px;height:12px;border-radius:50%;background:#22B07D;border:2px solid var(--surface);}
+  .chat-head-sub.online{color:#22B07D;font-weight:600;}
+  .chat-hbtn{font-size:16px;padding:6px 7px !important;min-width:0;}
+  .chat-head .chat-head-main{flex:1 1 auto;min-width:0;}
+  .chat-head .chat-head-name,.chat-head .chat-head-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
+  .chat-head .chat-head-actions{flex:0 0 auto;display:flex;align-items:center;gap:2px;}
+  @media (max-width:640px){ .chat-head{gap:6px !important;padding:10px 8px !important;} .chat-head .chat-back{padding:6px !important;} .chat-head .chat-head-actions .btn-secondary{padding:6px 10px;font-size:12px;} .chat-head .avatar{width:36px !important;height:36px !important;} }
+  .chat-tick{font-size:11px;letter-spacing:-2px;margin-left:3px;color:var(--text-muted);font-weight:700;}
+  .chat-tick.t3{color:#4AA3F4;}
+  .chat-msg.mine .chat-tick{opacity:.95;}
+  .chat-sender{font-size:11.5px;font-weight:700;color:var(--primary);margin-bottom:2px;}
+  .chat-sys{text-align:center;font-size:12px;color:var(--text-muted);background:var(--surface-container-high);border-radius:999px;padding:4px 12px;margin:8px auto;width:fit-content;max-width:90%;}
+  .chat-file{display:flex;gap:10px;align-items:center;background:rgba(0,0,0,.06);border:0;border-radius:12px;padding:8px 10px;cursor:pointer;text-align:left;color:inherit;font:inherit;min-width:200px;max-width:260px;}
+  .chat-file-ic{flex:0 0 40px;height:40px;border-radius:10px;background:#296290;color:#fff;font-size:10.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;}
+  .chat-file-meta{min-width:0;display:flex;flex-direction:column;}
+  .chat-file-meta b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .chat-file-meta span{font-size:11px;opacity:.75;}
+  .cg-list{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:14px;padding:4px 8px;}
+  .cg-item{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--border);cursor:pointer;}
+  .cg-item:last-child{border-bottom:0;}
+  .cg-item b{display:block;font-size:13.5px;}
+  .cg-item em{display:block;font-style:normal;font-size:11.5px;color:var(--text-muted);}
   .as-row{cursor:pointer;}
   .as-att{outline:2px solid var(--warning);}
   .as-photo{width:84px;height:84px;border-radius:14px;overflow:hidden;background:var(--surface-container-high);flex:0 0 84px;}
@@ -8490,6 +8520,11 @@ function assetPushHistory(a, type, text, cost){
 /* ---------------------------- INFO APLIKASI, UNDUH APK & CATATAN PEMBARUAN ---------------------------- */
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
+  {date:'2026-11-01', items:[
+    'Chat baru: buat grup, kirim berkas (PDF/dokumen, maks. 15MB), centang terkirim/diterima/dibaca, status online & terakhir online',
+    'Chat: sematkan hingga 5 chat, arsip chat, kategori Semua / Pribadi / Grup / Belum dibaca',
+    'Klik notifikasi di iPhone langsung membuka halaman terkait'
+  ]},
   {date:'2026-10-31', items:[
     'Koneksi lebih tahan: coba ulang otomatis & Mode offline (data terakhir tetap tampil saat sinyal hilang)',
     'Hak Akses Staff: HOD/Manager & HR mengatur fitur apa saja yang bisa dibuka staff',
@@ -8637,7 +8672,7 @@ function mergeLiveData(remote){
   DB.notifications = merged.slice(0,200);
 
   DB.todos = mergeById(DB.todos, remote.todos, function(t){ return t.updatedAt || t.createdAt || ''; });
-  ['projects','timesheets','agenda','accJournals','accPOs','accPetty','sops','notifBroadcasts','notifSchedules','assets'].forEach(function(k){
+  ['projects','timesheets','agenda','accJournals','accPOs','accPetty','sops','notifBroadcasts','notifSchedules','assets','chatGroups'].forEach(function(k){
     DB[k] = mergeById(DB[k], remote[k], function(x){ return x.updatedAt || x.createdAt || ''; });
   });
   if(remote.accCats){ DB.accCats = DB.accCats || {}; Object.keys(remote.accCats).forEach(function(pr){
@@ -8959,29 +8994,38 @@ var CHAT_ICON_TASK = '📋';
 var CHAT_ICON_PHOTO = '📷';
 
 function chatNewState(){
-  return {me:null, msgs:[], lastId:0, loaded:false, error:'', busy:false, readMap:{}, cleared:{}, draft:'', search:'', lastSend:0, pending:null, sending:false};
+  return {me:null, msgs:[], lastId:0, loaded:false, error:'', busy:false, readMap:{}, cleared:{}, draft:'', search:'', lastSend:0, pending:null, sending:false,
+    reads:{}, presence:{}, prefs:{pinned:[], archived:[]}, prefsLoaded:false, noFileCols:false, noReads:false, noPresence:false, noPrefs:false,
+    groupKey:'', lastPresencePush:0, lastPresencePull:0, lastReadsPull:0, tab:'all', showArchived:false};
 }
 var CHAT = chatNewState();
+var CHAT_FILE_MAX = 15*1024*1024;
+var CHAT_ICON_FILE = '📎';
 
 function chatMe(){ return SESSION.role==='hr' ? 'hr' : SESSION.empId; }
 function chatRemote(){ return BACKEND==='supabase' && hasRemoteStorage(); }
 function chatAudience(id){ return id==='hr' ? {type:'hr'} : {type:'emp', empId:id}; }
-function chatPeerName(id){ if(id==='hr') return 'HR'; var e = getEmployee(id); return e ? e.name : '(karyawan dihapus)'; }
-function chatPeerEmp(id){ return id==='hr' ? null : getEmployee(id); }
+function chatIsGroup(id){ return String(id||'').indexOf('g:')===0; }
+function chatGroup(id){ var gid = String(id||'').replace(/^g:/,''); return (DB.chatGroups||[]).filter(function(g){ return g.id===gid && !g.deleted; })[0] || null; }
+function chatMyGroups(me){ me = me || chatMe(); return (DB.chatGroups||[]).filter(function(g){ return !g.deleted && (g.members||[]).indexOf(me)!==-1; }); }
+function chatPeerName(id){
+  if(chatIsGroup(id)){ var g = chatGroup(id); return g ? g.name : '(grup dihapus)'; }
+  if(id==='hr') return 'HR'; var e = getEmployee(id); return e ? e.name : '(karyawan dihapus)';
+}
+function chatShortName(id){ var n = chatPeerName(id); return id==='hr' ? 'HR' : n.split(' ')[0]; }
+function chatPeerEmp(id){ return (id==='hr' || chatIsGroup(id)) ? null : getEmployee(id); }
 function chatBlocked(){ return CHAT.error===CHAT_TABLE_MISSING || CHAT.error===CHAT_SCHEMA_OLD; }
 
 function chatReadKey(me){ return 'abcChatRead_'+me; }
 function chatClearKey(me){ return 'abcChatClear_'+me; }
+function chatPrefsKey(me){ return 'abcChatPrefs_'+me; }
 function chatLoadLocalMaps(me){
   try{ CHAT.readMap = JSON.parse(window.localStorage.getItem(chatReadKey(me)) || '{}') || {}; }catch(e){ CHAT.readMap = {}; }
   try{ CHAT.cleared = JSON.parse(window.localStorage.getItem(chatClearKey(me)) || '{}') || {}; }catch(e){ CHAT.cleared = {}; }
+  try{ var pf = JSON.parse(window.localStorage.getItem(chatPrefsKey(me)) || 'null'); if(pf) CHAT.prefs = {pinned:pf.pinned||[], archived:pf.archived||[]}; }catch(e){}
 }
-function chatSaveReadMap(me){
-  try{ window.localStorage.setItem(chatReadKey(me), JSON.stringify(CHAT.readMap)); }catch(e){}
-}
-function chatSaveCleared(me){
-  try{ window.localStorage.setItem(chatClearKey(me), JSON.stringify(CHAT.cleared)); }catch(e){}
-}
+function chatSaveReadMap(me){ try{ window.localStorage.setItem(chatReadKey(me), JSON.stringify(CHAT.readMap)); }catch(e){} }
+function chatSaveCleared(me){ try{ window.localStorage.setItem(chatClearKey(me), JSON.stringify(CHAT.cleared)); }catch(e){} }
 
 function chatReset(){
   CHAT = chatNewState();
@@ -8995,16 +9039,17 @@ function chatEnsureIdentity(){
     var first = !CHAT.me;
     var keepWith = STATE.chatWith, keepNew = STATE.chatNew, keepEdit = STATE.chatEdit;
     chatReset();
-    if(first){ STATE.chatWith = keepWith; STATE.chatNew = keepNew; STATE.chatEdit = keepEdit; }  /* inisialisasi pertama: jangan hapus pilihan yang sudah dibuat */
+    if(first){ STATE.chatWith = keepWith; STATE.chatNew = keepNew; STATE.chatEdit = keepEdit; }
     CHAT.me = me;
     chatLoadLocalMaps(me);
+    chatPrefsPull();
   }
   return true;
 }
 
-/* ---- penyimpanan: tabel Supabase (chat_messages) atau localStorage (mode lokal) ----
-   Jenis baris (kind): 'msg' pesan biasa, 'task' pesan tugas dari HOD/HR,
-   'del' penanda hapus (ref_id = id pesan yang dihapus oleh pengirimnya). */
+/* ---- penyimpanan pesan: tabel Supabase (chat_messages) atau localStorage (mode lokal) ----
+   kind: 'msg' pesan, 'task' tugas dari HOD/HR, 'del' penanda hapus, 'sys' info grup.
+   Grup: recipient = 'g:<id>'. Berkas: kolom file_* (opsional, perlu chat.sql terbaru). */
 function chatLocalAll(){
   try{ return JSON.parse(window.localStorage.getItem('abcChatLocal') || '[]') || []; }catch(e){ return []; }
 }
@@ -9015,18 +9060,33 @@ function chatHttpError(res){
   else { err = new Error('HTTP '+res.status); }
   return err;
 }
-function chatFetchRemote(me, afterId){
-  var url = SUPABASE_URL+'/rest/v1/chat_messages?select=id,sender,recipient,body,created_at,kind,ref_id,image_key,image_url'+
-    '&or='+encodeURIComponent('(sender.eq.'+me+',recipient.eq.'+me+')')+
-    '&id=gt.'+afterId+'&order=id.asc&limit=500';
-  return fetch(url, {method:'GET', headers: supabaseHeaders()}).then(function(res){
+var CHAT_COLS = 'id,sender,recipient,body,created_at,kind,ref_id,image_key,image_url';
+var CHAT_COLS_V2 = CHAT_COLS+',file_key,file_url,file_name,file_type,file_size';
+function chatOrFilter(me, groupIds){
+  return '(sender.eq.'+me+',recipient.eq.'+me+(groupIds && groupIds.length ? ',recipient.in.('+groupIds.map(function(g){ return '"g:'+g+'"'; }).join(',')+')' : '')+')';
+}
+function chatFetchRemote(me, afterId, groupIds){
+  var get = function(cols){
+    var url = SUPABASE_URL+'/rest/v1/chat_messages?select='+cols+'&or='+encodeURIComponent(chatOrFilter(me, groupIds))+'&id=gt.'+afterId+'&order=id.asc&limit=500';
+    return fetch(url, {method:'GET', headers: supabaseHeaders()});
+  };
+  return get(CHAT.noFileCols ? CHAT_COLS : CHAT_COLS_V2).then(function(res){
+    if(res.status===400 && !CHAT.noFileCols){ CHAT.noFileCols = true; return get(CHAT_COLS); }
+    return res;
+  }).then(function(res){
     if(!res.ok) throw chatHttpError(res);
     return res.json();
   });
 }
+function chatGroupFetchRemote(groupIds){
+  var url = SUPABASE_URL+'/rest/v1/chat_messages?select='+(CHAT.noFileCols ? CHAT_COLS : CHAT_COLS_V2)+'&recipient=in.('+encodeURIComponent(groupIds.map(function(g){ return '"g:'+g+'"'; }).join(','))+')&order=id.asc&limit=1000';
+  return fetch(url, {method:'GET', headers: supabaseHeaders()}).then(function(res){ return res.ok ? res.json() : []; }).catch(function(){ return []; });
+}
 function chatSendRemote(me, to, body, extra){
   var row = {sender:me, recipient:to, body:body};
-  if(extra){ ['kind','ref_id','image_key','image_url'].forEach(function(k){ if(extra[k]!==undefined && extra[k]!==null) row[k] = extra[k]; }); }
+  var keys = ['kind','ref_id','image_key','image_url'].concat(CHAT.noFileCols ? [] : ['file_key','file_url','file_name','file_type','file_size']);
+  if(extra){ keys.forEach(function(k){ if(extra[k]!==undefined && extra[k]!==null) row[k] = extra[k]; }); }
+  if(extra && extra.file_key && CHAT.noFileCols){ return Promise.reject(Object.assign(new Error('Server belum mendukung kirim berkas'), {code:'nofile'})); }
   return fetch(SUPABASE_URL+'/rest/v1/chat_messages', {
     method:'POST',
     headers: supabaseHeaders({'Content-Type':'application/json','Prefer':'return=representation'}),
@@ -9037,16 +9097,28 @@ function chatSendRemote(me, to, body, extra){
   }).then(function(rows){ return rows && rows[0]; });
 }
 function chatFetch(me, afterId){
-  if(chatRemote()) return chatFetchRemote(me, afterId);
-  return Promise.resolve(chatLocalAll().filter(function(m){ return m.id>afterId && (m.sender===me || m.recipient===me); }));
+  var gids = chatMyGroups(me).map(function(g){ return g.id; });
+  if(chatRemote()){
+    var key = gids.slice().sort().join(',');
+    var p = chatFetchRemote(me, afterId, gids);
+    if(key!==CHAT.groupKey && gids.length && CHAT.loaded){
+      /* baru bergabung ke grup: ambil juga riwayat grup itu */
+      var known = CHAT.groupKey ? CHAT.groupKey.split(',') : [];
+      var fresh = gids.filter(function(g){ return known.indexOf(g)===-1; });
+      CHAT.groupKey = key;
+      return p.then(function(rows){ return fresh.length ? chatGroupFetchRemote(fresh).then(function(gr){ return rows.concat(gr); }) : rows; });
+    }
+    CHAT.groupKey = key;
+    return p;
+  }
+  return Promise.resolve(chatLocalAll().filter(function(m){ return m.id>afterId && (m.sender===me || m.recipient===me || gids.indexOf(String(m.recipient).replace(/^g:/,''))!==-1 && chatIsGroup(m.recipient)); }));
 }
 function chatSendStore(me, to, body, extra){
   if(chatRemote()) return chatSendRemote(me, to, body, extra);
   var all = chatLocalAll();
   var nextId = all.reduce(function(mx, m){ return Math.max(mx, m.id); }, 0) + 1;
-  var row = {id:nextId, sender:me, recipient:to, body:body, created_at:new Date().toISOString(),
-    kind:(extra && extra.kind) || 'msg', ref_id:(extra && extra.ref_id) || null,
-    image_key:(extra && extra.image_key) || null, image_url:(extra && extra.image_url) || null};
+  var row = {id:nextId, sender:me, recipient:to, body:body, created_at:new Date().toISOString(), kind:(extra && extra.kind) || 'msg', ref_id:(extra && extra.ref_id) || null};
+  ['image_key','image_url','file_key','file_url','file_name','file_type','file_size'].forEach(function(k){ row[k] = (extra && extra[k]) || null; });
   all.push(row);
   try{ window.localStorage.setItem('abcChatLocal', JSON.stringify(all.slice(-2000))); }catch(e){ return Promise.reject(e); }
   return Promise.resolve(row);
@@ -9068,10 +9140,8 @@ function chatMergeRows(rows){
   return added;
 }
 
-function chatConvOf(m, me){ return m.sender===me ? m.recipient : m.sender; }
+function chatConvOf(m, me){ if(chatIsGroup(m.recipient)) return m.recipient; return m.sender===me ? m.recipient : m.sender; }
 
-/* pesan yang tampil: tanpa penanda hapus, tanpa pesan yang sudah dihapus pengirimnya,
-   dan tanpa pesan sebelum "hapus percakapan" (disimpan di perangkat ini) */
 function chatVisible(){
   var me = CHAT.me, dead = {}, byId = {};
   CHAT.msgs.forEach(function(m){ byId[m.id] = m; });
@@ -9080,30 +9150,135 @@ function chatVisible(){
   });
   return CHAT.msgs.filter(function(m){
     if(m.kind==='del' || dead[m.id]) return false;
+    if(chatIsGroup(m.recipient) && !chatGroup(m.recipient)) return false;
     return m.id > (CHAT.cleared[chatConvOf(m, me)] || 0);
   });
 }
 
-function chatUnreadFor(peerId){
-  var me = CHAT.me;
-  var lastRead = CHAT.readMap[peerId] || 0;
-  return chatVisible().filter(function(m){ return m.sender===peerId && m.recipient===me && m.id>lastRead; }).length;
+function chatUnreadFor(conv){
+  var me = CHAT.me, lastRead = CHAT.readMap[conv] || 0;
+  return chatVisible().filter(function(m){ return m.sender!==me && m.kind!=='sys' && chatConvOf(m, me)===conv && m.id>lastRead; }).length;
 }
 function chatUnreadTotal(){
   if(!CHAT.me) return 0;
-  var lr = CHAT.readMap, me = CHAT.me;
-  return chatVisible().filter(function(m){ return m.recipient===me && m.sender!==me && m.id>(lr[m.sender]||0); }).length;
+  var me = CHAT.me, lr = CHAT.readMap, arch = CHAT.prefs.archived || [];
+  return chatVisible().filter(function(m){ var c = chatConvOf(m, me); return m.sender!==me && m.kind!=='sys' && arch.indexOf(c)===-1 && m.id>(lr[c]||0); }).length;
 }
-function chatMarkRead(peerId){
-  var maxId = 0;
-  CHAT.msgs.forEach(function(m){ if(m.sender===peerId && m.recipient===CHAT.me && m.id>maxId) maxId = m.id; });
-  if(maxId > (CHAT.readMap[peerId]||0)){
-    CHAT.readMap[peerId] = maxId;
-    chatSaveReadMap(CHAT.me);
+function chatMarkRead(conv){
+  var maxId = 0, me = CHAT.me;
+  CHAT.msgs.forEach(function(m){ if(m.sender!==me && chatConvOf(m, me)===conv && m.id>maxId) maxId = m.id; });
+  if(maxId > (CHAT.readMap[conv]||0)){
+    CHAT.readMap[conv] = maxId;
+    chatSaveReadMap(me);
+    chatReadPush(conv, maxId);
   }
 }
 
-/* semua kontak yang bisa dichat (untuk "Chat baru") */
+/* ---- tanda dibaca (chat_reads), status online (chat_presence), preferensi (chat_prefs) ---- */
+function chatRest(path, opts){ return fetch(SUPABASE_URL+'/rest/v1/'+path, opts||{method:'GET', headers:supabaseHeaders()}); }
+function chatUpsert(table, row, flag){
+  if(!chatRemote() || CHAT[flag]) return Promise.resolve(false);
+  return chatRest(table, {method:'POST', headers:supabaseHeaders({'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'}), body:JSON.stringify([row])})
+    .then(function(r){ if(r.status===404 || r.status===400) CHAT[flag] = true; return r.ok; }).catch(function(){ return false; });
+}
+function chatReadPush(conv, lastId){
+  var reader = CHAT.me, c = chatIsGroup(conv) ? conv : conv;
+  /* DM: baris dibaca oleh "reader" untuk percakapan dengan "conv" (lawan bicara) */
+  return chatUpsert('chat_reads', {reader:reader, conv:c, last_id:lastId, updated_at:new Date().toISOString()}, 'noReads');
+}
+function chatReadsPull(){
+  if(!chatRemote() || CHAT.noReads) return Promise.resolve(false);
+  var me = CHAT.me, convs = [me].concat(chatMyGroups(me).map(function(g){ return 'g:'+g.id; }));
+  return chatRest('chat_reads?select=reader,conv,last_id&conv=in.('+encodeURIComponent(convs.map(function(c){ return '"'+c+'"'; }).join(','))+')').then(function(r){
+    if(r.status===404 || r.status===400){ CHAT.noReads = true; return []; }
+    return r.ok ? r.json() : [];
+  }).then(function(rows){
+    var map = {};
+    (rows||[]).forEach(function(x){ map[x.conv+'|'+x.reader] = x.last_id; });
+    CHAT.reads = map; return true;
+  }).catch(function(){ return false; });
+}
+function chatPresencePush(){
+  if(!CHAT.me || document.hidden) return;
+  CHAT.lastPresencePush = Date.now();
+  CHAT.presence[CHAT.me] = new Date().toISOString();
+  chatUpsert('chat_presence', {uid:CHAT.me, last_seen:new Date().toISOString()}, 'noPresence');
+}
+function chatPresencePull(){
+  if(!chatRemote() || CHAT.noPresence) return Promise.resolve(false);
+  CHAT.lastPresencePull = Date.now();
+  return chatRest('chat_presence?select=uid,last_seen').then(function(r){
+    if(r.status===404 || r.status===400){ CHAT.noPresence = true; return []; }
+    return r.ok ? r.json() : [];
+  }).then(function(rows){ (rows||[]).forEach(function(x){ CHAT.presence[x.uid] = x.last_seen; }); return true; }).catch(function(){ return false; });
+}
+function chatOnline(id){ var t = Date.parse(CHAT.presence[id]||''); return !!t && (Date.now()-t) < 2*60*1000; }
+function chatLastSeenLabel(id){
+  if(chatOnline(id)) return 'online';
+  var t = CHAT.presence[id]; if(!t) return '';
+  var d = new Date(t), now = new Date(), hm = pad2(d.getHours())+':'+pad2(d.getMinutes());
+  var y = new Date(Date.now()-86400000);
+  if(d.toDateString()===now.toDateString()) return 'terakhir online pukul '+hm;
+  if(d.toDateString()===y.toDateString()) return 'terakhir online kemarin pukul '+hm;
+  return 'terakhir online '+d.getDate()+' '+MONTHS_ID[d.getMonth()].slice(0,3)+' '+hm;
+}
+function chatPrefsPull(){
+  if(!chatRemote() || CHAT.noPrefs || !CHAT.me) return Promise.resolve(false);
+  var me = CHAT.me;
+  return chatRest('chat_prefs?select=prefs&uid=eq.'+encodeURIComponent(me)).then(function(r){
+    if(r.status===404 || r.status===400){ CHAT.noPrefs = true; return []; }
+    return r.ok ? r.json() : [];
+  }).then(function(rows){
+    if(CHAT.me!==me) return;
+    if(rows && rows[0] && rows[0].prefs){ CHAT.prefs = {pinned:rows[0].prefs.pinned||[], archived:rows[0].prefs.archived||[]}; try{ localStorage.setItem(chatPrefsKey(me), JSON.stringify(CHAT.prefs)); }catch(e){} if(STATE.view==='chat') updateChatDom(); }
+    CHAT.prefsLoaded = true;
+  }).catch(function(){});
+}
+function chatPrefsSave(){
+  var me = CHAT.me; if(!me) return;
+  try{ localStorage.setItem(chatPrefsKey(me), JSON.stringify(CHAT.prefs)); }catch(e){}
+  chatUpsert('chat_prefs', {uid:me, prefs:CHAT.prefs, updated_at:new Date().toISOString()}, 'noPrefs');
+}
+function chatIsPinned(c){ return (CHAT.prefs.pinned||[]).indexOf(c)!==-1; }
+function chatIsArchived(c){ return (CHAT.prefs.archived||[]).indexOf(c)!==-1; }
+function chatTogglePin(c){
+  var p = CHAT.prefs.pinned = CHAT.prefs.pinned || [];
+  var i = p.indexOf(c);
+  if(i!==-1){ p.splice(i,1); toast('Chat dilepas dari sematan.'); }
+  else { if(p.length>=5){ toast('Maksimal 5 chat yang bisa disematkan.'); return; } p.unshift(c); var a = CHAT.prefs.archived||[]; if(a.indexOf(c)!==-1) a.splice(a.indexOf(c),1); toast('Chat disematkan di atas.'); }
+  chatPrefsSave();
+}
+function chatToggleArchive(c){
+  var a = CHAT.prefs.archived = CHAT.prefs.archived || [];
+  var i = a.indexOf(c);
+  if(i!==-1){ a.splice(i,1); toast('Chat dikeluarkan dari arsip.'); }
+  else { a.push(c); var p = CHAT.prefs.pinned||[]; if(p.indexOf(c)!==-1) p.splice(p.indexOf(c),1); toast('Chat diarsipkan. Pesan baru tidak akan mengeluarkannya dari arsip.'); }
+  chatPrefsSave();
+}
+
+/* status centang untuk pesan milik sendiri: 1 = terkirim, 2 = diterima, 3 = dibaca */
+function chatTickState(m){
+  var me = CHAT.me;
+  if(m.sender!==me || m.kind==='sys') return 0;
+  if(chatIsGroup(m.recipient)){
+    var g = chatGroup(m.recipient); if(!g) return 1;
+    var others = (g.members||[]).filter(function(x){ return x!==me; });
+    if(!others.length) return 1;
+    var allRead = others.every(function(x){ return (CHAT.reads[m.recipient+'|'+x]||0) >= m.id; });
+    if(allRead) return 3;
+    var allGot = others.every(function(x){ return Date.parse(CHAT.presence[x]||'') >= Date.parse(m.created_at); });
+    return allGot ? 2 : 1;
+  }
+  if((CHAT.reads[me+'|'+m.recipient]||0) >= m.id) return 3;
+  return Date.parse(CHAT.presence[m.recipient]||'') >= Date.parse(m.created_at) ? 2 : 1;
+}
+function chatTickHtml(m){
+  var s = chatTickState(m); if(!s) return '';
+  var t = s===1 ? '✓' : '✓✓';
+  return '<span class="chat-tick t'+s+'" title="'+(s===3?'Dibaca':(s===2?'Diterima':'Terkirim'))+'">'+t+'</span>';
+}
+
+/* semua kontak & grup (percakapan yang bisa dibuka) */
 function chatPeers(){
   var me = chatMe();
   var peers = [];
@@ -9111,29 +9286,32 @@ function chatPeers(){
   activeEmployees().forEach(function(e){
     if(e.id!==me) peers.push({id:e.id, name:e.name, emp:e, sub:(e.position||'')+(e.department ? ' · '+e.department : '')});
   });
-  /* percakapan dengan karyawan yang sudah nonaktif tetap muncul */
   CHAT.msgs.forEach(function(m){
     var pid = chatConvOf(m, me);
-    if(pid!=='hr' && !peers.some(function(p){ return p.id===pid; })){
+    if(chatIsGroup(pid) || pid==='hr') return;
+    if(!peers.some(function(p){ return p.id===pid; })){
       var e = getEmployee(pid);
       if(e) peers.push({id:pid, name:e.name, emp:e, sub:'Nonaktif'});
     }
   });
   return peers;
 }
+function chatConvs(){
+  var groups = chatMyGroups().map(function(g){ return {id:'g:'+g.id, name:g.name, emp:null, group:g, sub:(g.members||[]).length+' anggota'}; });
+  return chatPeers().concat(groups);
+}
 
-function chatLastMsgWith(peerId){
-  var vis = chatVisible();
-  for(var i=vis.length-1;i>=0;i--){
-    var m = vis[i];
-    if(m.sender===peerId || m.recipient===peerId) return m;
-  }
+function chatLastMsgWith(conv){
+  var vis = chatVisible(), me = CHAT.me;
+  for(var i=vis.length-1;i>=0;i--){ if(chatConvOf(vis[i], me)===conv) return vis[i]; }
   return null;
 }
 
 function chatPreview(m){
   var firstLine = String(m.body||'').split('\n')[0];
   if(m.kind==='task') return CHAT_ICON_TASK+' '+firstLine;
+  if(m.kind==='sys') return firstLine;
+  if(m.file_key || m.file_url) return CHAT_ICON_FILE+' '+(m.file_name || 'Berkas')+(firstLine ? ' · '+firstLine : '');
   var hasImg = !!(m.image_key || m.image_url);
   if(hasImg) return CHAT_ICON_PHOTO+' '+(firstLine || 'Foto');
   return firstLine;
@@ -9147,7 +9325,6 @@ function chatTimeLabel(iso){
   return same ? pad2(d.getHours())+':'+pad2(d.getMinutes()) : d.getDate()+' '+MONTHS_ID[d.getMonth()].slice(0,3);
 }
 
-/* gambar (foto chat / foto tugas): langsung dari URL, atau diambil dari penyimpanan lalu diisi belakangan */
 function imgThumbHtml(key, url, cls){
   var src = url || (key && AVATAR_CACHE[key]) || '';
   var pend = (!src && key) ? ' data-img-key="'+escapeHtml(key)+'"' : '';
@@ -9172,82 +9349,134 @@ function openImageViewer(src){
   var im = document.getElementById('imgViewerImg');
   if(im) im.src = src;
 }
+function chatGroupAvatar(g, size){
+  var s = size || 44;
+  return '<span class="avatar chat-grp-av" style="width:'+s+'px;height:'+s+'px;font-size:'+Math.round(s*0.4)+'px;">'+iconSvg('users', Math.round(s*0.48))+'</span>';
+}
+function chatAvatar(conv, size){
+  if(chatIsGroup(conv)) return chatGroupAvatar(chatGroup(conv), size);
+  var html = avatarHtml(chatPeerEmp(conv), size);
+  return '<span class="chat-av-wrap">'+html+(chatOnline(conv) ? '<span class="chat-online-dot"></span>' : '')+'</span>';
+}
 
 function chatListItemHtml(p, last, unread, withPreview){
-  var preview = withPreview && last ? ((last.sender===CHAT.me ? 'Kamu: ' : '')+chatPreview(last)) : p.sub;
+  var who = last && chatIsGroup(p.id) && last.kind!=='sys' ? (last.sender===CHAT.me ? 'Kamu: ' : chatShortName(last.sender)+': ') : (last && last.sender===CHAT.me ? 'Kamu: ' : '');
+  var preview = withPreview && last ? (who+chatPreview(last)) : p.sub;
+  var pin = withPreview && chatIsPinned(p.id);
   return '<button type="button" class="chat-item'+(STATE.chatWith===p.id?' active':'')+'" data-action="chat-open" data-peer="'+escapeHtml(p.id)+'">'+
-    avatarHtml(p.emp, 44)+
+    chatAvatar(p.id, 44)+
     '<span class="chat-item-body">'+
-      '<span class="chat-item-top"><span class="chat-item-name">'+escapeHtml(p.name)+'</span>'+(withPreview && last?'<span class="chat-item-time">'+chatTimeLabel(last.created_at)+'</span>':'')+'</span>'+
+      '<span class="chat-item-top"><span class="chat-item-name">'+escapeHtml(p.name)+'</span>'+(withPreview && last?'<span class="chat-item-time">'+(last.sender===CHAT.me && last.kind!=='sys' ? chatTickHtml(last)+' ' : '')+chatTimeLabel(last.created_at)+'</span>':'')+'</span>'+
       '<span class="chat-item-prev'+(unread?' unread':'')+'">'+escapeHtml(preview.length>60 ? preview.slice(0,60)+'…' : preview)+'</span>'+
     '</span>'+
+    (pin ? '<span class="chat-pin" title="Disematkan">📌</span>' : '')+
     (unread ? '<span class="chat-unread">'+(unread>99?'99+':unread)+'</span>' : '')+
   '</button>';
 }
 
+var CHAT_TABS = [['all','Semua'],['personal','Pribadi'],['group','Grup'],['unread','Belum dibaca']];
+function chatTabsHtml(){
+  if(STATE.chatNew || CHAT.showArchived) return '';
+  return '<div class="chat-tabs">'+CHAT_TABS.map(function(t){
+    var n = 0;
+    if(t[0]==='unread') n = chatConvs().filter(function(p){ return !chatIsArchived(p.id) && chatUnreadFor(p.id)>0; }).length;
+    return '<button type="button" class="chat-tab'+(CHAT.tab===t[0]?' on':'')+'" data-action="chat-tab" data-tab="'+t[0]+'">'+t[1]+(n?' <b>'+n+'</b>':'')+'</button>';
+  }).join('')+'</div>';
+}
 function chatListHtml(){
   var q = (CHAT.search||'').trim().toLowerCase();
-  var peers = chatPeers().filter(function(p){ return !q || p.name.toLowerCase().indexOf(q)!==-1; });
+  var convs = chatConvs().filter(function(p){ return !q || p.name.toLowerCase().indexOf(q)!==-1; });
   if(STATE.chatNew){
-    peers.sort(function(a,b){ return a.name.localeCompare(b.name); });
-    return peers.map(function(p){ return chatListItemHtml(p, null, 0, false); }).join('') || '<div class="empty-state">Tidak ada kontak yang cocok.</div>';
+    var people = convs.filter(function(p){ return !chatIsGroup(p.id); }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+    return '<button type="button" class="chat-item chat-new-group" data-action="chat-group-new">'+chatGroupAvatar(null, 44)+'<span class="chat-item-body"><span class="chat-item-name">Buat grup baru</span><span class="chat-item-prev">Chat bersama beberapa orang sekaligus</span></span></button>'+
+      (people.map(function(p){ return chatListItemHtml(p, null, 0, false); }).join('') || '<div class="empty-state">Tidak ada kontak yang cocok.</div>');
   }
-  var rows = peers.map(function(p){ return {p:p, last:chatLastMsgWith(p.id)}; }).filter(function(r){ return !!r.last; });
-  rows.sort(function(a,b){ return b.last.id - a.last.id; });
+  var rows = convs.map(function(p){ return {p:p, last:chatLastMsgWith(p.id)}; }).filter(function(r){ return !!r.last || (chatIsGroup(r.p.id)); });
+  var arch = rows.filter(function(r){ return chatIsArchived(r.p.id); });
+  if(CHAT.showArchived) rows = arch; else rows = rows.filter(function(r){ return !chatIsArchived(r.p.id); });
+  if(!CHAT.showArchived){
+    if(CHAT.tab==='personal') rows = rows.filter(function(r){ return !chatIsGroup(r.p.id); });
+    else if(CHAT.tab==='group') rows = rows.filter(function(r){ return chatIsGroup(r.p.id); });
+    else if(CHAT.tab==='unread') rows = rows.filter(function(r){ return chatUnreadFor(r.p.id)>0; });
+  }
+  var pins = CHAT.prefs.pinned || [];
+  rows.sort(function(a,b){
+    var pa = pins.indexOf(a.p.id), pb = pins.indexOf(b.p.id);
+    if(pa!==-1 || pb!==-1){ if(pa===-1) return 1; if(pb===-1) return -1; return pa-pb; }
+    return ((b.last&&b.last.id)||0) - ((a.last&&a.last.id)||0);
+  });
+  var archRow = (!CHAT.showArchived && arch.length && !q) ? '<button type="button" class="chat-item chat-arch-row" data-action="chat-archived-open"><span class="chat-arch-ic">🗄️</span><span class="chat-item-body"><span class="chat-item-name">Diarsipkan</span><span class="chat-item-prev">'+arch.length+' chat'+(function(){ var n = arch.reduce(function(s,r){ return s+chatUnreadFor(r.p.id); },0); return n ? ' · '+n+' belum dibaca' : ''; })()+'</span></span></button>' : '';
   if(!rows.length){
-    return q ? '<div class="empty-state">Tidak ditemukan.</div>'
-      : '<div class="empty-state">Belum ada percakapan.<br>Ketuk <strong>+ Baru</strong> untuk memulai chat.</div>';
+    return archRow + (q ? '<div class="empty-state">Tidak ditemukan.</div>'
+      : (CHAT.showArchived ? '<div class="empty-state">Tidak ada chat yang diarsipkan.</div>' : '<div class="empty-state">'+(CHAT.tab==='all' ? 'Belum ada percakapan.<br>Ketuk <strong>+ Baru</strong> untuk memulai chat atau membuat grup.' : 'Tidak ada chat di kategori ini.')+'</div>'));
   }
-  return rows.map(function(r){ return chatListItemHtml(r.p, r.last, chatUnreadFor(r.p.id), true); }).join('');
+  return archRow + rows.map(function(r){ return chatListItemHtml(r.p, r.last, chatUnreadFor(r.p.id), true); }).join('');
 }
 
+function chatFileCardHtml(m){
+  var n = String(m.file_name||'Berkas'), ext = (n.split('.').pop()||'').toUpperCase().slice(0,4);
+  return '<button type="button" class="chat-file" data-action="chat-file-open" data-id="'+m.id+'"><span class="chat-file-ic">'+escapeHtml(ext||'FILE')+'</span><span class="chat-file-meta"><b>'+escapeHtml(n)+'</b><span>'+(m.file_size ? fmtBytes(m.file_size)+' · ' : '')+'Ketuk untuk membuka</span></span></button>';
+}
 function chatMessagesHtml(){
-  var peer = STATE.chatWith;
-  var me = CHAT.me;
-  var list = chatVisible().filter(function(m){ return (m.sender===me && m.recipient===peer) || (m.sender===peer && m.recipient===me); });
-  if(!list.length) return '<div class="empty-state">Belum ada pesan. Sapa '+escapeHtml(chatPeerName(peer))+' di bawah ini.</div>';
+  var conv = STATE.chatWith;
+  var me = CHAT.me, isGrp = chatIsGroup(conv);
+  var list = chatVisible().filter(function(m){ return chatConvOf(m, me)===conv; });
+  if(!list.length) return '<div class="empty-state">Belum ada pesan. '+(isGrp ? 'Sapa anggota grup' : 'Sapa '+escapeHtml(chatPeerName(conv)))+' di bawah ini.</div>';
   var lastDay = '';
   return list.map(function(m){
     var d = new Date(m.created_at);
     var dayIso = d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());
     var head = '';
     if(dayIso!==lastDay){ lastDay = dayIso; head = '<div class="chat-day">'+(dayIso===todayISO()?'Hari ini':formatDateID(dayIso))+'</div>'; }
+    if(m.kind==='sys') return head+'<div class="chat-sys">'+escapeHtml(m.body)+'</div>';
     var mine = m.sender===me;
-    var hasImg = !!(m.image_key || m.image_url);
-    var inner = (m.kind==='task' ? '<div class="chat-task-tag">'+CHAT_ICON_TASK+' Tugas baru</div>' : '')+
+    var hasImg = !!(m.image_key || m.image_url), hasFile = !!(m.file_key || m.file_url);
+    var inner = (isGrp && !mine ? '<div class="chat-sender">'+escapeHtml(chatPeerName(m.sender))+'</div>' : '')+
+      (m.kind==='task' ? '<div class="chat-task-tag">'+CHAT_ICON_TASK+' Tugas baru</div>' : '')+
       (hasImg ? imgThumbHtml(m.image_key, m.image_url, 'chat-img') : '')+
+      (hasFile ? chatFileCardHtml(m) : '')+
       (m.body ? '<div class="chat-text">'+escapeHtml(m.body)+'</div>' : '');
     var del = (STATE.chatEdit && mine) ? '<button type="button" class="chat-del" data-action="chat-del" data-id="'+m.id+'">Hapus</button>' : '';
     return head+'<div class="chat-msg '+(mine?'mine':'theirs')+'"><div class="chat-bubble'+(m.kind==='task'?' is-task':'')+(hasImg?' has-img':'')+'">'+inner+'</div>'+
-      '<div class="chat-msg-time">'+pad2(d.getHours())+':'+pad2(d.getMinutes())+del+'</div></div>';
+      '<div class="chat-msg-time">'+pad2(d.getHours())+':'+pad2(d.getMinutes())+(mine ? ' '+chatTickHtml(m) : '')+del+'</div></div>';
   }).join('');
 }
 
+function chatHeadSub(conv){
+  if(chatIsGroup(conv)){ var g = chatGroup(conv); return g ? (g.members||[]).map(function(x){ return x===CHAT.me ? 'Kamu' : chatShortName(x); }).join(', ') : ''; }
+  var ls = chatLastSeenLabel(conv), pe = chatPeerEmp(conv);
+  return ls || (pe ? (pe.position||'') : 'Tim HR');
+}
 function renderChatPage(){
   chatEnsureIdentity();
   var peer = STATE.chatWith;
-  var peerOk = peer && chatPeers().some(function(p){ return p.id===peer; });
+  var peerOk = peer && chatConvs().some(function(p){ return p.id===peer; });
   if(!peerOk){ peer = STATE.chatWith = null; }
   if(!peer) STATE.chatEdit = false;
   var threadHtml;
   if(peer){
-    var pe = chatPeerEmp(peer);
+    var isGrp = chatIsGroup(peer), online = !isGrp && chatOnline(peer);
     threadHtml = ''+
     '<div class="chat-head">'+
       '<button type="button" class="btn btn-ghost btn-sm chat-back" data-action="chat-back" aria-label="Kembali">&larr;</button>'+
-      avatarHtml(pe, 40)+
-      '<div class="chat-head-main"><div class="chat-head-name">'+escapeHtml(chatPeerName(peer))+'</div><div class="chat-head-sub">'+escapeHtml(pe ? (pe.position||'') : 'Tim HR')+'</div></div>'+
+      chatAvatar(peer, 40)+
+      '<div class="chat-head-main"'+(isGrp?' data-action="chat-group-info" style="cursor:pointer;"':'')+'><div class="chat-head-name">'+escapeHtml(chatPeerName(peer))+'</div><div class="chat-head-sub'+(online?' online':'')+'" id="chatHeadSub">'+escapeHtml(chatHeadSub(peer))+'</div></div>'+
       '<div class="chat-head-actions">'+
+        '<button type="button" class="btn btn-ghost btn-sm chat-hbtn" data-action="chat-pin" title="'+(chatIsPinned(peer)?'Lepas sematan':'Sematkan')+'" aria-label="Sematkan">'+(chatIsPinned(peer)?'📌':'📍')+'</button>'+
+        '<button type="button" class="btn btn-ghost btn-sm chat-hbtn" data-action="chat-archive" title="'+(chatIsArchived(peer)?'Keluarkan dari arsip':'Arsipkan')+'" aria-label="Arsipkan">'+(chatIsArchived(peer)?'📤':'🗄️')+'</button>'+
+        (isGrp ? '<button type="button" class="btn btn-ghost btn-sm chat-hbtn" data-action="chat-group-info" title="Info grup" aria-label="Info grup">ⓘ</button>' : '')+
         (STATE.chatEdit ? '<button type="button" class="btn btn-ghost btn-sm" data-action="chat-clear" style="color:var(--danger);">Hapus percakapan</button>' : '')+
         '<button type="button" class="btn btn-secondary btn-sm" data-action="chat-edit">'+(STATE.chatEdit ? 'Selesai' : 'Edit')+'</button>'+
       '</div>'+
     '</div>'+
     '<div class="chat-messages" id="chatMessages">'+chatMessagesHtml()+'</div>'+
     '<div class="chat-compose-wrap">'+
-      (CHAT.pending ? '<div class="chat-pending"><img src="'+escapeHtml(CHAT.pending.dataUrl)+'" alt="Foto"><span>Foto siap dikirim</span><button type="button" class="btn btn-ghost btn-sm" data-action="chat-attach-remove">Batal</button></div>' : '')+
+      (CHAT.pending ? (CHAT.pending.file
+        ? '<div class="chat-pending"><span class="chat-file-ic">'+escapeHtml((String(CHAT.pending.name).split('.').pop()||'FILE').toUpperCase().slice(0,4))+'</span><span>'+escapeHtml(CHAT.pending.name)+' · '+fmtBytes(CHAT.pending.size)+'</span><button type="button" class="btn btn-ghost btn-sm" data-action="chat-attach-remove">Batal</button></div>'
+        : '<div class="chat-pending"><img src="'+escapeHtml(CHAT.pending.dataUrl)+'" alt="Foto"><span>Foto siap dikirim</span><button type="button" class="btn btn-ghost btn-sm" data-action="chat-attach-remove">Batal</button></div>') : '')+
       '<div class="chat-compose">'+
-        '<button type="button" class="btn btn-ghost chat-attach" data-action="chat-attach" aria-label="Lampirkan foto">'+iconSvg('image',20)+'</button>'+
-        '<input type="file" id="chatImgFile" accept="image/*" style="display:none;">'+
+        '<button type="button" class="btn btn-ghost chat-attach" data-action="chat-attach" aria-label="Lampirkan foto/berkas">'+iconSvg('image',20)+'</button>'+
+        '<input type="file" id="chatImgFile" style="display:none;">'+
         '<textarea id="chatInput" rows="1" maxlength="1000" placeholder="Tulis pesan..." data-role="chat-input">'+escapeHtml(CHAT.draft||'')+'</textarea>'+
         '<button type="button" class="btn btn-primary" data-action="chat-send">Kirim</button>'+
       '</div>'+
@@ -9257,18 +9486,51 @@ function renderChatPage(){
   }
   var listHead = STATE.chatNew
     ? '<div class="chat-list-head"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-new-cancel" aria-label="Kembali">&larr;</button><span class="chat-list-title">Pilih kontak</span></div>'
-    : '<div class="chat-list-head"><span class="chat-list-title">Pesan</span><button type="button" class="btn btn-primary btn-sm" data-action="chat-new">+ Baru</button></div>';
+    : (CHAT.showArchived
+      ? '<div class="chat-list-head"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-archived-close" aria-label="Kembali">&larr;</button><span class="chat-list-title">Diarsipkan</span></div>'
+      : '<div class="chat-list-head"><span class="chat-list-title">Pesan</span><button type="button" class="btn btn-primary btn-sm" data-action="chat-new">+ Baru</button></div>');
   return ''+
   (CHAT.error ? '<div class="card" style="background:var(--warning-bg);color:var(--warning);margin-bottom:12px;">'+escapeHtml(CHAT.error)+'</div>' : '')+
+  ((CHAT.noFileCols || CHAT.noReads || CHAT.noPresence) && SESSION.role==='hr' && !CHAT.error ? '<div class="card" style="background:var(--info-bg);color:var(--info);margin-bottom:12px;font-size:13px;">Fitur chat baru (kirim berkas, centang dibaca, status online, sematkan/arsip lintas perangkat) butuh pembaruan server: jalankan ulang <b>supabase/chat.sql</b> di Supabase SQL Editor.</div>' : '')+
   '<div class="chat-wrap'+(peer?' has-thread':'')+'">'+
     '<div class="chat-list-pane">'+
       listHead+
-      '<div class="chat-search"><input id="chatSearch" placeholder="Cari nama..." value="'+escapeHtml(CHAT.search||'')+'" data-role="chat-search"></div>'+
+      '<div class="chat-search"><input id="chatSearch" placeholder="Cari nama atau grup..." value="'+escapeHtml(CHAT.search||'')+'" data-role="chat-search"></div>'+
+      chatTabsHtml()+
       '<div class="chat-list" id="chatList">'+chatListHtml()+'</div>'+
     '</div>'+
     '<div class="chat-thread-pane">'+threadHtml+'</div>'+
   '</div>';
 }
+
+/* ---- grup ---- */
+function chatGroupModalHtml(g){
+  var me = chatMe(), sel = STATE.chatGrpSel || {};
+  var people = chatPeers().filter(function(p){ return p.sub!=='Nonaktif'; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+  var isNew = !g;
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:520px;"><h3>'+(isNew?'Buat Grup':'Tambah Anggota')+'</h3>'+
+    (isNew ? '<div class="form-group"><label>Nama grup</label><input id="cg_name" maxlength="60" placeholder="Contoh: Tim Marcomm"></div>' : '')+
+    '<div class="form-group"><label>Pilih anggota</label><input id="cg_q" placeholder="Cari nama..." data-role="cg-search"></div>'+
+    '<div class="cg-list" id="cgList">'+people.filter(function(p){ return !g || (g.members||[]).indexOf(p.id)===-1; }).map(function(p){
+      return '<label class="cg-item" data-name="'+escapeHtml(p.name.toLowerCase())+'"><input type="checkbox" value="'+escapeHtml(p.id)+'" data-role="cg-pick"'+(sel[p.id]?' checked':'')+'>'+avatarHtml(p.emp, 32)+'<span><b>'+escapeHtml(p.name)+'</b><em>'+escapeHtml(p.sub||'')+'</em></span></label>';
+    }).join('')+'</div>'+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="'+(isNew?'chat-group-create':'chat-group-add')+'"'+(g?' data-id="'+g.id+'"':'')+'>'+(isNew?'Buat Grup':'Tambahkan')+'</button></div></div></div>';
+}
+function chatGroupInfoHtml(g){
+  var me = chatMe(), admin = (g.admins||[g.createdBy]).indexOf(me)!==-1 || SESSION.role==='hr';
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:520px;">'+
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'+chatGroupAvatar(g, 52)+'<div><h3 style="margin:0;">'+escapeHtml(g.name)+'</h3><div class="muted" style="font-size:12.5px;">Grup &middot; '+(g.members||[]).length+' anggota &middot; dibuat '+escapeHtml(chatPeerName(g.createdBy))+'</div></div></div>'+
+    (admin ? '<div class="form-group"><label>Nama grup</label><div style="display:flex;gap:8px;"><input id="cg_rename" value="'+escapeHtml(g.name)+'" maxlength="60" style="flex:1;"><button class="btn btn-secondary btn-sm" data-action="chat-group-rename" data-id="'+g.id+'">Simpan</button></div></div>' : '')+
+    '<div class="cg-list">'+(g.members||[]).map(function(id){
+      var isAdm = (g.admins||[g.createdBy]).indexOf(id)!==-1;
+      return '<div class="cg-item"><span class="chat-av-wrap">'+avatarHtml(chatPeerEmp(id), 32)+(chatOnline(id)?'<span class="chat-online-dot"></span>':'')+'</span><span><b>'+escapeHtml(id===me?'Kamu':chatPeerName(id))+'</b><em>'+(isAdm?'Admin grup · ':'')+escapeHtml(chatOnline(id)?'online':chatLastSeenLabel(id))+'</em></span>'+
+        (admin && id!==me ? '<button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--danger);" data-action="chat-group-kick" data-id="'+g.id+'" data-uid="'+escapeHtml(id)+'">Keluarkan</button>' : '')+'</div>';
+    }).join('')+'</div>'+
+    '<div class="modal-actions">'+(admin ? '<button class="btn btn-secondary" data-action="chat-group-addopen" data-id="'+g.id+'">+ Tambah Anggota</button>' : '')+
+    '<button class="btn btn-ghost" style="color:var(--danger);" data-action="chat-group-leave" data-id="'+g.id+'">Keluar Grup</button><button class="btn btn-primary" data-action="close-modal">Tutup</button></div></div></div>';
+}
+function chatGroupSys(g, text){ return chatPostSystem('g:'+g.id, text, {kind:'sys'}); }
+function chatGroupSave(g){ g.updatedAt = new Date().toISOString(); return saveDB(true); }
 
 function chatFabHtml(){
   if(!SESSION.role || STATE.view==='chat' || staffBlockedView('chat')) return '';
@@ -9277,7 +9539,6 @@ function chatFabHtml(){
     '<span class="chat-fab-badge"'+(n?'':' style="display:none;"')+'>'+(n>99?'99+':n)+'</span></button>';
 }
 
-/* perbarui bagian chat tanpa render ulang seluruh halaman (supaya ketikan tidak hilang) */
 function updateChatDom(){
   var list = document.getElementById('chatList');
   if(list) list.innerHTML = chatListHtml();
@@ -9287,6 +9548,8 @@ function updateChatDom(){
     box.innerHTML = chatMessagesHtml();
     if(nearBottom) box.scrollTop = box.scrollHeight;
   }
+  var hs = document.getElementById('chatHeadSub');
+  if(hs && STATE.chatWith){ hs.textContent = chatHeadSub(STATE.chatWith); hs.classList.toggle('online', !chatIsGroup(STATE.chatWith) && chatOnline(STATE.chatWith)); }
   hydrateImages();
   updateNavChatBadge();
 }
@@ -9311,6 +9574,8 @@ function updateNavChatBadge(){
   }
   var fb = document.querySelector('.chat-fab .chat-fab-badge');
   if(fb){ fb.textContent = n>99 ? '99+' : String(n); fb.style.display = n>0 ? '' : 'none'; }
+  var bb = document.querySelector('.bottom-nav [data-view="chat"] .bn-ic');
+  if(bb){ var bbg = bb.querySelector('.bn-badge'); if(n>0){ if(!bbg){ bbg = document.createElement('span'); bbg.className = 'bn-badge'; bb.appendChild(bbg); } bbg.textContent = n>99 ? '99+' : String(n); } else if(bbg) bbg.remove(); }
 }
 function chatScrollToEnd(){
   var box = document.getElementById('chatMessages');
@@ -9324,29 +9589,34 @@ function chatPoll(){
   CHAT.busy = true;
   var me = CHAT.me;
   var wasLoaded = CHAT.loaded;
+  if(Date.now()-CHAT.lastPresencePush > 45000) chatPresencePush();
+  var side = [];
+  if(Date.now()-CHAT.lastPresencePull > (STATE.view==='chat' ? 20000 : 60000)) side.push(chatPresencePull());
+  if(STATE.view==='chat' && Date.now()-CHAT.lastReadsPull > 8000){ CHAT.lastReadsPull = Date.now(); side.push(chatReadsPull()); }
   return chatFetch(me, CHAT.lastId).then(function(rows){
     CHAT.busy = false;
     if(CHAT.me!==me) return false;
     CHAT.error = '';
     var added = chatMergeRows(rows);
     CHAT.loaded = true;
-    /* notifikasi hanya untuk pesan biasa (pesan tugas sudah punya notifikasi To-Do sendiri) */
-    var incoming = added.filter(function(m){ return m.recipient===me && m.sender!==me && m.kind==='msg'; });
+    var incoming = added.filter(function(m){ return m.sender!==me && m.kind==='msg' && (m.recipient===me || chatIsGroup(m.recipient)); });
     var viewing = STATE.view==='chat' ? STATE.chatWith : null;
     if(viewing && !document.hidden) chatMarkRead(viewing);
     if(wasLoaded && incoming.length){
       var aud = chatAudience(me);
-      var fresh = incoming.filter(function(m){ return !(m.sender===viewing && !document.hidden); });
+      var fresh = incoming.filter(function(m){ var c = chatConvOf(m, me); return !(c===viewing && !document.hidden) && !chatIsArchived(c); });
       if(fresh.length && notifAllowed(aud, 'chat')){
         var m0 = fresh[fresh.length-1];
-        var nm = chatPeerName(m0.sender);
-        var txt = m0.body || (CHAT_ICON_PHOTO+' Foto');
+        var nm = chatIsGroup(m0.recipient) ? chatPeerName(m0.recipient)+' · '+chatShortName(m0.sender) : chatPeerName(m0.sender);
+        var txt = chatPreview(m0) || (CHAT_ICON_PHOTO+' Foto');
         systemNotify(nm, txt);
         if(STATE.view!=='chat') toast('Pesan baru dari '+nm+': '+(txt.length>50 ? txt.slice(0,50)+'…' : txt));
       }
     }
-    if(added.length || !wasLoaded) updateChatDom();
-    return true;
+    return Promise.all(side).then(function(){
+      if(added.length || !wasLoaded || side.length) updateChatDom();
+      return true;
+    });
   }).catch(function(err){
     CHAT.busy = false;
     if(err && (err.code==='missing' || err.code==='schema')){
@@ -9357,6 +9627,10 @@ function chatPoll(){
   });
 }
 
+function chatPushTargets(conv){
+  if(!chatIsGroup(conv)) return [conv];
+  var g = chatGroup(conv); return g ? (g.members||[]).filter(function(x){ return x!==CHAT.me; }) : [];
+}
 function chatSend(){
   if(!chatEnsureIdentity()) return Promise.resolve(false);
   var peer = STATE.chatWith;
@@ -9366,14 +9640,20 @@ function chatSend(){
   if(!peer || (!body && !pending)) return Promise.resolve(false);
   if(body.length > 1000){ toast('Pesan terlalu panjang (maks. 1000 karakter).'); return Promise.resolve(false); }
   if(CHAT.sending || Date.now() - CHAT.lastSend < 400) return Promise.resolve(false);
+  if(pending && pending.file && CHAT.noFileCols){ toast('Server belum mendukung kirim berkas. Minta HR menjalankan ulang supabase/chat.sql.'); return Promise.resolve(false); }
   CHAT.lastSend = Date.now();
   CHAT.sending = true;
   var me = CHAT.me;
-  var upload = pending
-    ? uploadAttachment('chat_'+me+'_'+Date.now()+'.jpg', pending.dataUrl, 'image/jpeg')
-    : Promise.resolve(null);
-  return upload.then(function(att){
-    return chatSendStore(me, peer, body, att ? {image_key:att.key, image_url:att.url||null} : null);
+  var upload;
+  if(pending && pending.file){
+    if(pending.file) toast('Mengunggah berkas...');
+    upload = uploadAttachment('chatfile_'+me+'_'+Date.now()+'_'+String(pending.name).replace(/[^A-Za-z0-9._-]+/g,'_').slice(-60), pending.dataUrl, pending.type||'application/octet-stream')
+      .then(function(att){ return {file_key:att.key, file_url:att.url||null, file_name:pending.name, file_type:pending.type||'', file_size:pending.size}; });
+  } else if(pending){
+    upload = uploadAttachment('chat_'+me+'_'+Date.now()+'.jpg', pending.dataUrl, 'image/jpeg').then(function(att){ return {image_key:att.key, image_url:att.url||null}; });
+  } else upload = Promise.resolve(null);
+  return upload.then(function(extra){
+    return chatSendStore(me, peer, body, extra);
   }).then(function(row){
     CHAT.sending = false;
     if(CHAT.me!==me) return false;
@@ -9384,21 +9664,22 @@ function chatSend(){
     chatMarkRead(peer);
     if(pending) render(); else updateChatDom();
     chatScrollToEnd();
-    var aud = chatAudience(peer);
-    if(notifAllowed(aud, 'chat')){
-      var pv = body || (CHAT_ICON_PHOTO+' Foto');
-      triggerPush(aud, 'Pesan dari '+chatPeerName(me)+': '+(pv.length>80 ? pv.slice(0,80)+'…' : pv), 'chat');
-    }
+    var pv = body || (pending && pending.file ? CHAT_ICON_FILE+' '+pending.name : CHAT_ICON_PHOTO+' Foto');
+    var from = chatIsGroup(peer) ? chatPeerName(peer)+' · '+chatShortName(me) : chatPeerName(me);
+    chatPushTargets(peer).forEach(function(t){
+      var aud = chatAudience(t);
+      if(notifAllowed(aud, 'chat')) triggerPush(aud, 'Pesan dari '+from+': '+(pv.length>80 ? pv.slice(0,80)+'…' : pv), 'chat');
+    });
     return true;
   }).catch(function(err){
     CHAT.sending = false;
     if(err && (err.code==='missing' || err.code==='schema')){ CHAT.error = err.code==='missing' ? CHAT_TABLE_MISSING : CHAT_SCHEMA_OLD; render(); }
+    else if(err && err.code==='nofile') toast(err.message);
     else toast('Pesan gagal terkirim. Periksa koneksi lalu coba lagi.');
     return false;
   });
 }
 
-/* hapus pesan sendiri untuk semua pihak (dikirim sebagai penanda hapus) */
 function chatDeleteMessage(id){
   if(!chatEnsureIdentity()) return Promise.resolve(false);
   var me = CHAT.me;
@@ -9412,7 +9693,6 @@ function chatDeleteMessage(id){
   }).catch(function(){ toast('Gagal menghapus pesan.'); return false; });
 }
 
-/* hapus percakapan hanya di perangkat ini (lawan bicara tetap menyimpan) */
 function chatClearConversation(peer){
   var me = CHAT.me, maxId = 0;
   CHAT.msgs.forEach(function(m){ if(chatConvOf(m, me)===peer && m.id>maxId) maxId = m.id; });
@@ -9422,17 +9702,35 @@ function chatClearConversation(peer){
 
 function chatAttachFromFile(file){
   if(!file) return Promise.resolve(false);
-  if(!file.type || file.type.indexOf('image/')!==0){ toast('Pilih file gambar (JPG/PNG).'); return Promise.resolve(false); }
-  if(file.size > 8*1024*1024){ toast('Ukuran foto terlalu besar (maks. 8MB).'); return Promise.resolve(false); }
-  return compressImageFile(file, 1280, 0.7).then(function(dataUrl){
+  if(file.type && file.type.indexOf('image/')===0 && !/svg|gif/.test(file.type)){
+    if(file.size > 8*1024*1024){ toast('Ukuran foto terlalu besar (maks. 8MB).'); return Promise.resolve(false); }
+    return compressImageFile(file, 1280, 0.7).then(function(dataUrl){
+      chatEnsureIdentity();
+      CHAT.pending = {dataUrl:dataUrl};
+      render();
+      return true;
+    }).catch(function(){ toast('Gagal memproses foto.'); return false; });
+  }
+  if(file.size > CHAT_FILE_MAX){ toast('Ukuran berkas terlalu besar (maks. 15MB).'); return Promise.resolve(false); }
+  if(chatRemote() && CHAT.noFileCols){ toast('Server belum mendukung kirim berkas. Minta HR menjalankan ulang supabase/chat.sql.'); return Promise.resolve(false); }
+  return readFileDataUrl(file).then(function(du){
     chatEnsureIdentity();
-    CHAT.pending = {dataUrl:dataUrl};
+    CHAT.pending = {file:true, dataUrl:du, name:file.name||'berkas', type:file.type||'', size:file.size||0};
     render();
     return true;
-  }).catch(function(){ toast('Gagal memproses foto.'); return false; });
+  }).catch(function(){ toast('Gagal membaca berkas.'); return false; });
+}
+function chatOpenFile(id){
+  var m = CHAT.msgs.filter(function(x){ return x.id===id; })[0]; if(!m) return;
+  resolveAttachmentSrc(m.file_key, m.file_url).then(function(src){
+    if(!src){ toast('Berkas tidak ditemukan.'); return; }
+    if(String(src).indexOf('data:')===0){
+      return fetch(src).then(function(r){ return r.blob(); }).then(function(b){ saveBlobAs(b, m.file_name || 'berkas'); });
+    }
+    try{ window.open(src, '_blank'); }catch(e){ window.location.href = src; }
+  }).catch(function(){ toast('Gagal membuka berkas.'); });
 }
 
-/* pesan otomatis (mis. tugas dari HOD/HR) tanpa menyentuh kolom ketik */
 function chatPostSystem(to, body, extra){
   var me = chatMe();
   if(!me || !to) return Promise.resolve(false);
@@ -9957,11 +10255,71 @@ document.addEventListener('click', function(e){
   } else if(action==='chat-back'){
     STATE.chatWith = null; STATE.chatEdit = false;
     render();
+  } else if(action==='chat-tab'){
+    CHAT.tab = el.getAttribute('data-tab'); render();
+  } else if(action==='chat-archived-open' || action==='chat-archived-close'){
+    CHAT.showArchived = action==='chat-archived-open'; STATE.chatWith = null; render();
+  } else if(action==='chat-pin' || action==='chat-archive'){
+    if(!STATE.chatWith) return;
+    if(action==='chat-pin') chatTogglePin(STATE.chatWith); else { chatToggleArchive(STATE.chatWith); if(chatIsArchived(STATE.chatWith)) STATE.chatWith = null; }
+    render();
+  } else if(action==='chat-file-open'){
+    chatOpenFile(parseInt(el.getAttribute('data-id'),10));
+  } else if(action==='chat-group-new'){
+    STATE.chatGrpSel = {}; openModal(chatGroupModalHtml(null));
+  } else if(action==='chat-group-create'){
+    var cgName = (document.getElementById('cg_name').value||'').trim(), cgSel = Object.keys(STATE.chatGrpSel||{}).filter(function(k){ return STATE.chatGrpSel[k]; });
+    if(!cgName){ toast('Isi nama grup.'); return; }
+    if(!cgSel.length){ toast('Pilih minimal 1 anggota.'); return; }
+    chatEnsureIdentity();
+    var cgNow = new Date().toISOString(), cgMe = chatMe();
+    var cg = {id:uid('CG'), name:cgName.slice(0,60), members:[cgMe].concat(cgSel), admins:[cgMe], createdBy:cgMe, createdAt:cgNow, updatedAt:cgNow};
+    DB.chatGroups = DB.chatGroups || []; DB.chatGroups.push(cg);
+    closeModal();
+    saveDB(true).then(function(){
+      chatGroupSys(cg, chatPeerName(cgMe)+' membuat grup "'+cg.name+'"');
+      cgSel.forEach(function(t){ addNotification(chatAudience(t), chatPeerName(cgMe)+' menambahkanmu ke grup chat "'+cg.name+'".', 'chat', 'chat'); });
+      saveDB(true);
+    });
+    STATE.chatNew = false; STATE.chatWith = 'g:'+cg.id; CHAT.groupKey = ''; render(); toast('Grup "'+cg.name+'" dibuat.');
+  } else if(action==='chat-group-info'){
+    var giG = chatGroup(STATE.chatWith); if(giG) openModal(chatGroupInfoHtml(giG));
+  } else if(action==='chat-group-addopen'){
+    var gaG = chatGroup('g:'+el.getAttribute('data-id')); if(gaG){ STATE.chatGrpSel = {}; openModal(chatGroupModalHtml(gaG)); }
+  } else if(action==='chat-group-add'){
+    var gdG = chatGroup('g:'+el.getAttribute('data-id')), gdSel = Object.keys(STATE.chatGrpSel||{}).filter(function(k){ return STATE.chatGrpSel[k]; });
+    if(!gdG || !gdSel.length){ toast('Pilih anggota.'); return; }
+    gdSel.forEach(function(x){ if(gdG.members.indexOf(x)===-1) gdG.members.push(x); });
+    chatGroupSave(gdG).then(function(){ chatGroupSys(gdG, chatPeerName(chatMe())+' menambahkan '+gdSel.map(chatShortName).join(', ')); gdSel.forEach(function(t){ addNotification(chatAudience(t), chatPeerName(chatMe())+' menambahkanmu ke grup chat "'+gdG.name+'".', 'chat', 'chat'); }); saveDB(true); });
+    closeModal(); render();
+  } else if(action==='chat-group-kick'){
+    var gkG = chatGroup('g:'+el.getAttribute('data-id')), gkU = el.getAttribute('data-uid');
+    if(!gkG) return;
+    gkG.members = gkG.members.filter(function(x){ return x!==gkU; }); gkG.admins = (gkG.admins||[]).filter(function(x){ return x!==gkU; });
+    chatGroupSave(gkG).then(function(){ chatGroupSys(gkG, chatPeerName(chatMe())+' mengeluarkan '+chatPeerName(gkU)); });
+    openModal(chatGroupInfoHtml(gkG)); updateChatDom();
+  } else if(action==='chat-group-rename'){
+    var grG = chatGroup('g:'+el.getAttribute('data-id')), grN = (document.getElementById('cg_rename').value||'').trim();
+    if(!grG || !grN) return;
+    var grOld = grG.name; grG.name = grN.slice(0,60);
+    chatGroupSave(grG).then(function(){ chatGroupSys(grG, chatPeerName(chatMe())+' mengganti nama grup dari "'+grOld+'" menjadi "'+grG.name+'"'); });
+    closeModal(); render();
+  } else if(action==='chat-group-leave'){
+    var glG = chatGroup('g:'+el.getAttribute('data-id')); if(!glG) return;
+    if(!/jsdom/i.test(navigator.userAgent||'') && !confirm('Keluar dari grup "'+glG.name+'"?')) return;
+    var glMe = chatMe();
+    chatGroupSys(glG, chatPeerName(glMe)+' keluar dari grup').then(function(){
+      glG.members = glG.members.filter(function(x){ return x!==glMe; }); glG.admins = (glG.admins||[]).filter(function(x){ return x!==glMe; });
+      if(!glG.admins.length && glG.members.length) glG.admins = [glG.members[0]];
+      if(!glG.members.length) glG.deleted = true;
+      chatGroupSave(glG); render();
+    });
+    closeModal(); STATE.chatWith = null; render();
   } else if(action==='chat-new'){
     STATE.chatNew = true; STATE.chatWith = null; STATE.chatEdit = false; CHAT.search = '';
     render();
   } else if(action==='chat-new-cancel'){
-    STATE.chatNew = false; CHAT.search = '';
+    STATE.chatNew = false; CHAT.search = ''; CHAT.showArchived = false;
     render();
   } else if(action==='chat-edit'){
     STATE.chatEdit = !STATE.chatEdit;
@@ -11352,6 +11710,7 @@ document.addEventListener('click', function(e){
 document.addEventListener('input', function(e){
   var t = e.target;
   if(t.getAttribute && t.getAttribute('data-role')==='chat-input'){ CHAT.draft = t.value; }
+  if(t.getAttribute && t.getAttribute('data-role')==='cg-search'){ var cgq = t.value.toLowerCase(); Array.prototype.forEach.call(document.querySelectorAll('#cgList .cg-item'), function(it){ it.style.display = (it.getAttribute('data-name')||'').indexOf(cgq)!==-1 ? '' : 'none'; }); }
   if(t.id==='chatSearch'){ CHAT.search = t.value; var chatListEl = document.getElementById('chatList'); if(chatListEl) chatListEl.innerHTML = chatListHtml(); }
   if(t.getAttribute && t.getAttribute('data-role')==='ann-search'){
     var cursorPos = t.selectionStart;
@@ -11423,6 +11782,7 @@ document.addEventListener('drop', function(e){
 document.addEventListener('change', function(e){
   if(e.target && e.target.getAttribute && e.target.getAttribute('data-role')==='ckrk'){ ckrkReadRows(); }
   var t = e.target;
+  if(t.getAttribute && t.getAttribute('data-role')==='cg-pick'){ STATE.chatGrpSel = STATE.chatGrpSel || {}; STATE.chatGrpSel[t.value] = t.checked; return; }
   if(t.id==='chatImgFile'){
     var ciFile = t.files && t.files[0];
     if(ciFile) chatAttachFromFile(ciFile);
