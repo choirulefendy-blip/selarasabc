@@ -80,9 +80,16 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
   console.log('\n[Bottom navigation]');
   as('staff','S1','dashboard'); var bn=d.querySelectorAll('.bottom-nav .bn-item');
-  ok(bn.length===5 && /Beranda/.test(bn[0].textContent) && /Absen/.test(bn[1].textContent) && /Menu/.test(bn[4].textContent), 'staf: Beranda, Absen, Board, Chat, Menu');
-  await click(bn[2]); ok(w.STATE.view==='todo' && d.querySelector('.bottom-nav .bn-item.active') && /Board/.test(d.querySelector('.bottom-nav .bn-item.active').textContent), 'tap Board pindah halaman + aktif');
+  ok(bn.length===5 && /Menu/.test(bn[0].textContent) && /Absen/.test(bn[1].textContent) && /Beranda/.test(bn[2].textContent) && /Board/.test(bn[3].textContent) && /Chat/.test(bn[4].textContent), 'staf: Menu, Absen, Beranda (tengah), Board, Chat');
+  await click(bn[3]); ok(w.STATE.view==='todo' && d.querySelector('.bottom-nav .bn-item.active') && /Board/.test(d.querySelector('.bottom-nav .bn-item.active').textContent), 'tap Board pindah halaman + aktif');
   as('hr',null,'dashboard'); ok(/Karyawan/.test(d.querySelector('.bottom-nav').textContent), 'HR: tombol Karyawan');
   ok(/APP_VERSION = 'dev'/.test(html) && /class="app-ver"/.test(app()), 'versi aplikasi tampil di menu');
+  console.log('\n[Notifikasi: ikon, waktu, warna]');
+  w.DB.notifications=[]; w.addNotification({type:'emp',empId:'S1'},'Pesan HR (Dyah HR): Jangan lupa absen',null,'hrmsg'); w.addNotification({type:'emp',empId:'S1'},'Sudah 8 jam kerja hari ini.','checkin','reminder'); w.addNotification({type:'emp',empId:'S1'},'Tugas baru: Desain feed','todo','task');
+  as('staff','S1','dashboard'); w.STATE.notifPanelOpen=true; w.render();
+  var its=d.querySelectorAll('.notif-item');
+  ok(its.length===3 && d.querySelector('.notif-item.nk-hr .notif-ic svg') && /Pesan HR/.test(d.querySelector('.nk-hr .notif-tag').textContent) && /Dyah HR/.test(d.querySelector('.nk-hr .notif-tag').textContent), 'pesan HR: ikon + label + warna khusus');
+  ok(!!d.querySelector('.notif-item.nk-sys') && /Sistem/.test(d.querySelector('.nk-sys .notif-tag').textContent), 'notifikasi sistem diberi warna lain');
+  ok(/Hari ini, \d\d:\d\d/.test(d.querySelector('.notif-time').textContent), 'waktu notifikasi (Hari ini, jam:menit)');
   console.log('\n'+pass+' ok, '+fail+' gagal'); process.exit(fail?1:0);
 })();

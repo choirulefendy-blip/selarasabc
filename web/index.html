@@ -569,14 +569,27 @@
   }
   .notif-panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);}
   .notif-list{max-height:340px;overflow-y:auto;}
-  .notif-item{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;position:relative;}
+  .notif-item{padding:12px 16px 12px 14px;border-bottom:1px solid var(--border);cursor:pointer;position:relative;display:flex;gap:12px;align-items:flex-start;border-left:4px solid transparent;}
+  .notif-body{min-width:0;flex:1;}
+  .notif-ic{flex:0 0 36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--primary-container);color:var(--primary);}
+  .notif-tag{font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;margin-bottom:2px;}
+  .notif-item.nk-hr{border-left-color:#F59E0B;background:rgba(245,158,11,.12) !important;}
+  .notif-item.nk-hr .notif-ic{background:#F59E0B;color:#fff;}
+  .notif-item.nk-hr .notif-tag{color:#D97706;}
+  .notif-item.nk-sys{border-left-color:#EF4444;background:rgba(239,68,68,.10) !important;}
+  .notif-item.nk-sys .notif-ic{background:#EF4444;color:#fff;}
+  .notif-item.nk-sys .notif-tag{color:#DC2626;}
+  .notif-item.nk-ann .notif-ic{background:#4AA3F4;color:#fff;}
+  .notif-item.nk-ann .notif-tag{color:var(--primary);}
+  .notif-item.nk-chat .notif-ic{background:rgba(34,176,125,.16);color:#22B07D;}
+  .notif-item.nk-appr .notif-ic{background:rgba(139,92,246,.15);color:#8B5CF6;}
   .notif-item:last-child{border-bottom:none;}
   .notif-item:hover{background:var(--surface-container-highest);}
   .notif-item.unread{background:var(--info-bg);}
   .notif-item.unread:hover{background:var(--info-bg);filter:brightness(.97);}
-  .notif-item.unread::before{content:'';position:absolute;left:6px;top:17px;width:6px;height:6px;border-radius:50%;background:var(--info);}
-  .notif-item.unread .notif-msg{padding-left:12px;}
-  .notif-msg{font-size:13px;line-height:1.45;}
+  .notif-item.unread::before{content:'';position:absolute;right:12px;top:16px;width:8px;height:8px;border-radius:50%;background:var(--info);}
+  .notif-item.unread .notif-msg{font-weight:600;padding-right:14px;}
+  .notif-msg{font-size:13.5px;line-height:1.45;}
   .notif-time{font-size:11px;color:var(--text-muted);margin-top:3px;}
 
   .slip{border:1px solid #d9ddd9;border-radius:20px;padding:26px;background:#fff;color:#191c1a;--text:#191c1a;--text-muted:#5b615d;--border:#d9ddd9;--neutral-bg:#EEF1F6;--surface:#fff;--surface-container-low:#F6F8FB;}
@@ -1164,6 +1177,7 @@ function addNotification(audience, message, link, category){
     audience: audience,
     message: message,
     link: link || null,
+    category: category || 'general',
     createdAt: new Date().toISOString(),
     read: false
   });
@@ -2747,25 +2761,47 @@ function renderShell(){
 function bottomNavHtml(){
   var role = SESSION.role; if(!role) return '';
   var items = role==='hr'
-    ? [['dashboard','Beranda','grid'],['employees','Karyawan','users'],['todo','Board','clipboard'],['chat','Chat','chat']]
-    : [['dashboard','Beranda','grid'],['checkin','Absen','clock'],['todo','Board','clipboard'],['chat','Chat','chat']];
+    ? [['menu','Menu','menu'],['employees','Karyawan','users'],['dashboard','Beranda','grid'],['todo','Board','clipboard'],['chat','Chat','chat']]
+    : [['menu','Menu','menu'],['checkin','Absen','clock'],['dashboard','Beranda','grid'],['todo','Board','clipboard'],['chat','Chat','chat']];
   var n = 0; try{ n = chatUnreadTotal(); }catch(e){}
   return '<nav class="bottom-nav no-print" aria-label="Navigasi utama">'+items.map(function(it){
+    if(it[0]==='menu') return '<button class="bn-item'+(STATE.sidebarOpen?' active':'')+'" data-action="toggle-sidebar"><span class="bn-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="bn-lbl">Menu</span></button>';
     var act = STATE.view===it[0] && !STATE.sidebarOpen;
     return '<button class="bn-item'+(act?' active':'')+'" data-action="nav" data-view="'+it[0]+'"><span class="bn-ic">'+iconSvg(it[2],22)+
       (it[0]==='chat' && n>0 ? '<span class="bn-badge">'+(n>99?'99+':n)+'</span>' : '')+'</span><span class="bn-lbl">'+it[1]+'</span></button>';
-  }).join('')+
-  '<button class="bn-item'+(STATE.sidebarOpen?' active':'')+'" data-action="toggle-sidebar"><span class="bn-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="bn-lbl">Menu</span></button></nav>';
+  }).join('')+'</nav>';
 }
 
 /* ---------------------------- RENDER: NOTIFICATIONS ---------------------------- */
+function notifKind(n){
+  var m = String(n.message||''), c = n.category||'';
+  if(c==='hrmsg' || /^Pesan HR/.test(m)) return {k:'hr', icon:'megaphone', tag:'Pesan HR'};
+  if(c==='reminder' || /8 jam kerja|Pengingat|Jadwal servis|Versi baru|terlambat|telat|di luar jangkauan|di luar radius|belum absen/i.test(m)) return {k:'sys', icon:'bell', tag:'Sistem'};
+  if(/^Pengumuman/i.test(m) || c==='announcement') return {k:'ann', icon:'megaphone', tag:'Pengumuman'};
+  if(/chat|pesan baru/i.test(m)) return {k:'chat', icon:'chat', tag:''};
+  if(/cuti|lembur|jadwal|KPI|form|disetujui|ditolak|PO |purchase/i.test(m)) return {k:'appr', icon:'calendarCheck', tag:''};
+  if(/tugas|board|rekap|project/i.test(m)) return {k:'task', icon:'clipboard', tag:''};
+  if(/SOP|peraturan|kebijakan|panduan/i.test(m)) return {k:'doc', icon:'fileText', tag:''};
+  return {k:'gen', icon:'bell', tag:''};
+}
+function notifTimeLabel(iso){
+  var d = new Date(iso); if(isNaN(d)) return '';
+  var hm = pad2(d.getHours())+':'+pad2(d.getMinutes()), today = new Date(), y = new Date(Date.now()-86400000);
+  var day = d.toDateString()===today.toDateString() ? 'Hari ini' : (d.toDateString()===y.toDateString() ? 'Kemarin' : formatDateID(d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())));
+  return day+', '+hm+' &middot; '+timeAgoID(iso);
+}
 function renderNotifBell(){
   var list = myNotifications();
   var unread = list.filter(function(n){ return !n.read; }).length;
   var itemsHtml = list.slice(0,30).map(function(n){
-    return '<div class="notif-item '+(!n.read?'unread':'')+'" data-action="open-notification" data-id="'+n.id+'">'+
-      '<div class="notif-msg">'+escapeHtml(fixEntities(n.message))+'</div>'+
-      '<div class="notif-time">'+timeAgoID(n.createdAt)+'</div>'+
+    var kd = notifKind(n), msg = fixEntities(n.message);
+    if(kd.k==='hr') msg = msg.replace(/^Pesan HR( \([^)]*\))?:\s*/, '');
+    var from = kd.k==='hr' ? (/^Pesan HR \(([^)]*)\)/.exec(fixEntities(n.message))||[])[1] : '';
+    return '<div class="notif-item nk-'+kd.k+' '+(!n.read?'unread':'')+'" data-action="open-notification" data-id="'+n.id+'">'+
+      '<span class="notif-ic">'+iconSvg(kd.icon,18)+'</span><div class="notif-body">'+
+      (kd.tag ? '<div class="notif-tag">'+kd.tag+(from?' &middot; '+escapeHtml(from):'')+'</div>' : '')+
+      '<div class="notif-msg">'+escapeHtml(msg)+'</div>'+
+      '<div class="notif-time">'+notifTimeLabel(n.createdAt)+'</div></div>'+
     '</div>';
   }).join('');
   var panel = !STATE.notifPanelOpen ? '' : (
@@ -8322,7 +8358,7 @@ function refreshLiveData(){
     mergeLiveData(remote);
     if(SESSION.role==='hr' && runDueSchedules(Date.now())) saveDB(true);
     var fresh = myNotifications().filter(function(n){ return !before[n.id] && !n.read; });
-    fresh.slice(0,3).forEach(function(n){ systemNotify('ABC Selaras', n.message); });
+    fresh.slice(0,3).forEach(function(n){ var nk = notifKind(n); systemNotify(nk.k==='hr' ? '📢 Pesan HR' : (nk.k==='sys' ? '⚠️ ABC Selaras' : 'ABC Selaras'), n.message); });
     if(fresh.length){ toast(fresh[0].message); }
     var liveViews = ['dashboard','todo','my-activity','attendance','hod-attendance','banners'];
     if(liveViews.indexOf(STATE.view)!==-1 && liveSafeToRerender()) render();
