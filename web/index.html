@@ -2477,7 +2477,7 @@ function iconSvg(name, size){
   return '<svg width="'+s+'" height="'+s+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+body+'</svg>';
 }
 var NAV_ICON_MAP = {
-  sop:'clipboard', org:'users', 'id-card':'idcard', 'hr-profile':'user', assets:'box',
+  privileges:'settings', sop:'clipboard', org:'users', 'id-card':'idcard', 'hr-profile':'user', assets:'box',
   dashboard:'grid', report:'chart', employees:'users', attendance:'clock', 'hod-attendance':'clock', checkin:'clock',
   schedule:'calendar', 'schedule-approval':'calendarCheck', 'leave-request':'calendarCheck', 'leave-approval':'calendarCheck',
   'kpi':'chart', 'kpi-approval':'chart',
@@ -2488,6 +2488,10 @@ var NAV_ICON_MAP = {
 };
 
 function navItemsFor(role){
+  var all = navItemsForBase(role);
+  return role==='staff' ? all.filter(function(it){ return !(it.v==='assets' ? !staffCan('assets') : staffBlockedView(it.v)); }) : all;
+}
+function navItemsForBase(role){
   if(role==='hr'){
     return [
       {v:'dashboard', label:'Dashboard'},
@@ -2511,6 +2515,7 @@ function navItemsFor(role){
       {v:'id-card', label:'e-ID Card'},
       {v:'assets', label:'Aset Inventaris'},
       {v:'notif-settings', label:'Notifikasi'},
+      {v:'privileges', label:'Hak Akses Staff'},
       {v:'hr-profile', label:'Profil Saya'},
       {v:'settings', label:'Pengaturan'}
     ];
@@ -2524,6 +2529,7 @@ function navItemsFor(role){
       {v:'schedule', label:'Atur Jadwal Tim'},
       {v:'kpi', label:'KPI Tim'},
       {v:'assets', label:'Aset Inventaris'},
+      {v:'privileges', label:'Hak Akses Staff'},
       {v:'leave-request', label:'Pengajuan Cuti'},
       {v:'overtime-request', label:'Pengajuan Lembur'},
       {v:'form-request', label:'Form & Approval'},
@@ -2542,6 +2548,7 @@ function navItemsFor(role){
   return [
     {v:'dashboard', label:'Dashboard'},
     {v:'checkin', label:'Absen'},
+    {v:'assets', label:'Aset Inventaris'},
     {v:'my-schedule', label:'Jadwal Saya'},
     {v:'my-attendance', label:'Absensi Saya'},
     {v:'report', label:'Grafik Saya'},
@@ -2569,12 +2576,12 @@ function navGroupsFor(role){
       {id:'persetujuan', label:'Persetujuan', views:['schedule-approval','kpi-approval','leave-approval','overtime-approval','form-approval']},
       {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','banners','sop']},
       {id:'tugas', label:'Tugas & Aktivitas', views:['todo','accounting','activity-log']},
-      {id:'sistem', label:'Sistem', views:['notif-settings','hr-profile','settings']}
+      {id:'sistem', label:'Sistem', views:['notif-settings','privileges','hr-profile','settings']}
     ]};
   }
   if(role==='hod'){
     return {top:['dashboard','checkin'], groups:[
-      {id:'tim', label:'Tim Saya', views:['hod-attendance','report','schedule','kpi','assets']},
+      {id:'tim', label:'Tim Saya', views:['hod-attendance','report','schedule','kpi','assets','privileges']},
       {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request']},
       {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','sop','org']},
       {id:'tugas', label:'Tugas & Aktivitas', views:['todo','my-activity']},
@@ -2585,7 +2592,7 @@ function navGroupsFor(role){
     {id:'jadwal', label:'Jadwal & Absensi', views:['my-schedule','my-attendance','report']},
     {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request']},
     {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','sop','org']},
-    {id:'tugas', label:'Tugas & Aktivitas', views:['todo','my-activity']},
+    {id:'tugas', label:'Tugas & Aktivitas', views:['todo','assets','my-activity']},
     {id:'akun', label:'Akun Saya', views:['my-payslip','my-profile','id-card','notif-settings']}
   ]};
 }
@@ -2646,7 +2653,7 @@ function viewTitle(v){
     'schedule-approval':'Persetujuan Jadwal', 'hod-attendance':'Absensi Tim', report:'Laporan & Grafik',
     'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI',
     'overtime-request':'Pengajuan Lembur', 'overtime-approval':'Pengajuan Lembur',
-    banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'Selaras Board', accounting:'Dashboard Accounting', assets:'Aset Inventaris', sop:'SOP & Peraturan', org:'Struktur Organisasi', 'id-card':'e-ID Card', 'hr-profile':'Profil Saya', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
+    banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'Selaras Board', accounting:'Dashboard Accounting', privileges:'Hak Akses Staff', assets:'Aset Inventaris', sop:'SOP & Peraturan', org:'Struktur Organisasi', 'id-card':'e-ID Card', 'hr-profile':'Profil Saya', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
   };
   return map[v] || 'Sistem HR';
 }
@@ -2657,6 +2664,7 @@ function needsMonthPicker(v){
 
 function renderShell(){
   var role = SESSION.role;
+  if(staffBlockedView(STATE.view) || (role==='staff' && STATE.view==='assets' && !staffCan('assets'))){ STATE.view = 'dashboard'; }
   var navHtml = navHtmlFor(role);
 
   var who, whoSub;
@@ -2689,6 +2697,7 @@ function renderShell(){
     else if(STATE.view==='accounting') body = renderAccountingPage();
     else if(STATE.view==='sop') body = renderSopPage();
     else if(STATE.view==='assets') body = renderAssetsPage();
+    else if(STATE.view==='privileges' && SESSION.role!=='staff') body = renderPrivilegesPage();
     else if(STATE.view==='org') body = renderOrgPage();
     else if(STATE.view==='id-card') body = renderIdCardPage();
     else if(STATE.view==='hr-profile' && SESSION.role==='hr') body = renderHrProfilePage();
@@ -2711,6 +2720,7 @@ function renderShell(){
     else if(STATE.view==='accounting') body = renderAccountingPage();
     else if(STATE.view==='sop') body = renderSopPage();
     else if(STATE.view==='assets') body = renderAssetsPage();
+    else if(STATE.view==='privileges' && SESSION.role!=='staff') body = renderPrivilegesPage();
     else if(STATE.view==='org') body = renderOrgPage();
     else if(STATE.view==='id-card') body = renderIdCardPage();
     else if(STATE.view==='hr-profile' && SESSION.role==='hr') body = renderHrProfilePage();
@@ -2734,6 +2744,7 @@ function renderShell(){
     else if(STATE.view==='accounting') body = renderAccountingPage();
     else if(STATE.view==='sop') body = renderSopPage();
     else if(STATE.view==='assets') body = renderAssetsPage();
+    else if(STATE.view==='privileges' && SESSION.role!=='staff') body = renderPrivilegesPage();
     else if(STATE.view==='org') body = renderOrgPage();
     else if(STATE.view==='id-card') body = renderIdCardPage();
     else if(STATE.view==='hr-profile' && SESSION.role==='hr') body = renderHrProfilePage();
@@ -2789,6 +2800,7 @@ function bottomNavHtml(){
     ? [['menu','Menu','menu'],['employees','Karyawan','users'],['dashboard','Beranda','grid'],['todo','Board','clipboard'],['chat','Chat','chat']]
     : [['menu','Menu','menu'],['checkin','Absen','clock'],['dashboard','Beranda','grid'],['todo','Board','clipboard'],['chat','Chat','chat']];
   var n = 0; try{ n = chatUnreadTotal(); }catch(e){}
+  items = items.filter(function(it){ return !staffBlockedView(it[0]); });
   return '<nav class="bottom-nav no-print" aria-label="Navigasi utama">'+items.map(function(it){
     if(it[0]==='menu') return '<button class="bn-item'+(STATE.sidebarOpen?' active':'')+'" data-action="toggle-sidebar"><span class="bn-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="bn-lbl">Menu</span></button>';
     var act = STATE.view===it[0] && !STATE.sidebarOpen;
@@ -4277,6 +4289,7 @@ function renderDashboardHeader(emp, includeKpi){
     {view:'overtime-request', icon:'clock', label:'Lembur'},
     {view:'my-payslip', icon:'banknote', label:'Slip Gaji'}
   ];
+  quickActions = quickActions.filter(function(a){ return !staffBlockedView(a.view); });
   var actionsHtml = '<div class="dash-quick-actions">'+quickActions.map(function(a){
     return '<button type="button" class="dash-quick-btn" data-action="nav" data-view="'+a.view+'">'+
       '<span class="dash-quick-icon">'+iconSvg(a.icon,20)+'</span>'+
@@ -4287,7 +4300,7 @@ function renderDashboardHeader(emp, includeKpi){
   var scheduleNote = !isWorkDay ? '<div class="card-sub" style="margin:-6px 0 16px;">Hari ini bukan jadwal kerja.</div>' : '';
 
   var timerHtml = hasIn ? '<div style="margin:0 0 16px;">'+workTimerHtml(m.att, t.iso, false)+'</div>' : '';
-  return renderBannerCarousel() + profileCard + statusRow + timerHtml + scheduleNote + nextScheduleCardHtml(emp) + actionsHtml + renderTodoWidget();
+  return renderBannerCarousel() + profileCard + statusRow + timerHtml + scheduleNote + nextScheduleCardHtml(emp) + actionsHtml + (staffBlockedView('todo') ? '' : renderTodoWidget());
 }
 
 /* ---------- Durasi kerja berjalan (sejak absen masuk) ---------- */
@@ -6743,11 +6756,11 @@ function inDeptList(list){ if(SESSION.role==='hr') return true; return list.inde
 function canSales(){ return inDeptList(SALES_DEPTS); }
 function canAccounting(){ return inDeptList(ACC_DEPTS); }
 function canPurchasing(){ return inDeptList(PUR_DEPTS); }
-function canAccDashboard(){ return canAccounting() || canPurchasing() || SESSION.role==='hod'; }
+function canAccDashboard(){ return (canAccounting() || canPurchasing() || SESSION.role==='hod') && !staffBlockedView('accounting'); }
 function canCreatePO(){ return SESSION.role==='hod'; }
 function canProcessPO(){ return SESSION.role!=='hr' && canPurchasing(); }
 function canJournalPO(){ return SESSION.role!=='hr' && canAccounting(); }
-function canImportBoard(){ return canSales(); }
+function canImportBoard(){ return canSales() && !staffBlockedView('board-import'); }
 function employeesInDepts(list){
   return (DB.employees||[]).filter(function(e){ return e.active!==false && list.indexOf(deptKey(e.department))!==-1; });
 }
@@ -8163,16 +8176,17 @@ function setHrPhotoFromFile(file){
 }
 
 /* ---------------------------- ASET INVENTARIS ---------------------------- */
-var AS_CATS = ['Elektronik','Komputer & IT','Furnitur','Peralatan Dapur','Peralatan Kantor','Kendaraan','Mesin & Teknik','Linen & Amenities','Dekorasi','Lainnya'];
+var AS_CATS = ['Elektronik','Komputer & IT','Kamera & Fotografi','Audio & Lighting','Penyimpanan & Memori','Kabel & Aksesoris','Furnitur','Peralatan Dapur','Peralatan Kantor','Kendaraan','Mesin & Teknik','Linen & Amenities','Dekorasi','Lainnya'];
 var AS_COND = [['baik','Baik','badge-success'],['rusak_ringan','Rusak Ringan','badge-warning'],['rusak_berat','Rusak Berat','badge-danger'],['hilang','Hilang','badge-danger']];
 var AS_STAT = [['dipakai','Dipakai','badge-info'],['tersedia','Tersedia','badge-success'],['dipinjam','Dipinjam','badge-warning'],['perbaikan','Dalam Perbaikan','badge-warning'],['dihapus','Dihapusbukukan','badge-neutral']];
 function asLbl(list, k){ var f = list.filter(function(x){ return x[0]===k; })[0]; return f || list[0]; }
-function canAssets(){ return SESSION.role==='hr' || (SESSION.role==='hod' && getHodDepartments(SESSION.empId).length>0); }
+function canAssets(){ return SESSION.role==='hr' || (SESSION.role==='hod' && getHodDepartments(SESSION.empId).length>0) || (SESSION.role==='staff' && staffCan('assets')); }
 function assetDepts(){
   if(SESSION.role==='hr'){ var d = getDepartments().slice(); activeEmployees().forEach(function(e){ if(e.department && d.indexOf(e.department)===-1) d.push(e.department); }); return d; }
+  if(SESSION.role==='staff'){ var se = getEmployee(SESSION.empId); return se && staffCan('assets') ? [se.department] : []; }
   return SESSION.role==='hod' ? getHodDepartments(SESSION.empId) : [];
 }
-function assetCanEdit(a){ return SESSION.role==='hr' || (a && assetDepts().indexOf(a.dept)!==-1); }
+function assetCanEdit(a){ return SESSION.role==='hr' || (a && canAssetsEdit() && assetDepts().indexOf(a.dept)!==-1); }
 function assetsAll(){ var ds = assetDepts(); return (DB.assets||[]).filter(function(a){ return !a.deleted && (SESSION.role==='hr' || ds.indexOf(a.dept)!==-1); }); }
 function assetBookValue(a, atMs){
   var p = +a.price||0, life = +a.lifeYears||0;
@@ -8208,7 +8222,7 @@ function assetFiltered(){
   }).sort(function(x,y){ return String(x.code).localeCompare(String(y.code)); });
 }
 function renderAssetsPage(){
-  if(!canAssets()) return '<div class="card"><div class="empty-state">Halaman ini untuk HOD / Manager dan HR.</div></div>';
+  if(!canAssets()) return '<div class="card"><div class="empty-state">Kamu belum punya akses ke Aset Inventaris. Minta HOD/HR membukanya di Hak Akses Staff.</div></div>';
   var all = assetsAll(), list = assetFiltered(), f = STATE.asF || {}, ds = assetDepts();
   var tot = all.filter(function(a){ return a.status!=='dihapus'; });
   var val = tot.reduce(function(s,a){ return s+(+a.price||0); },0), bv = tot.reduce(function(s,a){ return s+assetBookValue(a); },0);
@@ -8218,10 +8232,10 @@ function renderAssetsPage(){
       '<input type="search" id="asQ" class="sop-search" style="max-width:260px;" placeholder="Cari kode, nama, serial, pemegang..." value="'+escapeHtml(f.q||'')+'">'+
       (ds.length>1 ? opt('asf_dept','Semua departemen',ds,f.dept) : '')+opt('asf_prop','Semua properti',getProperties(),f.prop)+opt('asf_cat','Semua kategori',AS_CATS,f.cat)+
       opt('asf_cond','Semua kondisi',AS_COND,f.cond)+opt('asf_stat','Semua status',AS_STAT,f.stat)+'</div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary btn-sm" data-action="as-new">+ Tambah Aset</button>'+
-    '<button class="btn btn-secondary btn-sm" data-action="as-labels">Cetak Label QR</button><button class="btn btn-secondary btn-sm" data-action="as-xlsx">Unduh Excel</button></div></div>';
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+(canAssetsEdit() ? '<button class="btn btn-primary btn-sm" data-action="as-new">+ Tambah Aset</button>'+
+    '<button class="btn btn-secondary btn-sm" data-action="as-import">Impor Excel</button>' : '')+'<button class="btn btn-secondary btn-sm" data-action="as-labels">Cetak Label QR</button><button class="btn btn-secondary btn-sm" data-action="as-xlsx">Unduh Excel</button></div></div>';
   var stats = '<div class="grid grid-4">'+
-    '<div class="stat-card"><div class="label">Total Aset</div><div class="value">'+tot.length+'</div><div class="sub">'+all.filter(function(a){ return a.status==='dihapus'; }).length+' dihapusbukukan</div></div>'+
+    '<div class="stat-card"><div class="label">Total Aset</div><div class="value">'+tot.length+'</div><div class="sub">'+tot.reduce(function(n,a){ return n+(+a.qty||1); },0)+' unit &middot; '+all.filter(function(a){ return a.status==='dihapus'; }).length+' dihapusbukukan</div></div>'+
     '<div class="stat-card"><div class="label">Nilai Perolehan</div><div class="value" style="font-size:20px;">'+rupiah(val)+'</div></div>'+
     '<div class="stat-card"><div class="label">Nilai Buku (penyusutan)</div><div class="value" style="font-size:20px;">'+rupiah(bv)+'</div></div>'+
     '<div class="stat-card'+(att?' as-att':'')+'" data-action="as-att" style="cursor:pointer;"><div class="label">Perlu Perhatian</div><div class="value">'+att+'</div><div class="sub">'+(f.att?'Tampilkan semua':'rusak, perbaikan, servis, garansi')+'</div></div></div>';
@@ -8230,7 +8244,7 @@ function renderAssetsPage(){
   var rows = list.map(function(a){
     var h = getEmployee(a.holderEmpId), c = asLbl(AS_COND, a.condition), st = asLbl(AS_STAT, a.status), at = assetAttention(a);
     return '<tr class="as-row" data-action="as-detail" data-id="'+a.id+'"><td style="white-space:nowrap;"><b>'+escapeHtml(a.code)+'</b>'+(at.length?'<div><span class="badge badge-warning" style="font-size:10.5px;">'+escapeHtml(at[0])+'</span></div>':'')+'</td>'+
-      '<td class="rk-title"><b>'+escapeHtml(a.name)+'</b><span>'+escapeHtml([a.brand,a.model].filter(Boolean).join(' ')+(a.serial?' · SN '+a.serial:''))+'</span></td>'+
+      '<td class="rk-title"><b>'+escapeHtml(a.name)+((a.qty||1)>1?' <span class="badge badge-neutral" style="display:inline-block;font-size:11px;">&times;'+a.qty+'</span>':'')+'</b><span>'+escapeHtml([a.brand,a.model].filter(Boolean).join(' ')+(a.serial?' · SN '+a.serial:''))+'</span></td>'+
       '<td>'+escapeHtml(a.category||'-')+'</td><td>'+escapeHtml(a.dept||'-')+'</td><td>'+escapeHtml([a.property,a.location].filter(Boolean).join(' · ')||'-')+'</td>'+
       '<td>'+escapeHtml(h?h.name:'-')+'</td><td><span class="badge '+c[2]+'">'+c[1]+'</span></td><td><span class="badge '+st[2]+'">'+st[1]+'</span></td>'+
       '<td class="num" style="white-space:nowrap;">'+rupiah(assetBookValue(a))+'</td></tr>';
@@ -8245,7 +8259,7 @@ function assetFormHtml(a){
   var sel = function(id, arr, cur){ return '<select id="'+id+'">'+arr.map(function(x){ var v = Array.isArray(x)?x[0]:x, t = Array.isArray(x)?x[1]:x; return '<option value="'+escapeHtml(v)+'"'+(cur===v?' selected':'')+'>'+escapeHtml(t)+'</option>'; }).join('')+'</select>'; };
   var inp = function(id, lbl, v, type, ph){ return '<div class="form-group"><label>'+lbl+'</label><input id="'+id+'" type="'+(type||'text')+'" value="'+escapeHtml(v==null?'':v)+'"'+(ph?' placeholder="'+escapeHtml(ph)+'"':'')+'></div>'; };
   return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:640px;"><h3>'+(isNew?'Tambah Aset':'Edit Aset '+escapeHtml(a.code))+'</h3>'+
-    inp('as_name','Nama Aset',a.name,'text','Contoh: AC Split 1 PK Lobby')+
+    '<div class="form-row">'+inp('as_name','Nama Aset',a.name,'text','Contoh: AC Split 1 PK Lobby')+inp('as_qty','Jumlah (unit)',a.qty||1,'number')+'</div>'+
     '<div class="form-row"><div class="form-group"><label>Kategori</label>'+sel('as_cat',AS_CATS,a.category||AS_CATS[0])+'</div>'+
       '<div class="form-group"><label>Departemen</label>'+sel('as_dept',ds,a.dept||ds[0])+'</div></div>'+
     '<div class="form-row">'+inp('as_brand','Merek',a.brand)+inp('as_model','Model / Tipe',a.model)+inp('as_serial','No. Seri',a.serial)+'</div>'+
@@ -8268,7 +8282,7 @@ function assetDetailHtml(a){
     '<span class="badge '+c[2]+'">'+c[1]+'</span> <span class="badge '+st[2]+'">'+st[1]+'</span> '+assetAttention(a).map(function(t){ return '<span class="badge badge-warning">'+escapeHtml(t)+'</span>'; }).join(' ')+'</div>'+
     '<svg viewBox="0 0 96 96" width="88" height="88" class="as-qr">'+idcQrSvg('ABC-ASET|'+a.code+'|'+a.name, 0, 0, 96)+'</svg></div>'+
     '<div class="table-wrap" style="margin-top:12px;"><table><tbody>'+
-      row('Departemen', escapeHtml(a.dept||''))+row('Properti / Lokasi', escapeHtml([a.property,a.location].filter(Boolean).join(' · ')))+row('Pemegang', escapeHtml(h?h.name:''))+
+      row('Jumlah', (a.qty||1)+' unit')+row('Departemen', escapeHtml(a.dept||''))+row('Properti / Lokasi', escapeHtml([a.property,a.location].filter(Boolean).join(' · ')))+row('Pemegang', escapeHtml(h?h.name:''))+
       row('Merek / Model', escapeHtml([a.brand,a.model].filter(Boolean).join(' ')))+row('No. Seri', escapeHtml(a.serial||''))+
       row('Perolehan', a.purchaseDate ? escapeHtml(formatDateID(a.purchaseDate))+(a.vendor?' &middot; '+escapeHtml(a.vendor):'') : '')+
       row('Harga perolehan', a.price ? rupiah(+a.price) : '')+row('Nilai buku saat ini', a.price ? rupiah(assetBookValue(a))+(a.lifeYears?' <span class="muted">(umur '+a.lifeYears+' th)</span>':'') : '')+
@@ -8302,12 +8316,104 @@ function assetLabelsPrint(list){
 }
 function assetXlsx(){
   var list = assetFiltered();
-  var rows = [['Kode','Nama Aset','Kategori','Departemen','Properti','Lokasi','Pemegang','Merek','Model','No. Seri','Kondisi','Status','Tgl Perolehan','Harga Perolehan','Umur (th)','Nilai Buku','Vendor','Garansi s/d','Servis Berikutnya','Catatan']];
-  list.forEach(function(a){ var h = getEmployee(a.holderEmpId); rows.push([a.code,a.name,a.category,a.dept,a.property||'',a.location||'',h?h.name:'',a.brand||'',a.model||'',a.serial||'',asLbl(AS_COND,a.condition)[1],asLbl(AS_STAT,a.status)[1],a.purchaseDate||'',+a.price||0,+a.lifeYears||'',assetBookValue(a),a.vendor||'',a.warrantyUntil||'',a.nextService||'',a.notes||'']); });
+  var rows = [['Kode','Nama Aset','Jumlah','Kategori','Departemen','Properti','Lokasi','Pemegang','Merek','Model','No. Seri','Kondisi','Status','Tgl Perolehan','Harga Perolehan','Umur (th)','Nilai Buku','Vendor','Garansi s/d','Servis Berikutnya','Catatan']];
+  list.forEach(function(a){ var h = getEmployee(a.holderEmpId); rows.push([a.code,a.name,+a.qty||1,a.category,a.dept,a.property||'',a.location||'',h?h.name:'',a.brand||'',a.model||'',a.serial||'',asLbl(AS_COND,a.condition)[1],asLbl(AS_STAT,a.status)[1],a.purchaseDate||'',+a.price||0,+a.lifeYears||'',assetBookValue(a),a.vendor||'',a.warrantyUntil||'',a.nextService||'',a.notes||'']); });
   var hist = [['Kode','Nama Aset','Tanggal','Jenis','Keterangan','Biaya','Oleh']];
   list.forEach(function(a){ (a.history||[]).forEach(function(x){ hist.push([a.code,a.name,String(x.at).slice(0,10),x.type,x.text,+x.cost||'',x.by||'']); }); });
   downloadXlsx('Aset Inventaris '+todayISO()+'.xlsx', [{name:'Daftar Aset', rows:rows},{name:'Riwayat', rows:hist}]);
 }
+/* ---- Impor Excel Aset ---- */
+function assetAutoCategory(n){
+  var l = String(n||'').toLowerCase();
+  if(/\bmic\b|led lamp|softbox|stand light|reflector|lighting|speaker|audio/.test(l)) return 'Audio & Lighting';
+  if(/kamera|camera|nikon d|fujifilm x|canon|lensa|lens|filter|flash|speedlight|tripod|gimbal|cleaning kit|moisture/.test(l)) return 'Kamera & Fotografi';
+  if(/macbook|laptop|komputer|pc |monitor|printer|ipad|tablet|keyboard|mouse/.test(l) && !/airmouse/.test(l) && !/charge/.test(l)) return 'Komputer & IT';
+  if(/hdmi|usb|kabel|cable|charger|charge|baterai|battery|power ?bank|pb wireless|airmouse|adaptor|adapter/.test(l)) return 'Kabel & Aksesoris';
+  if(/\bcf\b|sandisk|sd card|micro ?sd|ssd|hdd|flashdisk|\d+ ?(gb|tb)\b/.test(l)) return 'Penyimpanan & Memori';
+  if(/meja|kursi|lemari|rak|sofa/.test(l)) return 'Furnitur';
+  if(/tool|meteran|measuring|pemotong|gunting|stapler/.test(l)) return 'Peralatan Kantor';
+  return 'Lainnya';
+}
+var AS_BRANDS = ['Nikon','Fujifilm','Canon','Sony','Hoya','Energizer','TNW','K&F','Eneloop','Enelop','Sandisk','Transcend','Vention','Lexar','Seagate','ROG','Apple','Macbook','Hollyland','SLIK','V-TEC','Godox','Samsung','Logitech','Epson','HP','Asus','Lenovo','Acer','Xiaomi','DJI','Rode','Boya'];
+function assetAutoBrand(n){
+  var l = String(n||'').toLowerCase();
+  for(var i=0;i<AS_BRANDS.length;i++){ if(new RegExp('(^|[^a-z])'+AS_BRANDS[i].toLowerCase().replace(/[-&]/g,'\\$&')+'([^a-z]|$)').test(l)) return {Enelop:'Eneloop', Macbook:'Apple'}[AS_BRANDS[i]] || AS_BRANDS[i]; }
+  return '';
+}
+function assetParseSheet(aoa){
+  var hi = -1, col = {};
+  for(var r=0;r<Math.min(aoa.length,15);r++){
+    var row = (aoa[r]||[]).map(function(x){ return String(x==null?'':x).toLowerCase().trim(); });
+    var ni = row.findIndex(function(x){ return /^(nama( aset| barang| alat)?|item|barang|aset)$/.test(x); });
+    if(ni!==-1){ hi = r; row.forEach(function(x, i){
+      if(i===ni) col.name = i;
+      else if(/^(jumlah|qty|kuantitas|jml)/.test(x)) col.qty = i;
+      else if(/kategori/.test(x)) col.cat = i;
+      else if(/merek|merk|brand/.test(x)) col.brand = i;
+      else if(/model|tipe/.test(x)) col.model = i;
+      else if(/seri|serial/.test(x)) col.serial = i;
+      else if(/lokasi|ruang/.test(x)) col.loc = i;
+      else if(/kondisi/.test(x)) col.cond = i;
+      else if(/harga|nilai/.test(x)) col.price = i;
+      else if(/catatan|keterangan|ket/.test(x)) col.note = i;
+    }); break; }
+  }
+  if(hi===-1) return [];
+  var out = [];
+  for(var k=hi+1;k<aoa.length;k++){
+    var a = aoa[k]||[], nm = String(a[col.name]==null?'':a[col.name]).replace(/\s+/g,' ').trim();
+    if(!nm) continue;
+    var q = parseInt(col.qty!=null ? a[col.qty] : 1, 10); if(!(q>0)) q = 1;
+    var cd = String(col.cond!=null && a[col.cond]!=null ? a[col.cond] : '').toLowerCase();
+    out.push({name:nm.slice(0,120), qty:q, category:(col.cat!=null && AS_CATS.indexOf(String(a[col.cat]).trim())!==-1) ? String(a[col.cat]).trim() : assetAutoCategory(nm),
+      brand:col.brand!=null && a[col.brand] ? String(a[col.brand]).trim() : assetAutoBrand(nm), model:col.model!=null && a[col.model] ? String(a[col.model]).trim() : '',
+      serial:col.serial!=null && a[col.serial] ? String(a[col.serial]).trim() : '', location:col.loc!=null && a[col.loc] ? String(a[col.loc]).trim() : '',
+      condition:/hilang/.test(cd) ? 'hilang' : (/berat/.test(cd) ? 'rusak_berat' : (/rusak/.test(cd) ? 'rusak_ringan' : 'baik')),
+      price:col.price!=null ? (parseFloat(String(a[col.price]).replace(/[^0-9.]/g,''))||0) : 0, notes:col.note!=null && a[col.note] ? String(a[col.note]).trim() : ''});
+  }
+  return out;
+}
+function assetImportModalHtml(){
+  var st = STATE.asImport || {}, ds = assetDepts();
+  var emps = activeEmployees().filter(function(e){ return SESSION.role==='hr' || ds.indexOf(e.department)!==-1; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+  var defHolder = SESSION.role==='hod' ? SESSION.empId : '';
+  var body = st.error ? '<div class="login-error">'+escapeHtml(st.error)+'</div>' : (!st.rows ? '<div class="card-sub">Kolom yang dikenali: <b>Nama</b> (wajib), Jumlah, Kategori, Merek, Model, No. Seri, Lokasi, Kondisi, Harga, Catatan. Kategori & merek diisi otomatis bila kosong.</div><div class="form-group"><input type="file" id="assetImportFile" accept=".xlsx,.xls,.csv"></div>' :
+    '<div class="card-sub"><b>'+st.rows.length+'</b> barang terbaca dari <b>'+escapeHtml(st.fileName||'')+'</b>.</div>'+
+    '<div class="form-row"><div class="form-group"><label>Departemen</label><select id="asi_dept">'+ds.map(function(d){ return '<option'+(d===st.dept?' selected':'')+'>'+escapeHtml(d)+'</option>'; }).join('')+'</select></div>'+
+    '<div class="form-group"><label>Pemegang / PIC</label><select id="asi_holder"><option value="">(Tidak ada)</option>'+emps.map(function(e){ return '<option value="'+e.id+'"'+(e.id===defHolder?' selected':'')+'>'+escapeHtml(e.name)+'</option>'; }).join('')+'</select></div>'+
+    '<div class="form-group"><label>Properti</label><select id="asi_prop"><option value="">(Kosong)</option>'+getProperties().map(function(p){ return '<option>'+escapeHtml(p)+'</option>'; }).join('')+'</select></div></div>'+
+    '<div class="table-wrap" style="max-height:300px;overflow:auto;"><table><thead><tr><th>Nama</th><th class="num">Jml</th><th>Kategori</th><th>Merek</th></tr></thead><tbody>'+
+    st.rows.map(function(r){ return '<tr><td>'+escapeHtml(r.name)+'</td><td class="num">'+r.qty+'</td><td>'+escapeHtml(r.category)+'</td><td>'+escapeHtml(r.brand||'-')+'</td></tr>'; }).join('')+'</tbody></table></div>'+
+    '<div class="card-sub" style="margin-top:8px;">Barang dengan nama yang sama di departemen tujuan akan dilewati (tidak dobel).</div>');
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:680px;"><h3>Impor Aset dari Excel</h3>'+body+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button>'+(st.rows?'<button class="btn btn-primary" data-action="as-import-confirm">Impor '+st.rows.length+' Barang</button>':'')+'</div></div></div>';
+}
+function assetImportFromFile(file){
+  if(typeof XLSX==='undefined'){ STATE.asImport = {error:'Library spreadsheet belum termuat. Cek koneksi internet lalu coba lagi.'}; openModal(assetImportModalHtml()); return; }
+  var fr = new FileReader(), isCsv = /\.csv$/i.test(file.name||'');
+  fr.onload = function(){
+    try{
+      var wb = isCsv ? XLSX.read(fr.result, {type:'string'}) : XLSX.read(fr.result, {type:'array'}), rows = [];
+      wb.SheetNames.forEach(function(n){ rows = rows.concat(assetParseSheet(XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, defval:null}))); });
+      STATE.asImport = rows.length ? {rows:rows, fileName:file.name, dept:assetDepts()[0]} : {error:'Tidak ada baris aset. Pastikan ada kolom "Nama".'};
+    }catch(err){ STATE.asImport = {error:'File tidak bisa dibaca.'}; }
+    openModal(assetImportModalHtml());
+  };
+  if(isCsv) fr.readAsText(file); else fr.readAsArrayBuffer(file);
+}
+function assetImportRows(rows, dept, holder, prop, actor){
+  DB.assets = DB.assets || [];
+  var now = new Date().toISOString(), added = 0, skipped = 0;
+  rows.forEach(function(r){
+    if(DB.assets.some(function(a){ return !a.deleted && a.dept===dept && String(a.name).toLowerCase()===String(r.name).toLowerCase(); })){ skipped++; return; }
+    var a = {id:uid('AS'), code:assetNextCode(dept), name:r.name, qty:r.qty||1, category:r.category, brand:r.brand||'', model:r.model||'', serial:r.serial||'', dept:dept, property:prop||'', location:r.location||'',
+      holderEmpId:holder||null, condition:r.condition||'baik', status:'dipakai', purchaseDate:'', price:r.price||0, lifeYears:0, vendor:'', warrantyUntil:'', nextService:'', notes:r.notes||'',
+      history:[{at:now, by:actor||'Impor', type:'Didaftarkan', text:'Diimpor dari Excel ke inventaris '+dept+'.', cost:0}], importBatch:now, createdAt:now, updatedAt:now};
+    DB.assets.push(a); added++;
+  });
+  return {added:added, skipped:skipped};
+}
+
 function assetServiceReminders(){
   if(!canAssets() || STATE.asRemDone) return;
   STATE.asRemDone = true;
@@ -8380,6 +8486,74 @@ function renderAppInfoCard(){
   '</div>';
 }
 
+/* ---------------------------- HAK AKSES STAFF (PRIVILEGE) ---------------------------- */
+var STAFF_FEATURES = [
+  ['todo','Selaras Board','Board tugas, project & timesheet, agenda, rekap kerja', true],
+  ['report','Grafik Saya','Grafik kehadiran & jam kerja pribadi', true],
+  ['leave-request','Pengajuan Cuti','Mengajukan cuti', true],
+  ['overtime-request','Pengajuan Lembur','Mengajukan lembur', true],
+  ['form-request','Form & Approval','Mengisi form & pengajuan lain', true],
+  ['announcements','Pengumuman','Membaca pengumuman', true],
+  ['my-payslip','Slip Gaji','Melihat slip gaji & Take Home Pay', true],
+  ['chat','Chat','Mengirim & menerima chat', true],
+  ['sop','SOP & Peraturan','Membaca SOP & peraturan', true],
+  ['org','Struktur Organisasi','Melihat bagan organisasi', true],
+  ['id-card','e-ID Card','Melihat & mencetak kartu karyawan', true],
+  ['my-activity','Aktivitas Saya','Riwayat aktivitas pribadi', true],
+  ['assets','Aset Inventaris (lihat)','Melihat daftar aset departemen', false],
+  ['assets-edit','Aset Inventaris (kelola)','Menambah, mengedit, dan mengimpor aset departemen', false],
+  ['accounting','Dashboard Accounting','Khusus staf Accounting / Purchasing', true],
+  ['board-import','Impor Excel ke Board','Khusus staf Sales & Marketing', true]
+];
+function privStore(){ DB.privileges = DB.privileges || {dept:{}, emp:{}}; DB.privileges.dept = DB.privileges.dept || {}; DB.privileges.emp = DB.privileges.emp || {}; return DB.privileges; }
+function privDefault(key){ var f = STAFF_FEATURES.filter(function(x){ return x[0]===key; })[0]; return f ? f[3] : true; }
+function privDeptValue(dept, key){ var p = privStore(), d = p.dept[dept] || {}; return Object.prototype.hasOwnProperty.call(d, key) ? !!d[key] : privDefault(key); }
+function privEmpValue(empId, key){
+  var p = privStore(), o = p.emp[empId] || {};
+  if(Object.prototype.hasOwnProperty.call(o, key)) return !!o[key];
+  var e = getEmployee(empId); return privDeptValue(e ? e.department : '', key);
+}
+function staffCan(key, empId){
+  if(SESSION.role!=='staff' && !empId) return true;
+  empId = empId || SESSION.empId;
+  if(!empId || isHOD(empId)) return true;
+  return privEmpValue(empId, key);
+}
+function staffBlockedView(v){ return SESSION.role==='staff' && STAFF_FEATURES.some(function(f){ return f[0]===v; }) && !staffCan(v); }
+function canAssetsEdit(){ return SESSION.role==='hr' || (SESSION.role==='hod' && getHodDepartments(SESSION.empId).length>0) || (SESSION.role==='staff' && staffCan('assets') && staffCan('assets-edit')); }
+function privDepts(){ if(SESSION.role==='hr'){ var d = getDepartments().slice(); activeEmployees().forEach(function(e){ if(e.department && d.indexOf(e.department)===-1) d.push(e.department); }); return d; } return SESSION.role==='hod' ? getHodDepartments(SESSION.empId) : []; }
+function privStaffOf(dept){ return activeEmployees().filter(function(e){ return e.department===dept && !isHOD(e.id); }).sort(function(a,b){ return a.name.localeCompare(b.name); }); }
+function privSwitch(on, key){ return '<button type="button" class="m3-switch'+(on?' on':'')+'" role="switch" aria-checked="'+(on?'true':'false')+'" data-action="priv-toggle" data-key="'+key+'"><span class="m3-switch-knob"></span></button>'; }
+function renderPrivilegesPage(){
+  var ds = privDepts();
+  if(!ds.length) return '<div class="card"><div class="empty-state">Halaman ini untuk HOD / Manager dan HR.</div></div>';
+  var dept = ds.indexOf(STATE.privDept)!==-1 ? STATE.privDept : ds[0], staff = privStaffOf(dept);
+  var tgt = STATE.privTarget && staff.some(function(e){ return e.id===STATE.privTarget; }) ? STATE.privTarget : '__dept';
+  var p = privStore(), ov = tgt==='__dept' ? null : (p.emp[tgt] || {});
+  var head = '<div class="toolbar no-print" style="flex-wrap:wrap;gap:8px;"><div class="toolbar-left" style="gap:8px;flex-wrap:wrap;">'+
+    (ds.length>1 ? '<select id="privDept">'+ds.map(function(d){ return '<option'+(d===dept?' selected':'')+'>'+escapeHtml(d)+'</option>'; }).join('')+'</select>' : '<b>Departemen '+escapeHtml(dept)+'</b>')+
+    '<select id="privTarget"><option value="__dept">Default semua staff '+escapeHtml(dept)+'</option>'+staff.map(function(e){ return '<option value="'+e.id+'"'+(e.id===tgt?' selected':'')+'>'+escapeHtml(e.name)+(p.emp[e.id] && Object.keys(p.emp[e.id]).length ? ' (khusus)' : '')+'</option>'; }).join('')+'</select></div></div>';
+  var info = tgt==='__dept'
+    ? '<div class="card-sub">Pengaturan ini berlaku untuk <b>semua staff '+escapeHtml(dept)+'</b> ('+staff.length+' orang), kecuali staff yang diatur khusus. HOD, Manager, dan HR tidak terpengaruh. Absen, Dashboard, Jadwal, Profil, dan Notifikasi selalu bisa diakses.</div>'
+    : '<div class="card-sub">Pengaturan khusus untuk <b>'+escapeHtml(todoOwnerName(tgt))+'</b>. Fitur bertanda <i>ikut departemen</i> mengikuti default departemen.</div>';
+  var rows = STAFF_FEATURES.map(function(f){
+    var on = tgt==='__dept' ? privDeptValue(dept, f[0]) : privEmpValue(tgt, f[0]);
+    var custom = ov && Object.prototype.hasOwnProperty.call(ov, f[0]);
+    return '<div class="pref-row"><div><div class="pref-label">'+escapeHtml(f[1])+(tgt!=='__dept' ? (custom ? ' <span class="badge badge-warning" style="font-size:10.5px;">khusus</span>' : ' <span class="muted" style="font-size:11px;font-weight:400;">ikut departemen</span>') : '')+'</div><div class="pref-sub">'+escapeHtml(f[2])+'</div></div>'+privSwitch(on, f[0])+'</div>';
+  }).join('');
+  var btns = tgt==='__dept'
+    ? (staff.some(function(e){ return p.emp[e.id] && Object.keys(p.emp[e.id]).length; }) ? '<button class="btn btn-secondary btn-sm" data-action="priv-reset-all">Samakan semua staff dengan default departemen</button>' : '')
+    : (ov && Object.keys(ov).length ? '<button class="btn btn-secondary btn-sm" data-action="priv-reset">Kembalikan ke default departemen</button>' : '');
+  var summary = staff.length ? '<div class="card"><div class="card-title">Ringkasan Akses Staff '+escapeHtml(dept)+'</div><div class="table-wrap"><table><thead><tr><th>Staff</th><th>Fitur diblokir</th><th>Akses tambahan</th></tr></thead><tbody>'+
+    staff.map(function(e){
+      var blocked = STAFF_FEATURES.filter(function(f){ return f[3] && !privEmpValue(e.id, f[0]); }).map(function(f){ return f[1]; });
+      var extra = STAFF_FEATURES.filter(function(f){ return !f[3] && privEmpValue(e.id, f[0]); }).map(function(f){ return f[1]; });
+      return '<tr class="as-row" data-action="priv-pick" data-id="'+e.id+'"><td><b>'+escapeHtml(e.name)+'</b>'+(p.emp[e.id] && Object.keys(p.emp[e.id]).length ? ' <span class="badge badge-warning" style="font-size:10.5px;">khusus</span>' : '')+'</td><td>'+(blocked.length ? blocked.map(function(b){ return '<span class="badge badge-danger" style="margin:1px;">'+escapeHtml(b)+'</span>'; }).join(' ') : '<span class="muted">—</span>')+'</td>'+
+        '<td>'+(extra.length ? extra.map(function(b){ return '<span class="badge badge-success" style="margin:1px;">'+escapeHtml(b)+'</span>'; }).join(' ') : '<span class="muted">—</span>')+'</td></tr>';
+    }).join('')+'</tbody></table></div><div class="card-sub" style="margin-top:6px;">Ketuk nama staff untuk mengatur aksesnya.</div></div>' : '<div class="card"><div class="empty-state">Belum ada staff di departemen ini.</div></div>';
+  return head + '<div class="card"><div class="card-title">'+(tgt==='__dept' ? 'Hak Akses Default' : 'Hak Akses Khusus')+'</div>'+info+rows+(btns?'<div style="margin-top:12px;">'+btns+'</div>':'')+'</div>' + summary;
+}
+
 /* ---------------------------- SINKRONISASI LIVE ---------------------------- */
 var LIVE_POLL_BUSY = false, LIVE_HIDDEN_TICKS = 0;
 var LIVE_STAMP_SEEN = null, LIVE_STAMP_PENDING = null, LIVE_TICKS = 0;
@@ -8416,6 +8590,7 @@ function mergeLiveData(remote){
   DB.activityLog = mergeById(DB.activityLog, remote.activityLog, function(){ return 0; })
     .sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); }).slice(0,600);
   if(SESSION.role!=='hr' && remote.banners) DB.banners = remote.banners;
+  if(remote.privileges && (remote.privUpdatedAt||'') > (DB.privUpdatedAt||'')){ DB.privileges = remote.privileges; DB.privUpdatedAt = remote.privUpdatedAt; }
   if(remote.org && (remote.orgUpdatedAt||'') > (DB.orgUpdatedAt||'')){ DB.org = remote.org; DB.orgUpdatedAt = remote.orgUpdatedAt; }
 
   /* absensi: ambil catatan check-in/out baru milik orang lain supaya tidak tertimpa saat menyimpan */
@@ -9038,7 +9213,7 @@ function renderChatPage(){
 }
 
 function chatFabHtml(){
-  if(!SESSION.role || STATE.view==='chat') return '';
+  if(!SESSION.role || STATE.view==='chat' || staffBlockedView('chat')) return '';
   var n = chatUnreadTotal();
   return '<button type="button" class="chat-fab no-print" data-action="nav" data-view="chat" aria-label="Chat">'+iconSvg('chat',26)+
     '<span class="chat-fab-badge"'+(n?'':' style="display:none;"')+'>'+(n>99?'99+':n)+'</span></button>';
@@ -9893,7 +10068,7 @@ document.addEventListener('click', function(e){
   } else if(action==='hr-photo-remove'){
     var hrT = hrProfileTarget(); hrT.photoKey = null; hrT.photoUrl = null; saveDB().then(function(){ toast('Foto dihapus.'); render(); });
   } else if(action==='as-new'){
-    if(!canAssets()) return; openModal(assetFormHtml(null));
+    if(!canAssetsEdit()) return; openModal(assetFormHtml(null));
   } else if(action==='as-edit'){
     var aeA = (DB.assets||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
     if(aeA && assetCanEdit(aeA)) openModal(assetFormHtml(aeA));
@@ -9903,7 +10078,7 @@ document.addEventListener('click', function(e){
   } else if(action==='as-att'){
     STATE.asF = STATE.asF || {}; STATE.asF.att = !STATE.asF.att; render();
   } else if(action==='as-save'){
-    if(!canAssets()) return;
+    if(!canAssetsEdit()) return;
     var asId = el.getAttribute('data-id'), asName = document.getElementById('as_name').value.trim(), asDept = document.getElementById('as_dept').value;
     if(!asName){ toast('Isi nama aset.'); return; }
     if(!asDept || assetDepts().indexOf(asDept)===-1){ toast('Pilih departemen.'); return; }
@@ -9911,7 +10086,7 @@ document.addEventListener('click', function(e){
     if(asA && !assetCanEdit(asA)) return;
     if(!asA){ asA = {id:uid('AS'), code:assetNextCode(asDept), createdAt:asNow, history:[]}; DB.assets = DB.assets || []; DB.assets.unshift(asA); }
     var gv = function(id){ return (document.getElementById(id)||{}).value || ''; };
-    asA.name = asName.slice(0,120); asA.category = gv('as_cat'); asA.dept = asDept; asA.brand = gv('as_brand').trim(); asA.model = gv('as_model').trim(); asA.serial = gv('as_serial').trim();
+    asA.name = asName.slice(0,120); asA.qty = Math.max(1, parseInt(gv('as_qty'),10)||1); asA.category = gv('as_cat'); asA.dept = asDept; asA.brand = gv('as_brand').trim(); asA.model = gv('as_model').trim(); asA.serial = gv('as_serial').trim();
     asA.property = gv('as_prop'); asA.location = gv('as_loc').trim(); asA.holderEmpId = gv('as_holder') || null; asA.condition = gv('as_cond'); asA.status = gv('as_stat');
     asA.purchaseDate = gv('as_pdate'); asA.price = Math.max(0, +gv('as_price')||0); asA.lifeYears = Math.max(0, +gv('as_life')||0); asA.vendor = gv('as_vendor').trim();
     asA.warrantyUntil = gv('as_warranty'); if(asA.nextService!==gv('as_service')){ asA.nextService = gv('as_service'); asA.svcNotified = null; } asA.notes = gv('as_note').trim(); asA.updatedAt = asNow;
@@ -9941,6 +10116,29 @@ document.addEventListener('click', function(e){
     if(!dlA || !assetCanEdit(dlA)) return;
     if(!/jsdom/i.test(navigator.userAgent||'') && !confirm('Hapus aset '+dlA.code+' dari daftar? (Untuk aset yang dijual/dibuang, sebaiknya ubah status ke "Dihapusbukukan".)')) return;
     dlA.deleted = true; dlA.updatedAt = new Date().toISOString(); logActivity('Aset dihapus: '+dlA.code+' '+dlA.name+'.'); closeModal(); saveDB(); toast('Aset dihapus.'); render();
+  } else if(action==='priv-toggle' || action==='priv-reset' || action==='priv-reset-all' || action==='priv-pick'){
+    if(SESSION.role==='staff') return;
+    var pvDs = privDepts(), pvDept = pvDs.indexOf(STATE.privDept)!==-1 ? STATE.privDept : pvDs[0], pvStaff = privStaffOf(pvDept), pvP = privStore();
+    if(action==='priv-pick'){ STATE.privDept = pvDept; STATE.privTarget = el.getAttribute('data-id'); render(); try{ window.scrollTo(0,0); }catch(e){} return; }
+    var pvT = STATE.privTarget && pvStaff.some(function(e){ return e.id===STATE.privTarget; }) ? STATE.privTarget : '__dept';
+    if(action==='priv-toggle'){
+      var pvK = el.getAttribute('data-key');
+      if(pvT==='__dept'){ pvP.dept[pvDept] = pvP.dept[pvDept] || {}; pvP.dept[pvDept][pvK] = !privDeptValue(pvDept, pvK); }
+      else { pvP.emp[pvT] = pvP.emp[pvT] || {}; var pvNew = !privEmpValue(pvT, pvK); pvP.emp[pvT][pvK] = pvNew; if(pvNew===privDeptValue(pvDept, pvK)) delete pvP.emp[pvT][pvK]; }
+      var pvF = STAFF_FEATURES.filter(function(f){ return f[0]===pvK; })[0];
+      logActivity('Hak akses '+(pvT==='__dept' ? 'staff '+pvDept : todoOwnerName(pvT))+': '+(pvF?pvF[1]:pvK)+' '+((pvT==='__dept' ? privDeptValue(pvDept, pvK) : privEmpValue(pvT, pvK)) ? 'diizinkan' : 'diblokir')+'.');
+    } else if(action==='priv-reset'){ delete pvP.emp[pvT]; }
+    else { pvStaff.forEach(function(e){ delete pvP.emp[e.id]; }); }
+    DB.privUpdatedAt = new Date().toISOString();
+    saveDB(true); render();
+  } else if(action==='as-import'){
+    if(!canAssetsEdit()) return; STATE.asImport = null; openModal(assetImportModalHtml());
+  } else if(action==='as-import-confirm'){
+    var aiS = STATE.asImport; if(!aiS || !aiS.rows || !canAssetsEdit()) return;
+    var aiDept = document.getElementById('asi_dept').value; if(assetDepts().indexOf(aiDept)===-1) return;
+    var aiRes = assetImportRows(aiS.rows, aiDept, document.getElementById('asi_holder').value, document.getElementById('asi_prop').value, currentActorLabel());
+    logActivity('Impor aset ke '+aiDept+': '+aiRes.added+' barang.'); STATE.asImport = null; STATE.asRemDone = false;
+    closeModal(); saveDB().then(function(){ toast(aiRes.added+' aset diimpor'+(aiRes.skipped?', '+aiRes.skipped+' dilewati (sudah ada)':'')+'.'); render(); });
   } else if(action==='as-labels'){
     assetLabelsPrint(assetFiltered());
   } else if(action==='as-xlsx'){
@@ -11185,9 +11383,12 @@ document.addEventListener('change', function(e){
     Array.prototype.forEach.call(document.querySelectorAll('[data-bimap]'), function(x){ if(keep[x.getAttribute('data-bimap')]) x.value = keep[x.getAttribute('data-bimap')]; });
     return;
   }
+  if(t.id==='assetImportFile'){ var aiF = t.files && t.files[0]; if(aiF) assetImportFromFile(aiF); return; }
   if(t.id==='boardImportFile'){ var biF = t.files && t.files[0]; if(biF) boardImportFromFile(biF); return; }
   if(t.id==='rekapEmp'){ STATE.rekapEmp = t.value; render(); return; }
   if(t.id==='idcEmp'){ STATE.idEmp = t.value; render(); return; }
+  if(t.id==='privDept'){ STATE.privDept = t.value; STATE.privTarget = '__dept'; render(); return; }
+  if(t.id==='privTarget'){ STATE.privTarget = t.value; render(); return; }
   if(t.id==='nb_freq'){ nsFieldsSync(); return; }
   if(t.getAttribute && t.getAttribute('data-asf')){ STATE.asF = STATE.asF || {}; STATE.asF[t.id.replace('asf_','')] = t.value; render(); return; }
   if(t.id==='erFrom'){ STATE.erFrom = t.value || STATE.currentMonth; render(); return; }

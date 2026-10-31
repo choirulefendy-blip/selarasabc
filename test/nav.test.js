@@ -17,14 +17,14 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
 
   console.log('\n[Pengelompokan menu]');
   ['hr','hod','staff'].forEach(function(role){
-    var all = w.navItemsFor(role).map(function(i){ return i.v; }).sort();
+    var all = w.navItemsForBase(role).map(function(i){ return i.v; }).sort();
     var cfg = w.navGroupsFor(role);
     var grouped = cfg.top.concat([].concat.apply([], cfg.groups.map(function(g){ return g.views; }))).sort();
     ok(JSON.stringify(all)===JSON.stringify(grouped), role+': semua menu masuk tepat satu kelompok (tidak ada yang hilang/ganda)');
   });
   login('hr');
   ok(d.querySelectorAll('.nav-group').length===5, 'HR: 5 kelompok menu');
-  ok(d.querySelectorAll('.nav-item').length===23, 'HR: 23 item tetap ada di DOM');
+  ok(d.querySelectorAll('.nav-item').length===24, 'HR: 24 item tetap ada di DOM');
   ok(!d.querySelector('.nav-group.open'), 'HR: di Dashboard semua kelompok tertutup');
   var topItems = Array.prototype.filter.call(d.querySelectorAll('.sidebar > .nav-item'), function(){ return true; }).length;
   ok(topItems===1, 'HR: Dashboard tampil di luar kelompok');

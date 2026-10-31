@@ -64,7 +64,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   ok(d.body.textContent.indexOf('Sari Staf')!==-1 && d.body.textContent.indexOf('Sigit')===-1 && d.body.textContent.indexOf('Hana')===-1, 'tidak ada nama staf lain di halaman');
   ok(!d.getElementById('reportEmp') && !d.getElementById('reportDept'), 'staf tanpa dropdown pilih orang/departemen');
   ok(d.body.textContent.indexOf('Jam Kerja Harian')!==-1, 'grafik jam kerja harian pribadi tampil');
-  ['staff'].forEach(function(role){ var cfg = w.navGroupsFor(role); var all = w.navItemsFor(role).map(function(i){ return i.v; }).sort(); var g = cfg.top.concat([].concat.apply([], cfg.groups.map(function(x){ return x.views; }))).sort(); ok(JSON.stringify(all)===JSON.stringify(g), role+': menu grafik masuk tepat satu kelompok'); });
+  ['staff'].forEach(function(role){ var cfg = w.navGroupsFor(role); var all = w.navItemsForBase(role).map(function(i){ return i.v; }).sort(); var g = cfg.top.concat([].concat.apply([], cfg.groups.map(function(x){ return x.views; }))).sort(); ok(JSON.stringify(all)===JSON.stringify(g), role+': menu grafik masuk tepat satu kelompok'); });
   ['hr','hod'].forEach(function(role){ var cfg = w.navGroupsFor(role); var all = w.navItemsFor(role).map(function(i){ return i.v; }).sort(); var g = cfg.top.concat([].concat.apply([], cfg.groups.map(function(x){ return x.views; }))).sort(); ok(JSON.stringify(all)===JSON.stringify(g), role+': menu laporan masuk tepat satu kelompok'); });
   console.log('\nHASIL: '+pass+' lulus, '+fail+' gagal');
   process.exit(fail?1:0);
