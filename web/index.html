@@ -581,7 +581,10 @@
   .deduction-item:last-child{border-bottom:none;}
 
   @media(max-width:860px){
-    .sidebar{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);transition:transform .2s;z-index:90;box-shadow:0 0 0 100vmax rgba(0,0,0,0);}
+    .sidebar{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);transition:transform .2s;z-index:90;box-shadow:0 0 0 100vmax rgba(0,0,0,0);overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;max-height:100vh;max-height:100dvh;padding-bottom:calc(22px + env(safe-area-inset-bottom));}
+    .sidebar > *{flex-shrink:0;}
+    .sidebar-brand .name{white-space:nowrap;}
+    body.sidebar-lock{overflow:hidden;}
     .sidebar.open{transform:translateX(0);box-shadow:0 0 0 100vmax rgba(0,0,0,.35);}
     .hamburger{display:inline-flex;align-items:center;justify-content:center;}
     .sidebar-close{display:inline-flex;align-items:center;justify-content:center;}
@@ -2264,6 +2267,11 @@ function applyOtPrefill(){
 }
 
 function afterRender(){
+  try{
+    document.body.classList.toggle('sidebar-lock', !!(STATE.sidebarOpen && !isDesktopWidth()));
+    var sbEl = document.querySelector('.sidebar');
+    if(sbEl && STATE.sbScroll) sbEl.scrollTop = STATE.sbScroll;
+  }catch(e){}
   navTrack();
   try{ workReminderSync(); nativeNotifAutoAsk(); }catch(e){}
   applyOtPrefill();
@@ -8080,6 +8088,7 @@ function startLiveSync(){
   setInterval(chatPoll, 6000);
   document.addEventListener('scroll', function(e){
     if(e.target && e.target.id==='bannerTrack') updateBannerDots(e.target);
+    if(e.target && e.target.classList && e.target.classList.contains('sidebar')) STATE.sbScroll = e.target.scrollTop;
   }, true);
 }
 
