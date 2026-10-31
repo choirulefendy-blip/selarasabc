@@ -109,3 +109,4 @@ sinkronisasi live, dan render semua halaman semua peran. Tes juga jalan otomatis
 | Aset Inventaris | HOD/HR mendata aset per departemen: kode otomatis, kategori, lokasi, pemegang, kondisi, status, harga & penyusutan, garansi, jadwal servis (notifikasi), riwayat mutasi/perbaikan/audit, foto, label QR, unduh Excel. |
 | Notifikasi terjadwal | HR: kirim sekali (tanggal & jam), setiap hari, setiap minggu, atau setiap bulan (tgl 1–31). Dijalankan GitHub Actions `notif-schedule.yml` tiap ~10 menit (`scripts/run-schedules.mjs`). |
 | Push iPhone | PWA dari Safari (Tambah ke Layar Utama, iOS 16.4+) + Web Push VAPID. Panduan muncul otomatis di iPhone. Butuh secret VAPID_PUBLIC_KEY & VAPID_PRIVATE_KEY di Supabase + `supabase/webpush.sql`. |
+| Hak Akses Staff | HOD (Tim Saya) & HR (Sistem) mengatur fitur yang bisa diakses staff: default per departemen + pengaturan khusus per orang. Fitur diblokir hilang dari menu, bottom nav, tombol cepat, dan tidak bisa dibuka. |
