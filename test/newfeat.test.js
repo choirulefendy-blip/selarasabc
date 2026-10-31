@@ -84,6 +84,16 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   await click(bn[3]); ok(w.STATE.view==='todo' && d.querySelector('.bottom-nav .bn-item.active') && /Board/.test(d.querySelector('.bottom-nav .bn-item.active').textContent), 'tap Board pindah halaman + aktif');
   as('hr',null,'dashboard'); ok(/Karyawan/.test(d.querySelector('.bottom-nav').textContent), 'HR: tombol Karyawan');
   ok(/APP_VERSION = 'dev'/.test(html) && /class="app-ver"/.test(app()), 'versi aplikasi tampil di menu');
+  console.log('\n[Jadwal besok di dashboard]');
+  var tmr=new Date(); tmr.setHours(12,0,0,0); tmr=new Date(tmr.getTime()+86400000); var tym=tmr.getFullYear()+'-'+(tmr.getMonth()<9?'0':'')+(tmr.getMonth()+1);
+  var d2=new Date(tmr.getTime()+86400000), d2ym=d2.getFullYear()+'-'+(d2.getMonth()<9?'0':'')+(d2.getMonth()+1);
+  w.DB.schedules[tym]=w.DB.schedules[tym]||{}; w.DB.schedules[tym].S1={}; w.DB.schedules[tym].S1[tmr.getDate()]={type:'kerja',start:'08:00',end:'16:00'};
+  as('staff','S1','dashboard'); var nc=d.querySelector('.nsc-card');
+  ok(nc && /Jadwal Besok/.test(nc.textContent) && /08:00/.test(d.querySelector('.nsc-time').textContent) && d.querySelectorAll('.nsc-day').length===7, 'staf: kartu Jadwal Besok (jam masuk + 7 hari ke depan)');
+  w.DB.schedules[tym].S1[tmr.getDate()]={type:'libur'}; w.DB.schedules[d2ym]=w.DB.schedules[d2ym]||{}; w.DB.schedules[d2ym].S1=w.DB.schedules[d2ym].S1||{}; w.DB.schedules[d2ym].S1[d2.getDate()]={type:'kerja',start:'14:00',end:'22:00'};
+  w.render(); ok(/Libur/.test(d.querySelector('.nsc-time').textContent) && /Jadwal kerja berikutnya/.test(d.querySelector('.nsc-card').textContent) && /14:00/.test(d.querySelector('.nsc-card').textContent), 'besok libur -> tampil jadwal kerja berikutnya');
+  as('hod','H1','dashboard'); ok(!!d.querySelector('.nsc-card'), 'HOD juga punya kartu Jadwal Besok');
+
   console.log('\n[Notifikasi: ikon, waktu, warna]');
   w.DB.notifications=[]; w.addNotification({type:'emp',empId:'S1'},'Pesan HR (Dyah HR): Jangan lupa absen',null,'hrmsg'); w.addNotification({type:'emp',empId:'S1'},'Sudah 8 jam kerja hari ini.','checkin','reminder'); w.addNotification({type:'emp',empId:'S1'},'Tugas baru: Desain feed','todo','task');
   as('staff','S1','dashboard'); w.STATE.notifPanelOpen=true; w.render();
