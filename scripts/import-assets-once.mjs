@@ -15,8 +15,9 @@ const r = await fetch(URL + '/rest/v1/kv_store?key=eq.hrdb&select=value', { head
 if (!r.ok) throw new Error('HTTP ' + r.status);
 const db = JSON.parse((await r.json())[0].value);
 const emp = (db.employees || []).find((e) => e.active !== false && NAME.test(e.name || ''));
-if (!emp) { console.log('Karyawan tidak ditemukan'); process.exit(1); }
+if (!emp) { console.log('::error::Karyawan tidak ditemukan'); process.exit(1); }
 const dept = emp.department;
+console.log('::notice::Karyawan: '+emp.name+' | Departemen: '+dept);
 console.log('Karyawan:', emp.name, '| Departemen:', dept, '| HOD:', Object.keys(db.departmentHods || {}).filter((k) => (db.departmentHods[k] || []).includes(emp.id)).join(', ') || '-');
 db.assets = db.assets || [];
 const pre = 'AST-' + (String(dept || 'UMUM').replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase() || 'UMM') + '-';
@@ -31,9 +32,10 @@ for (const x of rows) {
     history: [{ at: now, by: 'Impor (List Equipment ABC Group)', type: 'Didaftarkan', text: 'Diimpor ke inventaris ' + dept + '.', cost: 0 }], importBatch: now, createdAt: now, updatedAt: now });
   added++;
 }
+console.log('::notice::Akan ditambah '+added+', dilewati '+skipped+(DRY?' [DRY RUN]':''));
 console.log('Akan ditambah:', added, '| dilewati (sudah ada):', skipped, '| total aset', dept + ':', db.assets.filter((a) => !a.deleted && a.dept === dept).length);
 if (DRY || !added) { console.log(DRY ? '[DRY RUN] tidak disimpan' : 'Tidak ada yang perlu disimpan'); process.exit(0); }
 const w = await fetch(URL + '/rest/v1/kv_store', { method: 'POST', headers: { ...h, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
   body: JSON.stringify({ key: 'hrdb', value: JSON.stringify(db), updated_at: new Date().toISOString() }) });
 if (!w.ok) throw new Error('Gagal simpan HTTP ' + w.status);
-console.log('Tersimpan.');
+console.log('::notice::Tersimpan ke Supabase.');
