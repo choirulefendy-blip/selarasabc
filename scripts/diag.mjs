@@ -16,3 +16,15 @@ await t('stamp', URL + '/rest/v1/kv_store?key=eq.hrdb&select=updated_at');
 const b = await t('hrdb', URL + '/rest/v1/kv_store?key=eq.hrdb&select=value');
 try { const v = JSON.parse(JSON.parse(b)[0].value); console.log('::notice::keys ' + Object.keys(v).map((k) => k + ':' + JSON.stringify(v[k]).length).sort((a, c) => +c.split(':')[1] - +a.split(':')[1]).slice(0, 12).join(' ')); } catch (e) { console.log('::error::parse ' + e.message); }
 await t('preflight', URL + '/rest/v1/kv_store?key=eq.hrdb&select=value', { method: 'OPTIONS', headers: { Origin: 'https://localhost', 'Access-Control-Request-Method': 'GET', 'Access-Control-Request-Headers': 'apikey,authorization' } });
+// Tes kirim push ke karyawan (nama di env TEST_NAME) — melaporkan jumlah perangkat yang menerima.
+if (process.env.TEST_NAME) {
+  const db = JSON.parse(JSON.parse(b)[0].value);
+  const PUSH = pick('PUSH_FUNCTION_URL');
+  const re = new RegExp(process.env.TEST_NAME, 'i');
+  for (const e of (db.employees || []).filter((x) => re.test(x.name || ''))) {
+    const r = await fetch(PUSH, { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ recipient: e.id, title: 'ABC Selaras', body: 'Tes notifikasi dari sistem (abaikan).', url: '#dashboard' }) });
+    console.log('::notice::push ' + e.name + ': HTTP ' + r.status + ' ' + (await r.text()).slice(0, 300));
+  }
+  const p = (db.notifPrefs || {}).emp || {};
+  console.log('::notice::prefs ' + JSON.stringify(Object.fromEntries(Object.entries(p).filter(([k]) => (db.employees || []).some((x) => x.id === k && re.test(x.name || ''))))));
+}

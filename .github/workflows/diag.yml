@@ -1,5 +1,10 @@
 name: Diagnosa Server
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      test_name:
+        description: 'Nama karyawan untuk tes push (kosong = tidak kirim)'
+        default: ''
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -9,3 +14,5 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/diag.mjs
+        env:
+          TEST_NAME: ${{ inputs.test_name }}
