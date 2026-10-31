@@ -276,6 +276,30 @@
   .cg-item:last-child{border-bottom:0;}
   .cg-item b{display:block;font-size:13.5px;}
   .cg-item em{display:block;font-style:normal;font-size:11.5px;color:var(--text-muted);}
+  .sheet-overlay{align-items:flex-end !important;}
+  .sheet{background:var(--surface);width:100%;max-width:440px;border-radius:22px 22px 0 0;padding:10px 10px calc(14px + env(safe-area-inset-bottom));box-shadow:var(--shadow-3);animation:sheetUp .18s ease-out;margin:0 auto;}
+  @media (min-width:861px){ .sheet-overlay{align-items:center !important;} .sheet{border-radius:20px;} }
+  @keyframes sheetUp{from{transform:translateY(30px);opacity:.5;}to{transform:none;opacity:1;}}
+  .sheet-title{font-size:12.5px;color:var(--text-muted);padding:8px 14px 10px;border-bottom:1px solid var(--border);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sheet-item{display:flex;align-items:center;gap:14px;width:100%;border:0;background:transparent;color:var(--text);padding:13px 14px;font:inherit;font-size:14.5px;border-radius:12px;cursor:pointer;text-align:left;}
+  .sheet-item:hover{background:var(--surface-container-high);}
+  .sheet-item.danger{color:var(--danger);}
+  .sheet-ic{width:22px;text-align:center;font-size:17px;}
+  .sheet-cancel{justify-content:center;font-weight:700;margin-top:4px;background:var(--surface-container-high);}
+  .chat-bubble{cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+  .chat-item{-webkit-touch-callout:none;}
+  .chat-quote{border-left:3px solid var(--primary-light);background:rgba(74,163,244,.12);border-radius:8px;padding:5px 9px;margin-bottom:5px;display:flex;flex-direction:column;cursor:pointer;min-width:0;}
+  .chat-quote b{font-size:11.5px;color:var(--primary);}
+  .chat-quote span{font-size:12px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .chat-replybar{display:flex;align-items:center;gap:8px;padding:8px 12px 0;}
+  .chat-replybar .chat-quote{flex:1;margin:0;}
+  .chat-fwd{font-size:11px;font-style:italic;opacity:.7;margin-bottom:2px;}
+  .chat-msg.flash .chat-bubble{box-shadow:0 0 0 3px rgba(74,163,244,.55);transition:box-shadow .3s;}
+  .chat-sender{cursor:pointer;}
+  .chat-fwd-prev{background:var(--surface-container-high);border-radius:12px;padding:10px 12px;font-size:13px;margin-bottom:10px;}
+  .img-viewer-actions{position:absolute;bottom:calc(20px + env(safe-area-inset-bottom));left:0;right:0;display:flex;gap:10px;justify-content:center;}
+  .person-av .avatar{box-shadow:0 0 0 4px var(--surface);}
+  .person-av .chat-online-dot{width:20px;height:20px;right:6px;bottom:6px;border-width:3px;}
   .as-row{cursor:pointer;}
   .as-att{outline:2px solid var(--warning);}
   .as-photo{width:84px;height:84px;border-radius:14px;overflow:hidden;background:var(--surface-container-high);flex:0 0 84px;}
@@ -2723,7 +2747,7 @@ function viewTitle(v){
     'schedule-approval':'Persetujuan Jadwal', 'hod-attendance':'Absensi Tim', report:'Laporan & Grafik',
     'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI',
     'overtime-request':'Pengajuan Lembur', 'overtime-approval':'Pengajuan Lembur',
-    banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'Selaras Board', accounting:'Dashboard Accounting', privileges:'Hak Akses Staff', assets:'Aset Inventaris', sop:'SOP & Peraturan', org:'Struktur Organisasi', 'id-card':'e-ID Card', 'hr-profile':'Profil Saya', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
+    banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'Selaras Board', accounting:'Dashboard Accounting', person:'Profil', privileges:'Hak Akses Staff', assets:'Aset Inventaris', sop:'SOP & Peraturan', org:'Struktur Organisasi', 'id-card':'e-ID Card', 'hr-profile':'Profil Saya', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
   };
   return map[v] || 'Sistem HR';
 }
@@ -2767,6 +2791,7 @@ function renderShell(){
     else if(STATE.view==='accounting') body = renderAccountingPage();
     else if(STATE.view==='sop') body = renderSopPage();
     else if(STATE.view==='assets') body = renderAssetsPage();
+    else if(STATE.view==='person') body = renderPersonPage();
     else if(STATE.view==='privileges' && SESSION.role!=='staff') body = renderPrivilegesPage();
     else if(STATE.view==='org') body = renderOrgPage();
     else if(STATE.view==='id-card') body = renderIdCardPage();
@@ -2790,6 +2815,7 @@ function renderShell(){
     else if(STATE.view==='accounting') body = renderAccountingPage();
     else if(STATE.view==='sop') body = renderSopPage();
     else if(STATE.view==='assets') body = renderAssetsPage();
+    else if(STATE.view==='person') body = renderPersonPage();
     else if(STATE.view==='privileges' && SESSION.role!=='staff') body = renderPrivilegesPage();
     else if(STATE.view==='org') body = renderOrgPage();
     else if(STATE.view==='id-card') body = renderIdCardPage();
@@ -2814,6 +2840,7 @@ function renderShell(){
     else if(STATE.view==='accounting') body = renderAccountingPage();
     else if(STATE.view==='sop') body = renderSopPage();
     else if(STATE.view==='assets') body = renderAssetsPage();
+    else if(STATE.view==='person') body = renderPersonPage();
     else if(STATE.view==='privileges' && SESSION.role!=='staff') body = renderPrivilegesPage();
     else if(STATE.view==='org') body = renderOrgPage();
     else if(STATE.view==='id-card') body = renderIdCardPage();
@@ -8521,6 +8548,9 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Chat: tahan / klik kanan pesan untuk Balas, Teruskan, Salin, Beri bintang, Simpan media, Hapus',
+    'Chat: tahan / klik kanan daftar chat untuk Sematkan, Arsipkan, Tandai dibaca, Hapus chat',
+    'Ketuk foto/nama di chat untuk membuka laman profil akun; simpan foto & berkas ke perangkat',
     'Chat baru: buat grup, kirim berkas (PDF/dokumen, maks. 15MB), centang terkirim/diterima/dibaca, status online & terakhir online',
     'Chat: sematkan hingga 5 chat, arsip chat, kategori Semua / Pribadi / Grup / Belum dibaca',
     'Klik notifikasi di iPhone langsung membuka halaman terkait'
@@ -8995,7 +9025,7 @@ var CHAT_ICON_PHOTO = '📷';
 
 function chatNewState(){
   return {me:null, msgs:[], lastId:0, loaded:false, error:'', busy:false, readMap:{}, cleared:{}, draft:'', search:'', lastSend:0, pending:null, sending:false,
-    reads:{}, presence:{}, prefs:{pinned:[], archived:[]}, prefsLoaded:false, noFileCols:false, noReads:false, noPresence:false, noPrefs:false,
+    reads:{}, presence:{}, prefs:{pinned:[], archived:[], starred:[], hidden:[]}, replyTo:null, prefsLoaded:false, noFileCols:false, noReads:false, noPresence:false, noPrefs:false,
     groupKey:'', lastPresencePush:0, lastPresencePull:0, lastReadsPull:0, tab:'all', showArchived:false};
 }
 var CHAT = chatNewState();
@@ -9022,7 +9052,7 @@ function chatPrefsKey(me){ return 'abcChatPrefs_'+me; }
 function chatLoadLocalMaps(me){
   try{ CHAT.readMap = JSON.parse(window.localStorage.getItem(chatReadKey(me)) || '{}') || {}; }catch(e){ CHAT.readMap = {}; }
   try{ CHAT.cleared = JSON.parse(window.localStorage.getItem(chatClearKey(me)) || '{}') || {}; }catch(e){ CHAT.cleared = {}; }
-  try{ var pf = JSON.parse(window.localStorage.getItem(chatPrefsKey(me)) || 'null'); if(pf) CHAT.prefs = {pinned:pf.pinned||[], archived:pf.archived||[]}; }catch(e){}
+  try{ var pf = JSON.parse(window.localStorage.getItem(chatPrefsKey(me)) || 'null'); if(pf) CHAT.prefs = {pinned:pf.pinned||[], archived:pf.archived||[], starred:pf.starred||[], hidden:pf.hidden||[]}; }catch(e){}
 }
 function chatSaveReadMap(me){ try{ window.localStorage.setItem(chatReadKey(me), JSON.stringify(CHAT.readMap)); }catch(e){} }
 function chatSaveCleared(me){ try{ window.localStorage.setItem(chatClearKey(me), JSON.stringify(CHAT.cleared)); }catch(e){} }
@@ -9151,6 +9181,7 @@ function chatVisible(){
   return CHAT.msgs.filter(function(m){
     if(m.kind==='del' || dead[m.id]) return false;
     if(chatIsGroup(m.recipient) && !chatGroup(m.recipient)) return false;
+    if((CHAT.prefs.hidden||[]).indexOf(m.id)!==-1) return false;
     return m.id > (CHAT.cleared[chatConvOf(m, me)] || 0);
   });
 }
@@ -9230,7 +9261,7 @@ function chatPrefsPull(){
     return r.ok ? r.json() : [];
   }).then(function(rows){
     if(CHAT.me!==me) return;
-    if(rows && rows[0] && rows[0].prefs){ CHAT.prefs = {pinned:rows[0].prefs.pinned||[], archived:rows[0].prefs.archived||[]}; try{ localStorage.setItem(chatPrefsKey(me), JSON.stringify(CHAT.prefs)); }catch(e){} if(STATE.view==='chat') updateChatDom(); }
+    if(rows && rows[0] && rows[0].prefs){ CHAT.prefs = {pinned:rows[0].prefs.pinned||[], archived:rows[0].prefs.archived||[], starred:rows[0].prefs.starred||[], hidden:rows[0].prefs.hidden||[]}; try{ localStorage.setItem(chatPrefsKey(me), JSON.stringify(CHAT.prefs)); }catch(e){} if(STATE.view==='chat') updateChatDom(); }
     CHAT.prefsLoaded = true;
   }).catch(function(){});
 }
@@ -9308,7 +9339,7 @@ function chatLastMsgWith(conv){
 }
 
 function chatPreview(m){
-  var firstLine = String(m.body||'').split('\n')[0];
+  var firstLine = String(chatIsFwd(m) ? String(m.body).slice(CHAT_FWD.length) : (m.body||'')).split('\n')[0];
   if(m.kind==='task') return CHAT_ICON_TASK+' '+firstLine;
   if(m.kind==='sys') return firstLine;
   if(m.file_key || m.file_url) return CHAT_ICON_FILE+' '+(m.file_name || 'Berkas')+(firstLine ? ' · '+firstLine : '');
@@ -9345,7 +9376,8 @@ function hydrateImages(){
 }
 function openImageViewer(src){
   if(!src || src.indexOf('data:image/gif')===0) return;
-  openModal('<div class="modal-overlay img-viewer" data-action="overlay-close"><img id="imgViewerImg" alt="Foto"><button type="button" class="btn btn-secondary img-viewer-close" data-action="close-modal">Tutup</button></div>');
+  STATE.viewerSrc = src;
+  openModal('<div class="modal-overlay img-viewer" data-action="overlay-close"><img id="imgViewerImg" alt="Foto"><div class="img-viewer-actions"><button type="button" class="btn btn-primary" data-action="viewer-save">💾 Simpan</button><button type="button" class="btn btn-secondary" data-action="close-modal">Tutup</button></div></div>');
   var im = document.getElementById('imgViewerImg');
   if(im) im.src = src;
 }
@@ -9363,7 +9395,7 @@ function chatListItemHtml(p, last, unread, withPreview){
   var who = last && chatIsGroup(p.id) && last.kind!=='sys' ? (last.sender===CHAT.me ? 'Kamu: ' : chatShortName(last.sender)+': ') : (last && last.sender===CHAT.me ? 'Kamu: ' : '');
   var preview = withPreview && last ? (who+chatPreview(last)) : p.sub;
   var pin = withPreview && chatIsPinned(p.id);
-  return '<button type="button" class="chat-item'+(STATE.chatWith===p.id?' active':'')+'" data-action="chat-open" data-peer="'+escapeHtml(p.id)+'">'+
+  return '<button type="button" class="chat-item'+(STATE.chatWith===p.id?' active':'')+'" data-action="chat-open" data-peer="'+escapeHtml(p.id)+'"'+(withPreview?' data-lp="conv" data-lp-id="'+escapeHtml(p.id)+'"':'')+'>'+
     chatAvatar(p.id, 44)+
     '<span class="chat-item-body">'+
       '<span class="chat-item-top"><span class="chat-item-name">'+escapeHtml(p.name)+'</span>'+(withPreview && last?'<span class="chat-item-time">'+(last.sender===CHAT.me && last.kind!=='sys' ? chatTickHtml(last)+' ' : '')+chatTimeLabel(last.created_at)+'</span>':'')+'</span>'+
@@ -9431,14 +9463,17 @@ function chatMessagesHtml(){
     if(m.kind==='sys') return head+'<div class="chat-sys">'+escapeHtml(m.body)+'</div>';
     var mine = m.sender===me;
     var hasImg = !!(m.image_key || m.image_url), hasFile = !!(m.file_key || m.file_url);
-    var inner = (isGrp && !mine ? '<div class="chat-sender">'+escapeHtml(chatPeerName(m.sender))+'</div>' : '')+
+    var txt = chatBodyText(m);
+    var inner = (isGrp && !mine ? '<div class="chat-sender" data-action="person-open" data-id="'+escapeHtml(m.sender)+'">'+escapeHtml(chatPeerName(m.sender))+'</div>' : '')+
+      (chatIsFwd(m) ? '<div class="chat-fwd">↪ Diteruskan</div>' : '')+
+      (m.kind==='msg' && m.ref_id ? chatQuoteHtml(m) : '')+
       (m.kind==='task' ? '<div class="chat-task-tag">'+CHAT_ICON_TASK+' Tugas baru</div>' : '')+
       (hasImg ? imgThumbHtml(m.image_key, m.image_url, 'chat-img') : '')+
       (hasFile ? chatFileCardHtml(m) : '')+
-      (m.body ? '<div class="chat-text">'+escapeHtml(m.body)+'</div>' : '');
+      (txt ? '<div class="chat-text">'+escapeHtml(txt)+'</div>' : '');
     var del = (STATE.chatEdit && mine) ? '<button type="button" class="chat-del" data-action="chat-del" data-id="'+m.id+'">Hapus</button>' : '';
-    return head+'<div class="chat-msg '+(mine?'mine':'theirs')+'"><div class="chat-bubble'+(m.kind==='task'?' is-task':'')+(hasImg?' has-img':'')+'">'+inner+'</div>'+
-      '<div class="chat-msg-time">'+pad2(d.getHours())+':'+pad2(d.getMinutes())+(mine ? ' '+chatTickHtml(m) : '')+del+'</div></div>';
+    return head+'<div class="chat-msg '+(mine?'mine':'theirs')+'" data-mid="'+m.id+'"><div class="chat-bubble'+(m.kind==='task'?' is-task':'')+(hasImg?' has-img':'')+'" data-lp="msg" data-lp-id="'+m.id+'" data-action="chat-msg-menu" data-id="'+m.id+'">'+inner+'</div>'+
+      '<div class="chat-msg-time">'+(chatIsStarred(m.id)?'⭐ ':'')+pad2(d.getHours())+':'+pad2(d.getMinutes())+(mine ? ' '+chatTickHtml(m) : '')+del+'</div></div>';
   }).join('');
 }
 
@@ -9459,8 +9494,8 @@ function renderChatPage(){
     threadHtml = ''+
     '<div class="chat-head">'+
       '<button type="button" class="btn btn-ghost btn-sm chat-back" data-action="chat-back" aria-label="Kembali">&larr;</button>'+
-      chatAvatar(peer, 40)+
-      '<div class="chat-head-main"'+(isGrp?' data-action="chat-group-info" style="cursor:pointer;"':'')+'><div class="chat-head-name">'+escapeHtml(chatPeerName(peer))+'</div><div class="chat-head-sub'+(online?' online':'')+'" id="chatHeadSub">'+escapeHtml(chatHeadSub(peer))+'</div></div>'+
+      '<span data-action="'+(isGrp?'chat-group-info':'person-open')+'" data-id="'+escapeHtml(peer)+'" style="cursor:pointer;display:inline-flex;">'+chatAvatar(peer, 40)+'</span>'+
+      '<div class="chat-head-main" data-action="'+(isGrp?'chat-group-info':'person-open')+'" data-id="'+escapeHtml(peer)+'" style="cursor:pointer;"><div class="chat-head-name">'+escapeHtml(chatPeerName(peer))+'</div><div class="chat-head-sub'+(online?' online':'')+'" id="chatHeadSub">'+escapeHtml(chatHeadSub(peer))+'</div></div>'+
       '<div class="chat-head-actions">'+
         '<button type="button" class="btn btn-ghost btn-sm chat-hbtn" data-action="chat-pin" title="'+(chatIsPinned(peer)?'Lepas sematan':'Sematkan')+'" aria-label="Sematkan">'+(chatIsPinned(peer)?'📌':'📍')+'</button>'+
         '<button type="button" class="btn btn-ghost btn-sm chat-hbtn" data-action="chat-archive" title="'+(chatIsArchived(peer)?'Keluarkan dari arsip':'Arsipkan')+'" aria-label="Arsipkan">'+(chatIsArchived(peer)?'📤':'🗄️')+'</button>'+
@@ -9471,6 +9506,7 @@ function renderChatPage(){
     '</div>'+
     '<div class="chat-messages" id="chatMessages">'+chatMessagesHtml()+'</div>'+
     '<div class="chat-compose-wrap">'+
+      (CHAT.replyTo ? '<div class="chat-replybar"><div class="chat-quote"><b>Membalas '+escapeHtml(CHAT.replyTo.sender===CHAT.me?'dirimu sendiri':chatPeerName(CHAT.replyTo.sender))+'</b><span>'+escapeHtml(chatPreviewText(CHAT.replyTo).slice(0,90))+'</span></div><button type="button" class="btn btn-ghost btn-sm" data-action="chat-reply-cancel" aria-label="Batal balas">✕</button></div>' : '')+
       (CHAT.pending ? (CHAT.pending.file
         ? '<div class="chat-pending"><span class="chat-file-ic">'+escapeHtml((String(CHAT.pending.name).split('.').pop()||'FILE').toUpperCase().slice(0,4))+'</span><span>'+escapeHtml(CHAT.pending.name)+' · '+fmtBytes(CHAT.pending.size)+'</span><button type="button" class="btn btn-ghost btn-sm" data-action="chat-attach-remove">Batal</button></div>'
         : '<div class="chat-pending"><img src="'+escapeHtml(CHAT.pending.dataUrl)+'" alt="Foto"><span>Foto siap dikirim</span><button type="button" class="btn btn-ghost btn-sm" data-action="chat-attach-remove">Batal</button></div>') : '')+
@@ -9488,7 +9524,7 @@ function renderChatPage(){
     ? '<div class="chat-list-head"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-new-cancel" aria-label="Kembali">&larr;</button><span class="chat-list-title">Pilih kontak</span></div>'
     : (CHAT.showArchived
       ? '<div class="chat-list-head"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-archived-close" aria-label="Kembali">&larr;</button><span class="chat-list-title">Diarsipkan</span></div>'
-      : '<div class="chat-list-head"><span class="chat-list-title">Pesan</span><button type="button" class="btn btn-primary btn-sm" data-action="chat-new">+ Baru</button></div>');
+      : '<div class="chat-list-head"><span class="chat-list-title">Pesan</span><span style="display:flex;gap:6px;"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-starred" title="Pesan berbintang" aria-label="Pesan berbintang">⭐</button><button type="button" class="btn btn-primary btn-sm" data-action="chat-new">+ Baru</button></span></div>');
   return ''+
   (CHAT.error ? '<div class="card" style="background:var(--warning-bg);color:var(--warning);margin-bottom:12px;">'+escapeHtml(CHAT.error)+'</div>' : '')+
   ((CHAT.noFileCols || CHAT.noReads || CHAT.noPresence) && SESSION.role==='hr' && !CHAT.error ? '<div class="card" style="background:var(--info-bg);color:var(--info);margin-bottom:12px;font-size:13px;">Fitur chat baru (kirim berkas, centang dibaca, status online, sematkan/arsip lintas perangkat) butuh pembaruan server: jalankan ulang <b>supabase/chat.sql</b> di Supabase SQL Editor.</div>' : '')+
@@ -9523,7 +9559,7 @@ function chatGroupInfoHtml(g){
     (admin ? '<div class="form-group"><label>Nama grup</label><div style="display:flex;gap:8px;"><input id="cg_rename" value="'+escapeHtml(g.name)+'" maxlength="60" style="flex:1;"><button class="btn btn-secondary btn-sm" data-action="chat-group-rename" data-id="'+g.id+'">Simpan</button></div></div>' : '')+
     '<div class="cg-list">'+(g.members||[]).map(function(id){
       var isAdm = (g.admins||[g.createdBy]).indexOf(id)!==-1;
-      return '<div class="cg-item"><span class="chat-av-wrap">'+avatarHtml(chatPeerEmp(id), 32)+(chatOnline(id)?'<span class="chat-online-dot"></span>':'')+'</span><span><b>'+escapeHtml(id===me?'Kamu':chatPeerName(id))+'</b><em>'+(isAdm?'Admin grup · ':'')+escapeHtml(chatOnline(id)?'online':chatLastSeenLabel(id))+'</em></span>'+
+      return '<div class="cg-item" data-action="person-open" data-id="'+escapeHtml(id)+'"><span class="chat-av-wrap">'+avatarHtml(chatPeerEmp(id), 32)+(chatOnline(id)?'<span class="chat-online-dot"></span>':'')+'</span><span><b>'+escapeHtml(id===me?'Kamu':chatPeerName(id))+'</b><em>'+(isAdm?'Admin grup · ':'')+escapeHtml(chatOnline(id)?'online':chatLastSeenLabel(id))+'</em></span>'+
         (admin && id!==me ? '<button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--danger);" data-action="chat-group-kick" data-id="'+g.id+'" data-uid="'+escapeHtml(id)+'">Keluarkan</button>' : '')+'</div>';
     }).join('')+'</div>'+
     '<div class="modal-actions">'+(admin ? '<button class="btn btn-secondary" data-action="chat-group-addopen" data-id="'+g.id+'">+ Tambah Anggota</button>' : '')+
@@ -9652,9 +9688,12 @@ function chatSend(){
   } else if(pending){
     upload = uploadAttachment('chat_'+me+'_'+Date.now()+'.jpg', pending.dataUrl, 'image/jpeg').then(function(att){ return {image_key:att.key, image_url:att.url||null}; });
   } else upload = Promise.resolve(null);
+  var replyTo = CHAT.replyTo && chatConvOf(CHAT.replyTo, me)===peer ? CHAT.replyTo : null;
   return upload.then(function(extra){
+    if(replyTo){ extra = extra || {}; extra.ref_id = replyTo.id; }
     return chatSendStore(me, peer, body, extra);
   }).then(function(row){
+    CHAT.replyTo = null;
     CHAT.sending = false;
     if(CHAT.me!==me) return false;
     chatMergeRows([row]);
@@ -9662,7 +9701,7 @@ function chatSend(){
     CHAT.pending = null;
     if(input) input.value = '';
     chatMarkRead(peer);
-    if(pending) render(); else updateChatDom();
+    if(pending || replyTo) render(); else updateChatDom();
     chatScrollToEnd();
     var pv = body || (pending && pending.file ? CHAT_ICON_FILE+' '+pending.name : CHAT_ICON_PHOTO+' Foto');
     var from = chatIsGroup(peer) ? chatPeerName(peer)+' · '+chatShortName(me) : chatPeerName(me);
@@ -9738,6 +9777,144 @@ function chatPostSystem(to, body, extra){
     if(CHAT.me===me){ chatMergeRows([row]); if(STATE.view==='chat') updateChatDom(); }
     return true;
   }).catch(function(){ return false; });
+}
+
+/* ---- Chat: menu tahan / klik kanan, balas, teruskan, bintang, simpan media, profil ---- */
+var CHAT_FWD = '⁣FWD⁣';
+function chatIsFwd(m){ return String(m.body||'').indexOf(CHAT_FWD)===0; }
+function chatBodyText(m){ return chatIsFwd(m) ? String(m.body).slice(CHAT_FWD.length) : String(m.body||''); }
+function chatMsgById(id){ return CHAT.msgs.filter(function(x){ return x.id===id; })[0] || null; }
+function chatIsStarred(id){ return (CHAT.prefs.starred||[]).indexOf(id)!==-1; }
+function chatIsHidden(id){ return (CHAT.prefs.hidden||[]).indexOf(id)!==-1; }
+function chatQuoteHtml(m){
+  var o = chatMsgById(m.ref_id);
+  if(!o) return '<div class="chat-quote"><b>Pesan</b><span>Pesan tidak tersedia</span></div>';
+  var who = o.sender===CHAT.me ? 'Kamu' : chatPeerName(o.sender);
+  return '<div class="chat-quote" data-action="chat-jump" data-id="'+o.id+'"><b>'+escapeHtml(who)+'</b><span>'+escapeHtml((chatPreviewText(o)||'').slice(0,90))+'</span></div>';
+}
+function chatPreviewText(m){ var c = Object.assign({}, m, {body:chatBodyText(m)}); return chatPreview(c); }
+function chatSheet(title, items){
+  return '<div class="modal-overlay sheet-overlay" data-action="overlay-close"><div class="sheet" data-stop="1">'+(title ? '<div class="sheet-title">'+title+'</div>' : '')+
+    items.filter(Boolean).map(function(it){ return '<button type="button" class="sheet-item'+(it.danger?' danger':'')+'" data-action="'+it.a+'"'+(it.attrs||'')+'><span class="sheet-ic">'+it.ic+'</span>'+escapeHtml(it.label)+'</button>'; }).join('')+
+    '<button type="button" class="sheet-item sheet-cancel" data-action="close-modal">Batal</button></div></div>';
+}
+function chatMsgMenuHtml(m){
+  var mine = m.sender===CHAT.me, media = !!(m.image_key || m.image_url || m.file_key || m.file_url), txt = chatBodyText(m);
+  var at = ' data-id="'+m.id+'"';
+  return chatSheet(escapeHtml((txt || chatPreviewText(m) || '').slice(0,60)), [
+    {a:'chat-reply', ic:'↩️', label:'Balas', attrs:at},
+    {a:'chat-forward', ic:'↪️', label:'Teruskan ke…', attrs:at},
+    txt ? {a:'chat-copy', ic:'📋', label:'Salin teks', attrs:at} : null,
+    {a:'chat-star', ic:chatIsStarred(m.id)?'☆':'⭐', label:chatIsStarred(m.id)?'Hapus bintang':'Beri bintang', attrs:at},
+    media ? {a:'chat-save-media', ic:'💾', label:(m.file_key||m.file_url)?'Simpan berkas':'Simpan foto', attrs:at} : null,
+    {a:'chat-hide', ic:'🗑️', label:'Hapus untuk saya', attrs:at, danger:true},
+    mine ? {a:'chat-del-all', ic:'⛔', label:'Hapus untuk semua orang', attrs:at, danger:true} : null
+  ]);
+}
+function chatConvMenuHtml(c){
+  var at = ' data-peer="'+escapeHtml(c)+'"', un = chatUnreadFor(c);
+  return chatSheet(escapeHtml(chatPeerName(c)), [
+    {a:'chat-cm-pin', ic:chatIsPinned(c)?'📍':'📌', label:chatIsPinned(c)?'Lepas sematan':'Sematkan chat', attrs:at},
+    {a:'chat-cm-archive', ic:chatIsArchived(c)?'📤':'🗄️', label:chatIsArchived(c)?'Keluarkan dari arsip':'Arsipkan chat', attrs:at},
+    un ? {a:'chat-cm-read', ic:'✔️', label:'Tandai sudah dibaca', attrs:at} : null,
+    !chatIsGroup(c) ? {a:'person-open', ic:'👤', label:'Lihat profil', attrs:' data-id="'+escapeHtml(c)+'"'} : {a:'chat-cm-info', ic:'ⓘ', label:'Info grup', attrs:at},
+    {a:'chat-cm-clear', ic:'🗑️', label:'Hapus chat', attrs:at, danger:true}
+  ]);
+}
+function chatForwardHtml(m){
+  var convs = chatConvs().filter(function(p){ return p.sub!=='Nonaktif'; }).sort(function(a,b){ return ((chatLastMsgWith(b.id)||{}).id||0)-((chatLastMsgWith(a.id)||{}).id||0) || a.name.localeCompare(b.name); });
+  STATE.chatFwdSel = {};
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:480px;"><h3>Teruskan pesan</h3>'+
+    '<div class="chat-fwd-prev">'+escapeHtml((chatPreviewText(m)||'').slice(0,120))+'</div>'+
+    '<div class="form-group"><input placeholder="Cari nama atau grup..." data-role="cg-search"></div>'+
+    '<div class="cg-list" id="cgList">'+convs.map(function(p){
+      return '<label class="cg-item" data-name="'+escapeHtml(p.name.toLowerCase())+'"><input type="checkbox" value="'+escapeHtml(p.id)+'" data-role="fwd-pick">'+chatAvatar(p.id, 32)+'<span><b>'+escapeHtml(p.name)+'</b><em>'+escapeHtml(p.sub||'')+'</em></span></label>';
+    }).join('')+'</div>'+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="chat-forward-send" data-id="'+m.id+'">Teruskan</button></div></div></div>';
+}
+function chatStarredHtml(){
+  var list = chatVisible().filter(function(m){ return chatIsStarred(m.id); }).reverse();
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:520px;"><h3>⭐ Pesan Berbintang</h3>'+
+    (list.length ? '<div class="cg-list">'+list.map(function(m){
+      var c = chatConvOf(m, CHAT.me);
+      return '<div class="cg-item" data-action="chat-star-open" data-id="'+m.id+'" style="align-items:flex-start;"><span style="min-width:0;flex:1;"><b>'+escapeHtml(m.sender===CHAT.me?'Kamu':chatPeerName(m.sender))+(chatIsGroup(c)?' · '+escapeHtml(chatPeerName(c)):'')+'</b><em style="white-space:normal;">'+escapeHtml(chatPreviewText(m).slice(0,160))+'</em><em>'+escapeHtml(formatDateID(String(m.created_at).slice(0,10)))+' '+chatTimeLabel(m.created_at)+'</em></span></div>';
+    }).join('')+'</div>' : '<div class="empty-state">Belum ada pesan berbintang. Tahan sebuah pesan lalu pilih <b>Beri bintang</b>.</div>')+
+    '<div class="modal-actions"><button class="btn btn-primary" data-action="close-modal">Tutup</button></div></div></div>';
+}
+function chatSaveMedia(m){
+  var isFile = !!(m.file_key || m.file_url), key = isFile ? m.file_key : m.image_key, url = isFile ? m.file_url : m.image_url;
+  var name = isFile ? (m.file_name || 'berkas') : ('Foto ABC Selaras '+String(m.created_at||'').slice(0,10)+'.jpg');
+  mediaSave(key, url, name);
+}
+function mediaSave(key, url, name){
+  toast('Menyimpan...');
+  resolveAttachmentSrc(key, url).then(function(src){
+    if(!src){ toast('Media tidak ditemukan.'); return; }
+    return fetch(src).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.blob(); }).then(function(b){
+      if(isNativeApp() && String(src).indexOf('http')===0){ try{ window.open(src, '_blank'); toast('Dibuka di browser — tekan lama lalu pilih Simpan/Unduh.'); return; }catch(e){} }
+      saveBlobAs(b, name); toast('Tersimpan ke folder Unduhan.');
+    }).catch(function(){ try{ window.open(src, '_blank'); }catch(e){} });
+  }).catch(function(){ toast('Gagal menyimpan media.'); });
+}
+function chatJumpTo(id){
+  var el = document.querySelector('.chat-msg[data-mid="'+id+'"]');
+  if(!el){ toast('Pesan asli tidak ada di layar.'); return; }
+  el.scrollIntoView({block:'center', behavior:'smooth'});
+  el.classList.add('flash'); setTimeout(function(){ el.classList.remove('flash'); }, 1400);
+}
+
+/* tahan lama (HP) & klik kanan (laptop) */
+(function(){
+  var timer = null, startX = 0, startY = 0, fired = false;
+  function target(t){ return t && t.closest ? t.closest('[data-lp]') : null; }
+  function fire(el){
+    fired = true;
+    var kind = el.getAttribute('data-lp'), id = el.getAttribute('data-lp-id');
+    try{ if(navigator.vibrate) navigator.vibrate(15); }catch(e){}
+    if(kind==='msg'){ var m = chatMsgById(parseInt(id,10)); if(m) openModal(chatMsgMenuHtml(m)); }
+    else if(kind==='conv'){ chatEnsureIdentity(); openModal(chatConvMenuHtml(id)); }
+  }
+  document.addEventListener('touchstart', function(e){
+    var el = target(e.target); if(!el) return;
+    fired = false; startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    clearTimeout(timer); timer = setTimeout(function(){ fire(el); }, 480);
+  }, {passive:true});
+  document.addEventListener('touchmove', function(e){
+    if(!timer) return;
+    if(Math.abs(e.touches[0].clientX-startX)>10 || Math.abs(e.touches[0].clientY-startY)>10){ clearTimeout(timer); timer = null; }
+  }, {passive:true});
+  document.addEventListener('touchend', function(e){ clearTimeout(timer); timer = null; if(fired){ e.preventDefault(); } }, {passive:false});
+  document.addEventListener('contextmenu', function(e){
+    var el = target(e.target); if(!el) return;
+    if(e.target.closest && e.target.closest('textarea,input')) return;
+    e.preventDefault(); fire(el); fired = false;
+  });
+  document.addEventListener('click', function(e){
+    if(fired && target(e.target)){ e.stopPropagation(); e.preventDefault(); fired = false; }
+  }, true);
+})();
+
+/* ---- Laman profil akun lain ---- */
+function renderPersonPage(){
+  var id = STATE.personId, isHr = id==='hr', e = isHr ? null : getEmployee(id);
+  if(!isHr && !e) return '<div class="card"><div class="empty-state">Profil tidak ditemukan.</div></div>';
+  chatEnsureIdentity();
+  var status = chatLastSeenLabel(id), online = chatOnline(id);
+  var hod = e && isHOD(e.id), canChat = id!==chatMe() && !staffBlockedView('chat');
+  var row = function(k, v){ return v ? '<tr><td class="muted" style="width:38%;">'+k+'</td><td>'+v+'</td></tr>' : ''; };
+  var groups = chatMyGroups().filter(function(g){ return (g.members||[]).indexOf(id)!==-1; });
+  return '<div class="card person-card"><div style="display:flex;justify-content:center;margin:4px 0 12px;"><span class="chat-av-wrap person-av">'+avatarHtml(e, 112)+(online?'<span class="chat-online-dot"></span>':'')+'</span></div>'+
+    '<div class="card-title" style="text-align:center;margin-bottom:2px;">'+escapeHtml(isHr ? 'HR' : e.name)+'</div>'+
+    '<div class="card-sub" style="text-align:center;">'+escapeHtml(isHr ? 'Tim HR' : (e.position||'')+(hod?' · HOD':''))+'</div>'+
+    (status ? '<div style="text-align:center;margin:-4px 0 12px;font-size:12.5px;'+(online?'color:#22B07D;font-weight:700;':'color:var(--text-muted);')+'">'+escapeHtml(status)+'</div>' : '')+
+    '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'+(canChat ? '<button class="btn btn-primary" data-action="person-chat" data-id="'+escapeHtml(id)+'">'+iconSvg('chat',16)+' Kirim Pesan</button>' : '')+
+    '<button class="btn btn-secondary" data-action="person-back">Kembali</button></div></div>'+
+    (e ? '<div class="card"><div class="card-title">Info Karyawan</div><div class="table-wrap"><table><tbody>'+
+      row('ID Karyawan', escapeHtml(e.empCode||e.id))+row('Jabatan', escapeHtml(e.position||''))+row('Departemen', escapeHtml(e.department||''))+
+      row('Properti', escapeHtml((e.properties||[]).join(', ')))+row('Bergabung', e.joinDate ? escapeHtml(formatDateID(e.joinDate)) : '')+
+      row('Email', e.email ? '<a href="mailto:'+escapeHtml(e.email)+'">'+escapeHtml(e.email)+'</a>' : '')+
+    '</tbody></table></div></div>' : '')+
+    (groups.length ? '<div class="card"><div class="card-title">Grup bersama ('+groups.length+')</div>'+groups.map(function(g){ return '<button type="button" class="chat-item" data-action="person-group" data-id="'+g.id+'">'+chatGroupAvatar(g, 36)+'<span class="chat-item-body"><span class="chat-item-name">'+escapeHtml(g.name)+'</span><span class="chat-item-prev">'+(g.members||[]).length+' anggota</span></span></button>'; }).join('')+'</div>' : '');
 }
 
 function openModal(html){
@@ -10338,6 +10515,67 @@ document.addEventListener('click', function(e){
   } else if(action==='chat-attach-remove'){
     CHAT.pending = null;
     render();
+  } else if(action==='chat-msg-menu'){
+    if(e.target.closest('[data-action="view-image"],[data-action="chat-file-open"],[data-action="chat-jump"],[data-action="person-open"]')) return;
+    var mmM = chatMsgById(parseInt(el.getAttribute('data-id'),10)); if(mmM) openModal(chatMsgMenuHtml(mmM));
+  } else if(action==='chat-reply'){
+    CHAT.replyTo = chatMsgById(parseInt(el.getAttribute('data-id'),10)); closeModal(); render(); var crI = document.getElementById('chatInput'); if(crI) crI.focus(); chatScrollToEnd();
+  } else if(action==='chat-reply-cancel'){
+    CHAT.replyTo = null; render();
+  } else if(action==='chat-jump'){
+    chatJumpTo(parseInt(el.getAttribute('data-id'),10));
+  } else if(action==='chat-copy'){
+    var cpM = chatMsgById(parseInt(el.getAttribute('data-id'),10)); closeModal();
+    if(cpM){ var cpT = chatBodyText(cpM); try{ navigator.clipboard.writeText(cpT).then(function(){ toast('Teks disalin.'); }, function(){ toast('Gagal menyalin.'); }); }catch(err){ toast('Gagal menyalin.'); } }
+  } else if(action==='chat-star'){
+    var stId = parseInt(el.getAttribute('data-id'),10), st = CHAT.prefs.starred = CHAT.prefs.starred || [];
+    if(st.indexOf(stId)!==-1){ st.splice(st.indexOf(stId),1); toast('Bintang dihapus.'); } else { st.push(stId); toast('Pesan diberi bintang.'); }
+    chatPrefsSave(); closeModal(); updateChatDom();
+  } else if(action==='chat-starred'){
+    chatEnsureIdentity(); openModal(chatStarredHtml());
+  } else if(action==='chat-star-open'){
+    var soM = chatMsgById(parseInt(el.getAttribute('data-id'),10)); closeModal();
+    if(soM){ var soC = chatConvOf(soM, CHAT.me); STATE.view='chat'; STATE.chatWith = soC; CHAT.showArchived = chatIsArchived(soC); render(); setTimeout(function(){ chatJumpTo(soM.id); }, 80); }
+  } else if(action==='chat-save-media'){
+    var smM = chatMsgById(parseInt(el.getAttribute('data-id'),10)); closeModal(); if(smM) chatSaveMedia(smM);
+  } else if(action==='viewer-save'){
+    var vsK = null, vsS = STATE.viewerSrc; mediaSave(vsK, vsS, 'Foto ABC Selaras '+todayISO()+'.jpg');
+  } else if(action==='chat-hide'){
+    var hdId = parseInt(el.getAttribute('data-id'),10); CHAT.prefs.hidden = CHAT.prefs.hidden || []; if(CHAT.prefs.hidden.indexOf(hdId)===-1) CHAT.prefs.hidden.push(hdId);
+    if(CHAT.prefs.hidden.length>2000) CHAT.prefs.hidden = CHAT.prefs.hidden.slice(-2000);
+    chatPrefsSave(); closeModal(); updateChatDom(); toast('Pesan dihapus dari perangkatmu.');
+  } else if(action==='chat-del-all'){
+    var daId = parseInt(el.getAttribute('data-id'),10); closeModal();
+    if(/jsdom/i.test(navigator.userAgent||'') || confirm('Hapus pesan ini untuk semua orang?')) chatDeleteMessage(daId);
+  } else if(action==='chat-forward'){
+    var fwM = chatMsgById(parseInt(el.getAttribute('data-id'),10)); if(fwM) openModal(chatForwardHtml(fwM));
+  } else if(action==='chat-forward-send'){
+    var fsM = chatMsgById(parseInt(el.getAttribute('data-id'),10)), fsTo = Object.keys(STATE.chatFwdSel||{}).filter(function(k){ return STATE.chatFwdSel[k]; });
+    if(!fsM || !fsTo.length){ toast('Pilih tujuan.'); return; }
+    var fsExtra = {}; ['image_key','image_url','file_key','file_url','file_name','file_type','file_size'].forEach(function(k){ if(fsM[k]) fsExtra[k] = fsM[k]; });
+    var fsMe = CHAT.me, fsBody = CHAT_FWD + chatBodyText(fsM);
+    closeModal();
+    Promise.all(fsTo.map(function(t){ return chatSendStore(fsMe, t, fsBody, fsExtra).then(function(row){ chatMergeRows([row]);
+      chatPushTargets(t).forEach(function(x){ var au = chatAudience(x); if(notifAllowed(au,'chat')) triggerPush(au, 'Pesan dari '+(chatIsGroup(t)?chatPeerName(t)+' · ':'')+chatPeerName(fsMe)+': ↪ '+chatPreviewText(fsM).slice(0,80), 'chat'); }); }); }))
+      .then(function(){ toast('Diteruskan ke '+fsTo.length+' chat.'); updateChatDom(); }).catch(function(){ toast('Sebagian pesan gagal diteruskan.'); });
+  } else if(action==='chat-cm-pin' || action==='chat-cm-archive' || action==='chat-cm-read' || action==='chat-cm-clear' || action==='chat-cm-info'){
+    var cmC = el.getAttribute('data-peer'); closeModal();
+    if(action==='chat-cm-pin') chatTogglePin(cmC);
+    else if(action==='chat-cm-archive'){ chatToggleArchive(cmC); if(STATE.chatWith===cmC && chatIsArchived(cmC)) STATE.chatWith = null; }
+    else if(action==='chat-cm-read') chatMarkRead(cmC);
+    else if(action==='chat-cm-info'){ var ciG = chatGroup(cmC); if(ciG){ openModal(chatGroupInfoHtml(ciG)); return; } }
+    else if(action==='chat-cm-clear'){ if(!/jsdom/i.test(navigator.userAgent||'') && !confirm('Hapus seluruh chat dengan '+chatPeerName(cmC)+' dari perangkatmu?')) return; chatClearConversation(cmC); if(STATE.chatWith===cmC) STATE.chatWith = null; toast('Chat dihapus.'); }
+    render();
+  } else if(action==='person-open'){
+    var poId = el.getAttribute('data-id'); if(!poId || chatIsGroup(poId)) return;
+    if(poId===chatMe()){ closeModal(); STATE.view = SESSION.role==='hr' ? 'hr-profile' : 'my-profile'; render(); return; }
+    closeModal(); STATE.personBack = STATE.view; STATE.personId = poId; STATE.view = 'person'; render(); try{ window.scrollTo(0,0); }catch(err){}
+  } else if(action==='person-chat'){
+    STATE.view = 'chat'; STATE.chatWith = el.getAttribute('data-id'); STATE.chatNew = false; CHAT.showArchived = chatIsArchived(STATE.chatWith); render(); chatScrollToEnd();
+  } else if(action==='person-back'){
+    STATE.view = STATE.personBack || 'chat'; render();
+  } else if(action==='person-group'){
+    STATE.view = 'chat'; STATE.chatWith = 'g:'+el.getAttribute('data-id'); render(); chatScrollToEnd();
   } else if(action==='view-image'){
     openImageViewer(el.getAttribute('src'));
   } else if(action==='chat-send'){
@@ -11782,6 +12020,7 @@ document.addEventListener('drop', function(e){
 document.addEventListener('change', function(e){
   if(e.target && e.target.getAttribute && e.target.getAttribute('data-role')==='ckrk'){ ckrkReadRows(); }
   var t = e.target;
+  if(t.getAttribute && t.getAttribute('data-role')==='fwd-pick'){ STATE.chatFwdSel = STATE.chatFwdSel || {}; STATE.chatFwdSel[t.value] = t.checked; return; }
   if(t.getAttribute && t.getAttribute('data-role')==='cg-pick'){ STATE.chatGrpSel = STATE.chatGrpSel || {}; STATE.chatGrpSel[t.value] = t.checked; return; }
   if(t.id==='chatImgFile'){
     var ciFile = t.files && t.files[0];
