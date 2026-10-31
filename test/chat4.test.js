@@ -27,7 +27,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   var rep=w.CHAT.msgs[w.CHAT.msgs.length-1]; var orig=w.CHAT.msgs.filter(function(m){return m.body.indexOf('Halo Budi')===0;})[0];
   ok(rep.ref_id===orig.id && !!d.querySelector('.chat-msg.mine .chat-quote') && !d.querySelector('.chat-replybar'), 'balasan tersimpan + kutipan tampil di gelembung');
   await click('.chat-msg.mine .chat-bubble'); ok(/Hapus untuk semua orang/.test(modal()), 'klik pesan sendiri: ada Hapus untuk semua orang');
-  await click('[data-action="chat-star"]'); ok(w.chatIsStarred(rep.id) && /⭐/.test(d.querySelector('.chat-msg.mine .chat-msg-time').textContent), 'pesan berbintang ditandai ⭐');
+  await click('[data-action="chat-star"]'); ok(w.chatIsStarred(rep.id) && !!d.querySelector('.chat-msg.mine .chat-msg-time .chat-star-mk svg'), 'pesan berbintang ditandai ikon bintang');
   await click('[data-action="chat-starred"]'); ok(/Sudah, aku kirim sore ini/.test(modal()), 'daftar Pesan Berbintang');
   await click('[data-action="close-modal"]');
   ctx(d.querySelector('.chat-msg.theirs .chat-bubble')); await sleep(30); await click('[data-action="chat-forward"]');

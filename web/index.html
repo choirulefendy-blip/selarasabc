@@ -251,7 +251,7 @@
   .chat-tab.on{background:var(--primary-container);color:var(--on-primary-container);border-color:transparent;}
   .chat-tab b{background:var(--primary);color:#fff;border-radius:9px;padding:0 6px;font-size:11px;margin-left:2px;}
   .chat-pin{font-size:13px;margin-left:4px;}
-  .chat-arch-row .chat-arch-ic{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface-container-high);font-size:20px;flex:0 0 44px;}
+  .chat-arch-row .chat-arch-ic{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--primary-container);flex:0 0 44px;}
   .chat-grp-av{background:linear-gradient(135deg,#4AA3F4,#296290) !important;color:#fff !important;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
   .chat-av-wrap{position:relative;display:inline-flex;flex-shrink:0;}
   .chat-online-dot{position:absolute;right:0;bottom:0;width:12px;height:12px;border-radius:50%;background:#22B07D;border:2px solid var(--surface);}
@@ -284,7 +284,13 @@
   .sheet-item{display:flex;align-items:center;gap:14px;width:100%;border:0;background:transparent;color:var(--text);padding:13px 14px;font:inherit;font-size:14.5px;border-radius:12px;cursor:pointer;text-align:left;}
   .sheet-item:hover{background:var(--surface-container-high);}
   .sheet-item.danger{color:var(--danger);}
-  .sheet-ic{width:22px;text-align:center;font-size:17px;}
+  .sheet-ic{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 36px;background:var(--primary-container);color:var(--primary);}
+  .sheet-item.danger .sheet-ic{background:var(--danger-bg);color:var(--danger);}
+  .chat-pin{color:var(--primary);display:inline-flex;}
+  .chat-arch-row .chat-arch-ic{color:var(--primary);}
+  .chat-star-mk{color:#F59E0B;display:inline-flex;vertical-align:-1px;margin-right:3px;}
+  .chat-star-mk svg{fill:#F59E0B;}
+  .chat-hbtn{color:var(--text-muted);display:inline-flex;align-items:center;}
   .sheet-cancel{justify-content:center;font-weight:700;margin-top:4px;background:var(--surface-container-high);}
   .chat-bubble{cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
   .chat-item{-webkit-touch-callout:none;}
@@ -2532,6 +2538,20 @@ function renderLogin(){
 
 /* ---------------------------- RENDER: SHELL ---------------------------- */
 var ICONS = {
+  reply:'<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  forward:'<path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
+  copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
+  star:'<path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/>',
+  starOff:'<path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/><path d="M3 3l18 18"/>',
+  download:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>',
+  ban:'<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+  pin:'<path d="M12 17v5"/><path d="M9 10.8V4h6v6.8l3 3.2H6z"/>',
+  pinOff:'<path d="M12 17v5"/><path d="M9 10.8V4h6v6.8l3 3.2H6z"/><path d="M3 3l18 18"/>',
+  archive:'<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>',
+  unarchive:'<rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M12 18v-6M9.5 14.5L12 12l2.5 2.5"/>',
+  checkAll:'<path d="M2 13l4 4L16 7"/><path d="M12.5 15.5L14 17l8-10"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.01"/>',
+  close:'<path d="M18 6L6 18M6 6l12 12"/>',
   box:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
   idcard:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="11" r="2.5"/><path d="M5.5 17c.6-1.8 2-2.7 3.5-2.7s2.9.9 3.5 2.7"/><path d="M15 10h3M15 14h3"/>',
   trash:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>',
@@ -9403,7 +9423,7 @@ function hydrateImages(){
 function openImageViewer(src){
   if(!src || src.indexOf('data:image/gif')===0) return;
   STATE.viewerSrc = src;
-  openModal('<div class="modal-overlay img-viewer" data-action="overlay-close"><img id="imgViewerImg" alt="Foto"><div class="img-viewer-actions"><button type="button" class="btn btn-primary" data-action="viewer-save">💾 Simpan</button><button type="button" class="btn btn-secondary" data-action="close-modal">Tutup</button></div></div>');
+  openModal('<div class="modal-overlay img-viewer" data-action="overlay-close"><img id="imgViewerImg" alt="Foto"><div class="img-viewer-actions"><button type="button" class="btn btn-primary" data-action="viewer-save">'+iconSvg('download',17)+' Simpan</button><button type="button" class="btn btn-secondary" data-action="close-modal">Tutup</button></div></div>');
   var im = document.getElementById('imgViewerImg');
   if(im) im.src = src;
 }
@@ -9428,7 +9448,7 @@ function chatListItemHtml(p, last, unread, withPreview){
       '<span class="chat-item-top"><span class="chat-item-name">'+escapeHtml(p.name)+'</span>'+(withPreview && last?'<span class="chat-item-time">'+(last.sender===CHAT.me && last.kind!=='sys' ? chatTickHtml(last)+' ' : '')+chatTimeLabel(last.created_at)+'</span>':'')+'</span>'+
       '<span class="chat-item-prev'+(unread?' unread':'')+'">'+escapeHtml(preview.length>60 ? preview.slice(0,60)+'…' : preview)+'</span>'+
     '</span>'+
-    (pin ? '<span class="chat-pin" title="Disematkan">📌</span>' : '')+
+    (pin ? '<span class="chat-pin" title="Disematkan">'+iconSvg('pin',15)+'</span>' : '')+
     (unread ? '<span class="chat-unread">'+(unread>99?'99+':unread)+'</span>' : '')+
   '</button>';
 }
@@ -9464,7 +9484,7 @@ function chatListHtml(){
     if(pa!==-1 || pb!==-1){ if(pa===-1) return 1; if(pb===-1) return -1; return pa-pb; }
     return ((b.last&&b.last.id)||0) - ((a.last&&a.last.id)||0);
   });
-  var archRow = (!CHAT.showArchived && arch.length && !q) ? '<button type="button" class="chat-item chat-arch-row" data-action="chat-archived-open"><span class="chat-arch-ic">🗄️</span><span class="chat-item-body"><span class="chat-item-name">Diarsipkan</span><span class="chat-item-prev">'+arch.length+' chat'+(function(){ var n = arch.reduce(function(s,r){ return s+chatUnreadFor(r.p.id); },0); return n ? ' · '+n+' belum dibaca' : ''; })()+'</span></span></button>' : '';
+  var archRow = (!CHAT.showArchived && arch.length && !q) ? '<button type="button" class="chat-item chat-arch-row" data-action="chat-archived-open"><span class="chat-arch-ic">'+iconSvg('archive',20)+'</span><span class="chat-item-body"><span class="chat-item-name">Diarsipkan</span><span class="chat-item-prev">'+arch.length+' chat'+(function(){ var n = arch.reduce(function(s,r){ return s+chatUnreadFor(r.p.id); },0); return n ? ' · '+n+' belum dibaca' : ''; })()+'</span></span></button>' : '';
   if(!rows.length){
     return archRow + (q ? '<div class="empty-state">Tidak ditemukan.</div>'
       : (CHAT.showArchived ? '<div class="empty-state">Tidak ada chat yang diarsipkan.</div>' : '<div class="empty-state">'+(CHAT.tab==='all' ? 'Belum ada percakapan.<br>Ketuk <strong>+ Baru</strong> untuk memulai chat atau membuat grup.' : 'Tidak ada chat di kategori ini.')+'</div>'));
@@ -9500,7 +9520,7 @@ function chatMessagesHtml(){
       (txt ? '<div class="chat-text">'+escapeHtml(txt)+'</div>' : '');
     var del = (STATE.chatEdit && mine) ? '<button type="button" class="chat-del" data-action="chat-del" data-id="'+m.id+'">Hapus</button>' : '';
     return head+'<div class="chat-msg '+(mine?'mine':'theirs')+'" data-mid="'+m.id+'"><div class="chat-bubble'+(m.kind==='task'?' is-task':'')+(hasImg?' has-img':'')+'" data-lp="msg" data-lp-id="'+m.id+'" data-action="chat-msg-menu" data-id="'+m.id+'">'+inner+'</div>'+
-      '<div class="chat-msg-time">'+(chatIsStarred(m.id)?'⭐ ':'')+pad2(d.getHours())+':'+pad2(d.getMinutes())+(mine ? ' '+chatTickHtml(m) : '')+del+'</div></div>';
+      '<div class="chat-msg-time">'+(chatIsStarred(m.id)?'<span class="chat-star-mk">'+iconSvg('star',11)+'</span>':'')+pad2(d.getHours())+':'+pad2(d.getMinutes())+(mine ? ' '+chatTickHtml(m) : '')+del+'</div></div>';
   }).join('');
 }
 
@@ -9524,16 +9544,16 @@ function renderChatPage(){
       '<span data-action="'+(isGrp?'chat-group-info':'person-open')+'" data-id="'+escapeHtml(peer)+'" style="cursor:pointer;display:inline-flex;">'+chatAvatar(peer, 40)+'</span>'+
       '<div class="chat-head-main" data-action="'+(isGrp?'chat-group-info':'person-open')+'" data-id="'+escapeHtml(peer)+'" style="cursor:pointer;"><div class="chat-head-name">'+escapeHtml(chatPeerName(peer))+'</div><div class="chat-head-sub'+(online?' online':'')+'" id="chatHeadSub">'+escapeHtml(chatHeadSub(peer))+'</div></div>'+
       '<div class="chat-head-actions">'+
-        '<button type="button" class="btn btn-ghost btn-sm chat-hbtn" data-action="chat-pin" title="'+(chatIsPinned(peer)?'Lepas sematan':'Sematkan')+'" aria-label="Sematkan">'+(chatIsPinned(peer)?'📌':'📍')+'</button>'+
-        '<button type="button" class="btn btn-ghost btn-sm chat-hbtn" data-action="chat-archive" title="'+(chatIsArchived(peer)?'Keluarkan dari arsip':'Arsipkan')+'" aria-label="Arsipkan">'+(chatIsArchived(peer)?'📤':'🗄️')+'</button>'+
-        (isGrp ? '<button type="button" class="btn btn-ghost btn-sm chat-hbtn" data-action="chat-group-info" title="Info grup" aria-label="Info grup">ⓘ</button>' : '')+
+        '<button type="button" class="btn btn-ghost btn-sm chat-hbtn" data-action="chat-pin" title="'+(chatIsPinned(peer)?'Lepas sematan':'Sematkan')+'" aria-label="Sematkan">'+iconSvg(chatIsPinned(peer)?'pinOff':'pin',19)+'</button>'+
+        '<button type="button" class="btn btn-ghost btn-sm chat-hbtn" data-action="chat-archive" title="'+(chatIsArchived(peer)?'Keluarkan dari arsip':'Arsipkan')+'" aria-label="Arsipkan">'+iconSvg(chatIsArchived(peer)?'unarchive':'archive',19)+'</button>'+
+        (isGrp ? '<button type="button" class="btn btn-ghost btn-sm chat-hbtn" data-action="chat-group-info" title="Info grup" aria-label="Info grup">'+iconSvg('info',19)+'</button>' : '')+
         (STATE.chatEdit ? '<button type="button" class="btn btn-ghost btn-sm" data-action="chat-clear" style="color:var(--danger);">Hapus percakapan</button>' : '')+
         '<button type="button" class="btn btn-secondary btn-sm" data-action="chat-edit">'+(STATE.chatEdit ? 'Selesai' : 'Edit')+'</button>'+
       '</div>'+
     '</div>'+
     '<div class="chat-messages" id="chatMessages">'+chatMessagesHtml()+'</div>'+
     '<div class="chat-compose-wrap">'+
-      (CHAT.replyTo ? '<div class="chat-replybar"><div class="chat-quote"><b>Membalas '+escapeHtml(CHAT.replyTo.sender===CHAT.me?'dirimu sendiri':chatPeerName(CHAT.replyTo.sender))+'</b><span>'+escapeHtml(chatPreviewText(CHAT.replyTo).slice(0,90))+'</span></div><button type="button" class="btn btn-ghost btn-sm" data-action="chat-reply-cancel" aria-label="Batal balas">✕</button></div>' : '')+
+      (CHAT.replyTo ? '<div class="chat-replybar"><div class="chat-quote"><b>Membalas '+escapeHtml(CHAT.replyTo.sender===CHAT.me?'dirimu sendiri':chatPeerName(CHAT.replyTo.sender))+'</b><span>'+escapeHtml(chatPreviewText(CHAT.replyTo).slice(0,90))+'</span></div><button type="button" class="btn btn-ghost btn-sm" data-action="chat-reply-cancel" aria-label="Batal balas">'+iconSvg('close',16)+'</button></div>' : '')+
       (CHAT.pending ? (CHAT.pending.file
         ? '<div class="chat-pending"><span class="chat-file-ic">'+escapeHtml((String(CHAT.pending.name).split('.').pop()||'FILE').toUpperCase().slice(0,4))+'</span><span>'+escapeHtml(CHAT.pending.name)+' · '+fmtBytes(CHAT.pending.size)+'</span><button type="button" class="btn btn-ghost btn-sm" data-action="chat-attach-remove">Batal</button></div>'
         : '<div class="chat-pending"><img src="'+escapeHtml(CHAT.pending.dataUrl)+'" alt="Foto"><span>Foto siap dikirim</span><button type="button" class="btn btn-ghost btn-sm" data-action="chat-attach-remove">Batal</button></div>') : '')+
@@ -9551,7 +9571,7 @@ function renderChatPage(){
     ? '<div class="chat-list-head"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-new-cancel" aria-label="Kembali">&larr;</button><span class="chat-list-title">Pilih kontak</span></div>'
     : (CHAT.showArchived
       ? '<div class="chat-list-head"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-archived-close" aria-label="Kembali">&larr;</button><span class="chat-list-title">Diarsipkan</span></div>'
-      : '<div class="chat-list-head"><span class="chat-list-title">Pesan</span><span style="display:flex;gap:6px;"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-starred" title="Pesan berbintang" aria-label="Pesan berbintang">⭐</button><button type="button" class="btn btn-primary btn-sm" data-action="chat-new">+ Baru</button></span></div>');
+      : '<div class="chat-list-head"><span class="chat-list-title">Pesan</span><span style="display:flex;gap:6px;"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-starred" title="Pesan berbintang" aria-label="Pesan berbintang">'+iconSvg('star',18)+'</button><button type="button" class="btn btn-primary btn-sm" data-action="chat-new">+ Baru</button></span></div>');
   return ''+
   (CHAT.error ? '<div class="card" style="background:var(--warning-bg);color:var(--warning);margin-bottom:12px;">'+escapeHtml(CHAT.error)+'</div>' : '')+
   ((CHAT.noFileCols || CHAT.noReads || CHAT.noPresence) && SESSION.role==='hr' && !CHAT.error ? '<div class="card" style="background:var(--info-bg);color:var(--info);margin-bottom:12px;font-size:13px;">Fitur chat baru (kirim berkas, centang dibaca, status online, sematkan/arsip lintas perangkat) butuh pembaruan server: jalankan ulang <b>supabase/chat.sql</b> di Supabase SQL Editor.</div>' : '')+
@@ -9839,23 +9859,23 @@ function chatMsgMenuHtml(m){
   var mine = m.sender===CHAT.me, media = !!(m.image_key || m.image_url || m.file_key || m.file_url), txt = chatBodyText(m);
   var at = ' data-id="'+m.id+'"';
   return chatSheet(escapeHtml((txt || chatPreviewText(m) || '').slice(0,60)), [
-    {a:'chat-reply', ic:'↩️', label:'Balas', attrs:at},
-    {a:'chat-forward', ic:'↪️', label:'Teruskan ke…', attrs:at},
-    txt ? {a:'chat-copy', ic:'📋', label:'Salin teks', attrs:at} : null,
-    {a:'chat-star', ic:chatIsStarred(m.id)?'☆':'⭐', label:chatIsStarred(m.id)?'Hapus bintang':'Beri bintang', attrs:at},
-    media ? {a:'chat-save-media', ic:'💾', label:(m.file_key||m.file_url)?'Simpan berkas':'Simpan foto', attrs:at} : null,
-    {a:'chat-hide', ic:'🗑️', label:'Hapus untuk saya', attrs:at, danger:true},
-    mine ? {a:'chat-del-all', ic:'⛔', label:'Hapus untuk semua orang', attrs:at, danger:true} : null
+    {a:'chat-reply', ic:iconSvg('reply',19), label:'Balas', attrs:at},
+    {a:'chat-forward', ic:iconSvg('forward',19), label:'Teruskan ke…', attrs:at},
+    txt ? {a:'chat-copy', ic:iconSvg('copy',19), label:'Salin teks', attrs:at} : null,
+    {a:'chat-star', ic:iconSvg(chatIsStarred(m.id)?'starOff':'star',19), label:chatIsStarred(m.id)?'Hapus bintang':'Beri bintang', attrs:at},
+    media ? {a:'chat-save-media', ic:iconSvg('download',19), label:(m.file_key||m.file_url)?'Simpan berkas':'Simpan foto', attrs:at} : null,
+    {a:'chat-hide', ic:iconSvg('trash',19), label:'Hapus untuk saya', attrs:at, danger:true},
+    mine ? {a:'chat-del-all', ic:iconSvg('ban',19), label:'Hapus untuk semua orang', attrs:at, danger:true} : null
   ]);
 }
 function chatConvMenuHtml(c){
   var at = ' data-peer="'+escapeHtml(c)+'"', un = chatUnreadFor(c);
   return chatSheet(escapeHtml(chatPeerName(c)), [
-    {a:'chat-cm-pin', ic:chatIsPinned(c)?'📍':'📌', label:chatIsPinned(c)?'Lepas sematan':'Sematkan chat', attrs:at},
-    {a:'chat-cm-archive', ic:chatIsArchived(c)?'📤':'🗄️', label:chatIsArchived(c)?'Keluarkan dari arsip':'Arsipkan chat', attrs:at},
-    un ? {a:'chat-cm-read', ic:'✔️', label:'Tandai sudah dibaca', attrs:at} : null,
-    !chatIsGroup(c) ? {a:'person-open', ic:'👤', label:'Lihat profil', attrs:' data-id="'+escapeHtml(c)+'"'} : {a:'chat-cm-info', ic:'ⓘ', label:'Info grup', attrs:at},
-    {a:'chat-cm-clear', ic:'🗑️', label:'Hapus chat', attrs:at, danger:true}
+    {a:'chat-cm-pin', ic:iconSvg(chatIsPinned(c)?'pinOff':'pin',19), label:chatIsPinned(c)?'Lepas sematan':'Sematkan chat', attrs:at},
+    {a:'chat-cm-archive', ic:iconSvg(chatIsArchived(c)?'unarchive':'archive',19), label:chatIsArchived(c)?'Keluarkan dari arsip':'Arsipkan chat', attrs:at},
+    un ? {a:'chat-cm-read', ic:iconSvg('checkAll',19), label:'Tandai sudah dibaca', attrs:at} : null,
+    !chatIsGroup(c) ? {a:'person-open', ic:iconSvg('user',19), label:'Lihat profil', attrs:' data-id="'+escapeHtml(c)+'"'} : {a:'chat-cm-info', ic:iconSvg('info',19), label:'Info grup', attrs:at},
+    {a:'chat-cm-clear', ic:iconSvg('trash',19), label:'Hapus chat', attrs:at, danger:true}
   ]);
 }
 function chatForwardHtml(m){
@@ -9871,7 +9891,7 @@ function chatForwardHtml(m){
 }
 function chatStarredHtml(){
   var list = chatVisible().filter(function(m){ return chatIsStarred(m.id); }).reverse();
-  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:520px;"><h3>⭐ Pesan Berbintang</h3>'+
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:520px;"><h3 style="display:flex;align-items:center;gap:8px;">'+iconSvg('star',20)+' Pesan Berbintang</h3>'+
     (list.length ? '<div class="cg-list">'+list.map(function(m){
       var c = chatConvOf(m, CHAT.me);
       return '<div class="cg-item" data-action="chat-star-open" data-id="'+m.id+'" style="align-items:flex-start;"><span style="min-width:0;flex:1;"><b>'+escapeHtml(m.sender===CHAT.me?'Kamu':chatPeerName(m.sender))+(chatIsGroup(c)?' · '+escapeHtml(chatPeerName(c)):'')+'</b><em style="white-space:normal;">'+escapeHtml(chatPreviewText(m).slice(0,160))+'</em><em>'+escapeHtml(formatDateID(String(m.created_at).slice(0,10)))+' '+chatTimeLabel(m.created_at)+'</em></span></div>';
