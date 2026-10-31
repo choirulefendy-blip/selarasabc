@@ -73,10 +73,11 @@ jobs:
           F=mobile/android/app/src/main/assets/public/index.html
           grep -q "var APP_BUILD = 'dev';" "$F"
           sed -i "s/var APP_BUILD = 'dev';/var APP_BUILD = '${{ github.sha }}';/" "$F"
+          sed -i "s/var APP_VERSION = 'dev';/var APP_VERSION = '1.${{ github.run_number }}';/" "$F"
 
       - name: Build APK debug (bisa langsung dipasang, tanpa keystore)
         working-directory: mobile/android
-        run: ./gradlew assembleDebug --no-daemon -PappVersionCode=${{ github.run_number }}
+        run: ./gradlew assembleDebug --no-daemon -PappVersionCode=${{ github.run_number }} -PappVersionName=1.${{ github.run_number }}
 
       - name: Siapkan keystore release
         id: keystore
@@ -98,7 +99,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          ./gradlew assembleRelease --no-daemon -PappVersionCode=${{ github.run_number }} \
+          ./gradlew assembleRelease --no-daemon -PappVersionCode=${{ github.run_number }} -PappVersionName=1.${{ github.run_number }} \
             -Pandroid.injected.signing.store.file="$RUNNER_TEMP/release.keystore" \
             -Pandroid.injected.signing.store.password="$KS_PASS" \
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
@@ -124,7 +125,7 @@ jobs:
         with:
           tag_name: apk-terbaru
           name: ABC Selaras - APK terbaru
-          body: "APK debug hasil build otomatis dari commit ${{ github.sha }}. Unduh `app-debug.apk` di bawah, lalu pasang di HP Android."
+          body: "ABC Selaras versi 1.${{ github.run_number }} — APK debug hasil build otomatis dari commit ${{ github.sha }}. Unduh `app-debug.apk` di bawah, lalu pasang di HP Android."
           target_commitish: ${{ github.sha }}
           make_latest: true
           files: mobile/android/app/build/outputs/apk/debug/*.apk

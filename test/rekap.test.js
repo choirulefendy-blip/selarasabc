@@ -67,7 +67,11 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   ok(pl.length===3 && pl[0].status==='done' && pl[0].priority==='normal' && pl[1].title==='Update DM' && pl[1].priority==='rendah' && pl[2].status==='doing' && pl[2].note==='revisi besok', 'parser baris rekap (bullet, nomor, format opsional)');
   async function checkout(empId, text){
     as('staff', empId, 'checkin'); w.CHECKIN_DRAFT.photoDataUrl='data:image/jpeg;base64,AAAA'; w.CHECKIN_DRAFT.location={lat:-7.9,lng:112.5,accuracy:10}; w.CHECKIN_DRAFT.condition='sehat'; w.render(); await sleep(60);
-    var ta = d.getElementById('checkinRekap'); if(ta && text!==undefined){ ta.value = text; ta.dispatchEvent(new w.Event('input',{bubbles:true})); }
+    if(text!==undefined){ var lines = w.parseRekapLines(text);
+      lines.forEach(function(L, i){ if(i>0) d.querySelector('[data-action="ckrk-add-row"]').click();
+        var rows = d.querySelectorAll('#ckrkRows .ckrk-row'), r = rows[rows.length-1];
+        r.querySelector('[data-f="title"]').value = L.title; r.querySelector('[data-f="priority"]').value = L.priority; r.querySelector('[data-f="status"]').value = L.status; r.querySelector('[data-f="note"]').value = L.note;
+        r.querySelector('[data-f="title"]').dispatchEvent(new w.Event('input',{bubbles:true})); }); }
     await click('[data-action="submit-checkin"][data-type="out"]'); await sleep(250);
   }
   async function checkin(empId){
@@ -76,7 +80,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   }
   await checkin('K1'); await checkin('S1');
   as('staff','K1','checkin'); w.CHECKIN_DRAFT.photoDataUrl='data:image/jpeg;base64,AAAA'; w.render();
-  ok(!!d.getElementById('checkinRekap') && /Rekap Kerja Hari Ini/.test(app()) && !d.getElementById('checkinWorkNote'), 'halaman Absen Pulang menampilkan kolom Rekap Kerja (wajib)');
+  ok(!!d.getElementById('ckrkRows') && !!d.querySelector('#ckrkRows [data-f="status"]') && /Catat Pekerjaan Hari Ini/.test(app()) && !d.getElementById('checkinWorkNote'), 'halaman Absen Pulang menampilkan kolom Rekap Kerja (wajib)');
   await checkout('K1', '');
   var r0 = (w.DB.attendance[ym]||{})['K1'];
   ok(!r0 || !r0[parseInt(today.slice(8),10)] || !r0[parseInt(today.slice(8),10)].checkOut, 'absen pulang ditolak jika rekap kosong');

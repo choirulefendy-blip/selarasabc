@@ -96,3 +96,13 @@ sinkronisasi live, dan render semua halaman semua peran. Tes juga jalan otomatis
 | Tema Lumina Selaras | Palet biru: Sky #4AA3F4 (tombol utama/aksen), Ocean #3980C4 & #296290 (navigasi, grafik), Navy #133451 & Midnight #0A1922 (teks, dark mode). |
 | Grafik interaktif | Batang tumbuh beranimasi, sudut atas membulat. Klik/tap batang → tooltip berisi kategori, seri & nilai (Rupiah penuh untuk grafik uang); batang lain meredup. Tap di luar untuk menutup. |
 | Rekap Kerja v2 | Ringkasan % tuntas + jumlah per status (Selesai/On Progress/Belum Mulai/Pending/Batal) dengan bar bertumpuk; Status per PIC (donut + bar per orang); tabel Tanggal/Uraian/PIC/Tim/Prioritas/Status dengan tombol Edit & Hapus. HR/HOD bisa pilih 'Semua tim' dan mengedit rekap anggota tim. |
+| Rekap saat Absen Pulang | Form terstruktur seperti Rekap Kerja: Uraian, Prioritas, Status, Keterangan; tombol + Tambah Pekerjaan. |
+| Notifikasi perangkat | APK tetap cek notifikasi saat di latar belakang (~15 dtk) dan masuk ke bilah notifikasi Android; izin diminta otomatis. Untuk notifikasi saat aplikasi benar-benar ditutup, aktifkan FCM (secret GOOGLE_SERVICES_JSON & FCM_SERVICE_ACCOUNT). |
+| Pengingat 8 jam | Notifikasi "Sudah 8 jam kerja" setelah absen masuk (terjadwal di HP, tetap muncul walau aplikasi ditutup). |
+| Kirim notifikasi (HR) | Di Pengaturan Notifikasi HR: kirim ke semua/HOD/Staff/departemen/orang tertentu + riwayat. |
+| SOP & Peraturan | HR unggah file/isi per kategori & departemen; karyawan melihat & membuka. |
+| Struktur Organisasi | Bagan Organisasi Group + per Property; HR tambah/edit/hapus jabatan, susun otomatis, unduh gambar. |
+| e-ID Card | Kartu karyawan depan-belakang (QR, foto, ID), cetak & unduh PNG; HR bisa pilih karyawan. |
+| Profil HR | HR ubah nama, foto, email, jabatan, no. HP, username, password. |
+| Bottom navigation | Di HP: Beranda, Absen/Karyawan, Board, Chat, Menu. |
+| Versi APK | versionName otomatis 1.<nomor build>, tampil di menu & banner update. |
