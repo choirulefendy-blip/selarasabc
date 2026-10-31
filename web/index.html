@@ -237,6 +237,9 @@
   .nsc-day.nsc-kerja{background:var(--primary-container);}
   .nsc-day.nsc-kerja span{color:var(--primary);font-weight:700;}
   .nsc-day.nsc-cuti span{color:#8B5CF6;font-weight:600;}
+  .nsc-day.nsc-sel{box-shadow:inset 0 0 0 2px var(--primary);}
+  .nsc-title{display:flex;align-items:center;white-space:nowrap;}
+  .nsc-live{display:inline-block;white-space:nowrap;vertical-align:middle;margin-left:6px;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(34,197,94,.16);color:#16A34A;}
   .app-ver-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 12px;}
   .app-ver-grid > div{background:var(--surface-container-high);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;}
   .app-ver-grid span{font-size:11.5px;color:var(--text-muted);}
@@ -6681,20 +6684,64 @@ function nsDayInfo(empId, dt){
   var kind = !sc ? 'unset' : (sc.type==='kerja' ? 'kerja' : (sc.cuti ? 'cuti' : 'libur'));
   return {iso:iso, ym:ym, day:d, wd:dt.getDay(), sched:sc, kind:kind, txt: kind==='kerja' ? sc.start+'–'+sc.end : (kind==='cuti' ? 'Cuti' : (kind==='libur' ? 'Libur' : 'Belum diatur'))};
 }
+/* Mode kartu jadwal:
+   - 00:00 s.d. jam mulai shift hari ini  -> "Jadwal Hari Ini"
+   - saat shift berlangsung (sebelum 18:00) -> "Jadwal Hari Ini" (sedang berlangsung)
+   - shift sudah selesai sebelum 18:00     -> "Jadwal Besok"
+   - 18:00 s.d. 24:00                      -> "Jadwal Besok", KECUALI shift hari ini belum mulai
+     (mis. shift siang/malam masuk 19:00) -> tetap "Jadwal Hari Ini" sampai shift mulai.
+   - hari ini libur/cuti/belum diatur: Hari Ini sampai 18:00, lalu Besok. */
+var NSC_SWITCH_MIN = 18*60;
+function nsHmToMin(s){ var p = String(s||'').split(':'); return (+p[0]||0)*60 + (+p[1]||0); }
+function nsCardMode(empId, now){
+  now = now || new Date();
+  var nowMin = now.getHours()*60 + now.getMinutes();
+  var base = new Date(now.getTime()); base.setHours(12,0,0,0);
+  var td = nsDayInfo(empId, base);
+  var phase = 'off';
+  if(td.kind==='kerja'){
+    var st = nsHmToMin(td.sched.start), en = nsHmToMin(td.sched.end);
+    if(en <= st) en += 24*60;              /* shift lintas tengah malam */
+    phase = nowMin < st ? 'before' : (nowMin < en ? 'during' : 'after');
+  }
+  var today;
+  if(phase==='before') today = true;
+  else if(nowMin >= NSC_SWITCH_MIN) today = false;
+  else today = phase!=='after';
+  return {today:today, phase:today ? phase : 'next', nowMin:nowMin};
+}
 function nextScheduleCardHtml(emp){
   if(!emp) return '';
-  var base = new Date(); base.setHours(12,0,0,0);
+  var now = STATE.nscNow ? new Date(STATE.nscNow) : new Date();   /* nscNow: hanya untuk pengujian */
+  var mode = nsCardMode(emp.id, now);
+  STATE.nscModeKey = todayISO()+'|'+mode.today+'|'+mode.phase;
+  var base = new Date(now.getTime()); base.setHours(12,0,0,0);
+  var off = mode.today ? 0 : 1;
   var days = [], i;
-  for(i=1;i<=14;i++){ var dt = new Date(base.getTime()+i*86400000); days.push(nsDayInfo(emp.id, dt)); }
+  for(i=off;i<=14+off;i++){ var dt = new Date(base.getTime()+i*86400000); days.push(nsDayInfo(emp.id, dt)); }
   var tm = days[0], next = null;
-  for(i=0;i<days.length;i++){ if(days[i].kind==='kerja'){ next = days[i]; break; } }
+  for(i=1;i<days.length;i++){ if(days[i].kind==='kerja'){ next = days[i]; break; } }
   var dayName = function(x){ return DAY_SHORT_ID[x.wd]; };
   var evs = (DB.agenda||[]).filter(function(e){ return agendaVisible(e) && e.date===tm.iso; }).sort(function(a,b){ return String(a.startTime||'').localeCompare(String(b.startTime||'')); });
+  var title = mode.today ? 'Jadwal Hari Ini' : 'Jadwal Besok';
+  var sub;
+  if(tm.kind==='kerja'){
+    var shiftTxt = tm.sched.shift ? ' &middot; '+escapeHtml(tm.sched.shift) : '';
+    if(mode.phase==='during'){
+      var attT = wrTodayAtt ? (SESSION.empId===emp.id ? wrTodayAtt() : null) : null;
+      sub = 'Shift'+(tm.sched.shift ? ' '+escapeHtml(tm.sched.shift) : '')+' sedang berlangsung, pulang pukul <b>'+escapeHtml(tm.sched.end)+'</b>.'+(attT && attT.checkIn ? ' Kamu absen masuk pukul <b>'+escapeHtml(attT.checkIn)+'</b>.' : ' Belum absen masuk, segera absen ya.');
+    } else if(mode.phase==='before'){
+      var left = nsHmToMin(tm.sched.start) - mode.nowMin, lh = Math.floor(left/60), lm = left%60;
+      sub = 'Masuk pukul <b>'+escapeHtml(tm.sched.start)+'</b>'+shiftTxt+' &middot; '+(lh ? lh+' jam ' : '')+(lm||!lh ? lm+' menit ' : '')+'lagi. Jangan lupa absen masuk.';
+    } else {
+      sub = 'Masuk pukul <b>'+escapeHtml(tm.sched.start)+'</b>'+shiftTxt+'. Jangan lupa absen masuk.';
+    }
+  }
   var main = tm.kind==='kerja'
-    ? '<div class="nsc-time">'+escapeHtml(tm.sched.start)+'<span>–'+escapeHtml(tm.sched.end)+'</span></div><div class="nsc-sub">Masuk pukul <b>'+escapeHtml(tm.sched.start)+'</b>'+(tm.sched.shift?' &middot; '+escapeHtml(tm.sched.shift):'')+'. Jangan lupa absen masuk.</div>'
+    ? '<div class="nsc-time">'+escapeHtml(tm.sched.start)+'<span>–'+escapeHtml(tm.sched.end)+'</span></div><div class="nsc-sub">'+sub+'</div>'
     : '<div class="nsc-time nsc-off">'+escapeHtml(tm.txt)+'</div><div class="nsc-sub">'+(next ? 'Jadwal kerja berikutnya: <b>'+escapeHtml(formatDateID(next.iso))+'</b>, pukul <b>'+escapeHtml(next.sched.start)+'–'+escapeHtml(next.sched.end)+'</b>.' : (tm.kind==='unset' ? 'Jadwal belum diatur oleh HOD/HR.' : 'Belum ada jadwal kerja dalam 2 minggu ke depan.'))+'</div>';
-  var strip = days.slice(0,7).map(function(x){ return '<div class="nsc-day nsc-'+x.kind+'"><b>'+dayName(x)+' '+x.day+'</b><span>'+escapeHtml(x.kind==='kerja' ? x.sched.start : x.txt)+'</span></div>'; }).join('');
-  return '<div class="card nsc-card"><div class="nsc-head"><span class="nsc-ic">'+iconSvg('calendar',18)+'</span><div><div class="nsc-title">Jadwal Besok</div><div class="nsc-date">'+DAY_NAME_ID_FULL(tm.wd)+', '+escapeHtml(formatDateID(tm.iso))+'</div></div>'+
+  var strip = days.slice(0,7).map(function(x, k){ return '<div class="nsc-day nsc-'+x.kind+(k===0?' nsc-sel':'')+'"><b>'+(k===0 && mode.today ? 'Hari ini' : dayName(x)+' '+x.day)+'</b><span>'+escapeHtml(x.kind==='kerja' ? x.sched.start : x.txt)+'</span></div>'; }).join('');
+  return '<div class="card nsc-card"><div class="nsc-head"><span class="nsc-ic">'+iconSvg('calendar',18)+'</span><div style="min-width:0;"><div class="nsc-title">'+title+(mode.phase==='during' ? ' <span class="nsc-live">Berlangsung</span>' : '')+'</div><div class="nsc-date">'+DAY_NAME_ID_FULL(tm.wd)+', '+escapeHtml(formatDateID(tm.iso))+'</div></div>'+
     '<button class="btn btn-ghost btn-sm" style="margin-left:auto;white-space:nowrap;" data-action="nav" data-view="'+(isHOD(emp.id)?'schedule':'my-schedule')+'">Lihat semua</button></div>'+
     main+
     (evs.length ? '<div class="nsc-ev">'+evs.slice(0,3).map(function(e){ return '<div>📌 '+(e.startTime?'<b>'+escapeHtml(e.startTime)+'</b> ':'')+escapeHtml(e.title)+'</div>'; }).join('')+'</div>' : '')+
@@ -8865,6 +8912,19 @@ function startLiveSync(){
   setInterval(function(){ liveTick(false); }, 5000);
   setInterval(tickWorkTimers, 1000);
   setInterval(function(){ try{ workReminderSync(); }catch(e){} }, 60000);
+  /* kartu Jadwal Hari Ini/Besok berganti otomatis (mis. pukul 18.00, saat shift mulai) */
+  setInterval(function(){
+    try{
+      if(STATE.view!=='dashboard' || !SESSION.empId || !STATE.nscModeKey) return;
+      var m = nsCardMode(SESSION.empId, new Date());
+      if(todayISO()+'|'+m.today+'|'+m.phase === STATE.nscModeKey) return;
+      var mr = document.getElementById('modalRoot');
+      if(mr && mr.innerHTML) return;
+      var ae = document.activeElement;
+      if(ae && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) return;
+      render();
+    }catch(e){}
+  }, 60000);
   setTimeout(function(){ checkAppUpdate(true); }, 3000);
   setInterval(function(){ checkAppUpdate(false); }, 30*60*1000);
   document.addEventListener('visibilitychange', function(){ if(!document.hidden){ liveTick(true); chatPoll(); } });

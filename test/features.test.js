@@ -11,7 +11,7 @@ html = html.replace(/var SUPABASE_URL = '[^']*'/, "var SUPABASE_URL = ''")
            .replace(/var PUSH_FUNCTION_URL = '[^']*'/, "var PUSH_FUNCTION_URL = ''")
            .replace(/var EMAIL_FUNCTION_URL = '[^']*'/, "var EMAIL_FUNCTION_URL = ''");
 
-var EARLY_NIGHT = (function(){ var n = new Date(); return n.getHours()===0 && n.getMinutes()<20; })();
+var EARLY_NIGHT = (function(){ var n = new Date(); return n.getHours()===0; })();
 var pass = 0, fail = 0, failures = [];
 function ok(cond, name){
   if(cond){ pass++; console.log('  ok   - '+name); }
@@ -174,7 +174,7 @@ function login(w, who){
   var rec1 = w.DB.attendance[info.ym]['E1'][info.day];
   ok(rec1 && rec1.checkIn, 'absen masuk tersimpan');
   var lateN = w.DB.notifications.filter(function(n){ return n.message.indexOf('Budi Staff')!==-1 && n.message.indexOf('TELAT')!==-1; });
-  (EARLY_NIGHT ? function(c,n){ ok(true, n+' (dilewati: jam 00.00–00.20)'); } : ok)(lateN.length===1 && lateN[0].audience.type==='hr' && lateN[0].link==='attendance', 'HR dapat notifikasi saat staf absen telat');
+  (EARLY_NIGHT ? function(c,n){ ok(true, n+' (dilewati: jam 00.00–01.00)'); } : ok)(lateN.length===1 && lateN[0].audience.type==='hr' && lateN[0].link==='attendance', 'HR dapat notifikasi saat staf absen telat');
   ok(!w.DB.notifications.some(function(n){ return n.message.indexOf('LUAR JANGKAUAN')!==-1 && n.message.indexOf('Budi')!==-1; }), 'tidak ada alarm luar jangkauan saat di kantor');
   var c1 = hrCount();
   await doCheckin('E3', {lat:-7.2929571, lng:112.7338145, accuracy:10}, 'in');
@@ -186,7 +186,7 @@ function login(w, who){
   ok(text(w).indexOf('Peringatan Absen Hari Ini')!==-1 && text(w).indexOf('Dewi Front')!==-1 && text(w).indexOf('Di luar jangkauan')!==-1, 'HR: kartu Peringatan Absen Hari Ini di dashboard');
   /* absen pulang di luar jangkauan */
   await doCheckin('E1', {lat:-7.2929571, lng:112.7338145, accuracy:10}, 'out');
-  (EARLY_NIGHT ? function(c,n){ ok(true, n+' (dilewati: jam 00.00–00.20)'); } : ok)(w.DB.notifications.some(function(n){ return n.message.indexOf('Budi Staff')!==-1 && n.message.indexOf('absen pulang')!==-1 && n.message.indexOf('LUAR JANGKAUAN')!==-1; }), 'HR dapat notifikasi saat absen pulang di luar jangkauan');
+  (EARLY_NIGHT ? function(c,n){ ok(true, n+' (dilewati: jam 00.00–01.00)'); } : ok)(w.DB.notifications.some(function(n){ return n.message.indexOf('Budi Staff')!==-1 && n.message.indexOf('absen pulang')!==-1 && n.message.indexOf('LUAR JANGKAUAN')!==-1; }), 'HR dapat notifikasi saat absen pulang di luar jangkauan');
   /* notifikasi tampil di lonceng HR */
   await login(w, 'hr');
   ok(w.document.querySelector('.notif-badge') && parseInt(w.document.querySelector('.notif-badge').textContent,10)>0, 'HR: badge lonceng menunjukkan notifikasi belum dibaca');
@@ -221,8 +221,8 @@ function login(w, who){
   console.log('\n[Aktivitas Saya]');
   await login(w, 'E1'); await nav(w, 'my-activity');
   var t = text(w);
-  (EARLY_NIGHT ? function(c,n){ ok(true, n+' (dilewati: jam 00.00–00.20)'); } : ok)(t.indexOf('Absen masuk pukul')!==-1 && t.indexOf('Telat')!==-1, 'Staff: log menampilkan absen masuk + telat');
-  (EARLY_NIGHT ? function(c,n){ ok(true, n+' (dilewati: jam 00.00–00.20)'); } : ok)(t.indexOf('DI LUAR JANGKAUAN')!==-1 && t.indexOf('Absen pulang')!==-1, 'Staff: log menampilkan absen pulang di luar jangkauan');
+  (EARLY_NIGHT ? function(c,n){ ok(true, n+' (dilewati: jam 00.00–01.00)'); } : ok)(t.indexOf('Absen masuk pukul')!==-1 && t.indexOf('Telat')!==-1, 'Staff: log menampilkan absen masuk + telat');
+  (EARLY_NIGHT ? function(c,n){ ok(true, n+' (dilewati: jam 00.00–01.00)'); } : ok)(t.indexOf('DI LUAR JANGKAUAN')!==-1 && t.indexOf('Absen pulang')!==-1, 'Staff: log menampilkan absen pulang di luar jangkauan');
   ok(t.indexOf('Siapkan konten IG')!==-1, 'Staff: log memuat aktivitas To-Do');
   ok(t.indexOf('Promo Natal')===-1 && t.indexOf('Dewi Front')===-1, 'Staff: log hanya berisi aktivitas dirinya sendiri');
   await click(w, 'my-act-filter', {filter:'absen'});

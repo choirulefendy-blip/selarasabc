@@ -88,11 +88,34 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   var tmr=new Date(); tmr.setHours(12,0,0,0); tmr=new Date(tmr.getTime()+86400000); var tym=tmr.getFullYear()+'-'+(tmr.getMonth()<9?'0':'')+(tmr.getMonth()+1);
   var d2=new Date(tmr.getTime()+86400000), d2ym=d2.getFullYear()+'-'+(d2.getMonth()<9?'0':'')+(d2.getMonth()+1);
   w.DB.schedules[tym]=w.DB.schedules[tym]||{}; w.DB.schedules[tym].S1={}; w.DB.schedules[tym].S1[tmr.getDate()]={type:'kerja',start:'08:00',end:'16:00'};
+  var at=function(h,m){ var x=new Date(); x.setHours(h,m||0,0,0); return x.getTime(); };
+  w.STATE.nscNow=at(19,0);
   as('staff','S1','dashboard'); var nc=d.querySelector('.nsc-card');
   ok(nc && /Jadwal Besok/.test(nc.textContent) && /08:00/.test(d.querySelector('.nsc-time').textContent) && d.querySelectorAll('.nsc-day').length===7, 'staf: kartu Jadwal Besok (jam masuk + 7 hari ke depan)');
   w.DB.schedules[tym].S1[tmr.getDate()]={type:'libur'}; w.DB.schedules[d2ym]=w.DB.schedules[d2ym]||{}; w.DB.schedules[d2ym].S1=w.DB.schedules[d2ym].S1||{}; w.DB.schedules[d2ym].S1[d2.getDate()]={type:'kerja',start:'14:00',end:'22:00'};
   w.render(); ok(/Libur/.test(d.querySelector('.nsc-time').textContent) && /Jadwal kerja berikutnya/.test(d.querySelector('.nsc-card').textContent) && /14:00/.test(d.querySelector('.nsc-card').textContent), 'besok libur -> tampil jadwal kerja berikutnya');
   as('hod','H1','dashboard'); ok(!!d.querySelector('.nsc-card'), 'HOD juga punya kartu Jadwal Besok');
+  console.log('\n[Jadwal Hari Ini / Besok berdasarkan jam]');
+  var td=new Date(); td.setHours(12,0,0,0); var tdym=td.getFullYear()+'-'+(td.getMonth()<9?'0':'')+(td.getMonth()+1);
+  w.DB.schedules[tdym]=w.DB.schedules[tdym]||{}; w.DB.schedules[tdym].S1=w.DB.schedules[tdym].S1||{};
+  function card(h,m){ w.STATE.nscNow=at(h,m); as('staff','S1','dashboard'); return d.querySelector('.nsc-card').textContent; }
+  w.DB.schedules[tdym].S1[td.getDate()]={type:'kerja',start:'09:00',end:'17:00'};
+  ok(/Jadwal Hari Ini/.test(card(0,30)) && /09:00/.test(d.querySelector('.nsc-time').textContent) && /lagi/.test(card(0,30)), '00:30, shift 09:00 -> Jadwal Hari Ini (+ hitung mundur)');
+  ok(/Jadwal Hari Ini/.test(card(8,59)), '08:59 -> masih Hari Ini');
+  ok(/Jadwal Hari Ini/.test(card(10,0)) && /Berlangsung/.test(card(10,0)), '10:00 shift berjalan -> Hari Ini (Berlangsung)');
+  ok(/Jadwal Besok/.test(card(17,30)), 'shift selesai 17:00 -> 17:30 Jadwal Besok');
+  ok(/Jadwal Besok/.test(card(18,0)), '18:00 -> Jadwal Besok');
+  w.DB.schedules[tdym].S1[td.getDate()]={type:'kerja',start:'14:00',end:'22:00'};
+  ok(/Jadwal Hari Ini/.test(card(11,0)) && /14:00/.test(d.querySelector('.nsc-time').textContent), 'shift siang 14:00: jam 11 -> Hari Ini');
+  ok(/Berlangsung/.test(card(16,0)), 'shift siang: jam 16 -> Berlangsung');
+  ok(/Jadwal Besok/.test(card(18,30)), 'shift siang: setelah 18:00 -> Besok');
+  w.DB.schedules[tdym].S1[td.getDate()]={type:'kerja',start:'19:00',end:'03:00'};
+  ok(/Jadwal Hari Ini/.test(card(18,30)) && /19:00/.test(d.querySelector('.nsc-time').textContent), 'shift malam 19:00: jam 18:30 tetap Hari Ini (belum mulai)');
+  ok(/Jadwal Besok/.test(card(20,0)), 'shift malam: setelah mulai & lewat 18:00 -> Besok');
+  w.DB.schedules[tdym].S1[td.getDate()]={type:'libur'};
+  ok(/Jadwal Hari Ini/.test(card(7,0)) && /Libur/.test(d.querySelector('.nsc-time').textContent), 'hari ini libur: pagi -> Hari Ini (Libur)');
+  ok(/Jadwal Besok/.test(card(18,0)), 'hari ini libur: 18:00 -> Besok');
+  delete w.STATE.nscNow;
 
   console.log('\n[Info aplikasi di Profil]');
   as('staff','S1','my-profile'); ok(/Unduh APK Android/.test(app()) && /releases\/download\/apk-terbaru\/app-debug\.apk/.test(app()) && /Yang Baru/.test(app()) && /Versi di perangkat ini/.test(app()), 'staf: link APK, versi, dan daftar pembaruan di Profil');
