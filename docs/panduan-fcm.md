@@ -25,11 +25,10 @@ Lalu jalankan **Actions → Build APK Android → Run workflow**. Jika secret te
    supabase secrets set FCM_SERVICE_ACCOUNT="$(cat nama-file-kunci.json)"
    ```
    (Atau Dashboard Supabase → Edge Functions → Secrets → tambah `FCM_SERVICE_ACCOUNT`, tempel seluruh isi JSON.)
-3. Deploy ulang fungsi (kodenya sudah diperbarui di repo):
-   ```
-   supabase functions deploy send-push --no-verify-jwt
-   ```
-   Pastikan `PUSH_FUNCTION_URL` di `web/index.html` sudah berisi URL fungsi ini (`https://xxxx.supabase.co/functions/v1/send-push`). Secret VAPID (Web Push browser) tidak wajib lagi kalau Anda hanya memakai FCM.
+3. Deploy fungsi `send-push`:
+   - **Tanpa CLI (Dashboard):** Edge Functions → **Deploy a new function → Via Editor** → nama `send-push` → hapus isi contoh, tempel seluruh isi `supabase/functions/send-push/index.ts` → **Deploy**. Lalu buka fungsi → **Details** → matikan **Verify JWT / Enforce JWT verification** → Save.
+   - **Dengan CLI:** `supabase functions deploy send-push --no-verify-jwt`
+   `PUSH_FUNCTION_URL` di `web/index.html` sudah diisi: `https://dxwrvrdvjjvmujrnawen.supabase.co/functions/v1/send-push`. Secret VAPID (Web Push browser) tidak wajib lagi kalau Anda hanya memakai FCM.
 
 ## 4. Tabel token di Supabase
 Supabase → **SQL Editor** → tempel isi `supabase/fcm.sql` → **Run**.
