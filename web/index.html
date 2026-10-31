@@ -237,6 +237,14 @@
   .nsc-day.nsc-kerja{background:var(--primary-container);}
   .nsc-day.nsc-kerja span{color:var(--primary);font-weight:700;}
   .nsc-day.nsc-cuti span{color:#8B5CF6;font-weight:600;}
+  .app-ver-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 12px;}
+  .app-ver-grid > div{background:var(--surface-container-high);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;}
+  .app-ver-grid span{font-size:11.5px;color:var(--text-muted);}
+  .app-ver-grid b{font-size:18px;}
+  .app-ver-grid em{font-style:normal;font-size:11.5px;color:var(--text-muted);}
+  .chg{margin-bottom:8px;}
+  .chg-date{font-size:12px;font-weight:700;color:var(--primary);margin-bottom:2px;}
+  .chg ul{margin:0 0 0 18px;padding:0;font-size:13px;line-height:1.65;color:var(--text);}
   .as-row{cursor:pointer;}
   .as-att{outline:2px solid var(--warning);}
   .as-photo{width:84px;height:84px;border-radius:14px;overflow:hidden;background:var(--surface-container-high);flex:0 0 84px;}
@@ -8142,7 +8150,7 @@ function renderHrProfilePage(){
     '<div class="form-group"><label>No. HP / WhatsApp</label><input id="hp_phone" value="'+escapeHtml(t.phone||'')+'"></div></div>'+
     '<div class="form-row"><div class="form-group"><label>Username</label><input id="hp_user" value="'+escapeHtml(t.username||'')+'"></div>'+
     '<div class="form-group"><label>Password baru (kosongkan jika tidak diubah)</label><input id="hp_pass" type="password" autocomplete="new-password"></div></div>'+
-    '<button class="btn btn-primary" data-action="hr-profile-save">Simpan Profil</button></div>';
+    '<button class="btn btn-primary" data-action="hr-profile-save">Simpan Profil</button></div>'+renderAppInfoCard();
 }
 function setHrPhotoFromFile(file){
   var t = hrProfileTarget();
@@ -8317,6 +8325,59 @@ function assetPushHistory(a, type, text, cost){
   a.history = a.history || [];
   a.history.push({at:new Date().toISOString(), by:currentActorLabel(), type:type, text:text, cost:cost||0});
   if(a.history.length > 200) a.history = a.history.slice(-200);
+}
+
+/* ---------------------------- INFO APLIKASI, UNDUH APK & CATATAN PEMBARUAN ---------------------------- */
+var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
+var APP_CHANGELOG = [
+  {date:'2026-10-31', items:[
+    'Kartu "Jadwal Besok" di dashboard + pengingat jadwal di HP pukul 20.00',
+    'Notifikasi lebih jelas: ikon per jenis, jam, warna khusus Pesan HR & Sistem',
+    'Menu bawah (bottom navigation): Menu, Absen, Beranda, Board, Chat',
+    'Aset Inventaris untuk HOD & HR: data aset, penyusutan, servis, riwayat, label QR, Excel',
+    'Notifikasi terjadwal dari HR (sekali, harian, mingguan, bulanan)',
+    'Notifikasi iPhone lewat aplikasi yang dipasang dari Safari',
+    'SOP & Peraturan, Struktur Organisasi, e-ID Card, edit Profil HR',
+    'Rekap kerja saat Absen Pulang memakai form seperti Selaras Board',
+    'Pengingat "Sudah 8 jam kerja" dan notifikasi tetap masuk saat aplikasi di latar belakang',
+    'Perbaikan: sidebar HP bisa di-scroll, periode bulan default, panel notifikasi tidak tertumpuk banner'
+  ]},
+  {date:'2026-10-30', items:['Rekap Kerja baru: ringkasan % tuntas, Status per PIC, tabel dengan Edit/Hapus, status Batal, pilihan Semua tim']},
+  {date:'2026-10-29', items:[
+    'Tema Lumina Selaras (biru) untuk mode terang & gelap',
+    'Grafik interaktif di Selaras Board & Dashboard Accounting (tap batang untuk lihat data, unduh PNG)',
+    'Tombol Back tidak keluar aplikasi; refresh tetap di halaman terakhir',
+    'Rekap Kerja di Selaras Board terhubung dengan Absen Pulang',
+    'Dashboard Accounting: Jurnal, Neraca, Laba Rugi, Purchase Order, Petty Cash',
+    'Report Karyawan (kehadiran, KPI, tugas, skor & bintang) bisa diunduh',
+    'Impor spreadsheet ke Selaras Board untuk Sales & Marketing',
+    'Ikon aplikasi Android baru'
+  ]}
+];
+function appRelFetch(){
+  if(STATE.relInfo || STATE.relFetching) return;
+  if(typeof fetch!=='function'){ STATE.relInfo = {error:true}; return; }
+  STATE.relFetching = true;
+  fetch(APP_RELEASE_API, {headers:{'Accept':'application/vnd.github+json'}}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(function(rel){ var info = parseReleaseInfo(rel) || {}; info.published = rel.published_at || rel.created_at || ''; STATE.relInfo = info; STATE.relFetching = false;
+      if(STATE.view==='my-profile' || STATE.view==='hr-profile') render(); })
+    .catch(function(){ STATE.relFetching = false; STATE.relInfo = {error:true}; if(STATE.view==='my-profile' || STATE.view==='hr-profile') render(); });
+}
+function renderAppInfoCard(){
+  appRelFetch();
+  var rel = STATE.relInfo || {}, latest = rel.version ? 'v'+rel.version : (rel.error ? '—' : 'memeriksa...');
+  var upd = isNativeApp() && updateAvailable();
+  var showAll = !!STATE.chgAll, logs = showAll ? APP_CHANGELOG : APP_CHANGELOG.slice(0,1);
+  return '<div class="card app-info"><div class="card-title" style="display:flex;align-items:center;gap:10px;"><img src="'+LOGO_DATA_URI+'" alt="" style="width:34px;height:34px;border-radius:10px;">Aplikasi ABC Selaras</div>'+
+    '<div class="app-ver-grid"><div><span>Versi di perangkat ini</span><b>'+escapeHtml(appVersionLabel())+'</b></div><div><span>Versi APK terbaru</span><b>'+escapeHtml(latest)+'</b>'+(rel.published?'<em>'+escapeHtml(formatDateID(String(rel.published).slice(0,10)))+'</em>':'')+'</div></div>'+
+    (upd ? '<div class="badge badge-warning" style="margin-bottom:10px;">Ada versi baru — perbarui sekarang</div>' : '')+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;"><a class="btn btn-primary" href="'+APK_DOWNLOAD_URL+'" target="_blank" rel="noopener" data-action="app-apk-dl">'+(upd?'Perbarui APK Android':'Unduh APK Android')+'</a>'+
+      '<button class="btn btn-secondary" data-action="app-apk-copy">Salin Link</button></div>'+
+    '<div class="card-sub" style="margin-top:8px;">Android: unduh lalu buka file APK &rarr; Pasang/Perbarui. iPhone: buka <b>abcselaras.my.id/web</b> di Safari &rarr; Bagikan &rarr; <b>Tambah ke Layar Utama</b>.</div>'+
+    '<div class="card-title" style="margin-top:16px;font-size:14.5px;">Yang Baru</div>'+
+    logs.map(function(g){ return '<div class="chg"><div class="chg-date">'+escapeHtml(formatDateID(g.date))+'</div><ul>'+g.items.map(function(it){ return '<li>'+escapeHtml(it)+'</li>'; }).join('')+'</ul></div>'; }).join('')+
+    (APP_CHANGELOG.length>1 ? '<button class="btn btn-ghost btn-sm" data-action="app-chg-toggle">'+(showAll?'Sembunyikan riwayat lama':'Lihat semua pembaruan')+'</button>' : '')+
+  '</div>';
 }
 
 /* ---------------------------- SINKRONISASI LIVE ---------------------------- */
@@ -8645,7 +8706,7 @@ function renderMyProfilePage(){
       '<tr><td class="muted">Username</td><td>@'+escapeHtml(emp.username||'')+'</td></tr>'+
       '<tr><td class="muted">Bergabung</td><td>'+(emp.joinDate ? formatDateID(emp.joinDate) : '&mdash;')+'</td></tr>'+
     '</tbody></table></div>'+
-  '</div>';
+  '</div>'+renderAppInfoCard();
 }
 
 /* ---------------------------- SIDEBAR BISA DISEMBUNYIKAN ---------------------------- */
@@ -9884,6 +9945,13 @@ document.addEventListener('click', function(e){
     assetLabelsPrint(assetFiltered());
   } else if(action==='as-xlsx'){
     assetXlsx();
+  } else if(action==='app-chg-toggle'){
+    STATE.chgAll = !STATE.chgAll; render();
+  } else if(action==='app-apk-dl'){
+    toast('Mengunduh APK... setelah selesai, buka file lalu pilih Pasang/Perbarui.');
+  } else if(action==='app-apk-copy'){
+    var cpOk = function(){ toast('Link APK disalin. Bagikan ke rekan kerja.'); };
+    try{ navigator.clipboard.writeText(APK_DOWNLOAD_URL).then(cpOk, function(){ window.prompt('Salin link ini:', APK_DOWNLOAD_URL); }); }catch(e){ window.prompt('Salin link ini:', APK_DOWNLOAD_URL); }
   } else if(action==='ios-guide-dismiss'){
     try{ localStorage.setItem('abcIosGuide','1'); }catch(e){} render();
   } else if(action==='ns-toggle' || action==='ns-del'){

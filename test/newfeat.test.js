@@ -94,6 +94,13 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   w.render(); ok(/Libur/.test(d.querySelector('.nsc-time').textContent) && /Jadwal kerja berikutnya/.test(d.querySelector('.nsc-card').textContent) && /14:00/.test(d.querySelector('.nsc-card').textContent), 'besok libur -> tampil jadwal kerja berikutnya');
   as('hod','H1','dashboard'); ok(!!d.querySelector('.nsc-card'), 'HOD juga punya kartu Jadwal Besok');
 
+  console.log('\n[Info aplikasi di Profil]');
+  as('staff','S1','my-profile'); ok(/Unduh APK Android/.test(app()) && /releases\/download\/apk-terbaru\/app-debug\.apk/.test(app()) && /Yang Baru/.test(app()) && /Versi di perangkat ini/.test(app()), 'staf: link APK, versi, dan daftar pembaruan di Profil');
+  as('hod','H1','my-profile'); ok(/Unduh APK Android/.test(app()), 'HOD: info aplikasi di Profil');
+  as('hr',null,'hr-profile'); ok(/Unduh APK Android/.test(app()), 'HR: info aplikasi di Profil');
+  await click('[data-action="app-chg-toggle"]'); ok(d.querySelectorAll('.chg').length===w.APP_CHANGELOG.length, 'lihat semua riwayat pembaruan');
+  as('hod','H1','dashboard'); ok(w.navItemsFor('hod').some(function(x){ return x.v==='assets'; }), 'HOD punya menu Aset Inventaris');
+
   console.log('\n[Notifikasi: ikon, waktu, warna]');
   w.DB.notifications=[]; w.addNotification({type:'emp',empId:'S1'},'Pesan HR (Dyah HR): Jangan lupa absen',null,'hrmsg'); w.addNotification({type:'emp',empId:'S1'},'Sudah 8 jam kerja hari ini.','checkin','reminder'); w.addNotification({type:'emp',empId:'S1'},'Tugas baru: Desain feed','todo','task');
   as('staff','S1','dashboard'); w.STATE.notifPanelOpen=true; w.render();
