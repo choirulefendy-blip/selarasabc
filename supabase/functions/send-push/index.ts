@@ -137,7 +137,7 @@ serve(async (req) => {
       const results = await Promise.allSettled(subs.map((row: any) => webpush.sendNotification(row.subscription, payload)));
       // langganan kedaluwarsa (HP ganti / aplikasi dihapus) dibersihkan otomatis
       if (SB_SERVICE_KEY) {
-        const dead = subs.filter((_: any, i: number) => { const r: any = results[i]; return r.status === "rejected" && [404, 410].includes(r.reason && r.reason.statusCode); })
+        const dead = subs.filter((_: any, i: number) => { const r: any = results[i]; return r.status === "rejected" && [401, 403, 404, 410].includes(r.reason && r.reason.statusCode); })
           .map((r: any) => r.subscription.endpoint);
         if (dead.length) {
           const all = (rows || []).filter((r: any) => dead.includes(r.subscription && r.subscription.endpoint)).map((r: any) => r.id);
