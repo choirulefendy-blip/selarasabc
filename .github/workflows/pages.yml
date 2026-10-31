@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "index.html"
+      - "CNAME"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -26,8 +28,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # Struktur situs = struktur repo: / (pengalih) + /web/ (aplikasi).
+      # Jangan unggah folder web sebagai root, nanti abcselaras.my.id/web/ jadi 404.
+      - name: Siapkan isi situs
+        run: |
+          mkdir -p _site
+          cp index.html CNAME _site/
+          cp -r web _site/web
+          touch _site/.nojekyll
+          test -f _site/web/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: web
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4
