@@ -74,7 +74,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   w.CHAT.reads['A|B']=my.id; ok(w.chatTickState(my)===3, 'centang biru: dibaca');
   w.STATE.chatWith='B'; w.render(); ok(!!d.querySelector('.chat-msg.mine .chat-tick.t3'), 'centang biru tampil di pesan');
   ok(w.chatOnline('B') && /online/.test(d.getElementById('chatHeadSub').textContent) && !!d.querySelector('.chat-online-dot'), 'status online + titik hijau');
-  w.CHAT.presence.B=new Date(Date.now()-3600*1000).toISOString(); ok(/terakhir online pukul \d\d:\d\d/.test(w.chatLastSeenLabel('B')), 'terakhir online');
+  w.CHAT.presence.B=new Date(Date.now()-3600*1000).toISOString(); ok(/terakhir online (kemarin )?pukul \d\d:\d\d/.test(w.chatLastSeenLabel('B')), 'terakhir online');
   var gm=w.CHAT.msgs.filter(function(m){ return m.recipient==='g:'+g.id && m.kind==='msg'; })[0];
   w.CHAT.reads={}; w.CHAT.reads['g:'+g.id+'|B']=gm.id; ok(w.chatTickState(gm)!==3, 'grup: belum biru kalau belum semua membaca');
   ['C','D'].forEach(function(x){ w.CHAT.reads['g:'+g.id+'|'+x]=gm.id; }); ok(w.chatTickState(gm)===3, 'grup: biru kalau semua anggota sudah membaca');
