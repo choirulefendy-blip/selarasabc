@@ -300,6 +300,15 @@
   .img-viewer-actions{position:absolute;bottom:calc(20px + env(safe-area-inset-bottom));left:0;right:0;display:flex;gap:10px;justify-content:center;}
   .person-av .avatar{box-shadow:0 0 0 4px var(--surface);}
   .person-av .chat-online-dot{width:20px;height:20px;right:6px;bottom:6px;border-width:3px;}
+  .sidebar-backdrop{display:none;}
+  @media (max-width:860px){
+    .sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(10,25,34,.45);z-index:89;animation:fadeIn .15s ease-out;}
+    .sidebar.open{box-shadow:var(--shadow-3) !important;}
+    .sidebar-close{display:none !important;}
+  }
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  .cg-photo{position:relative;display:inline-flex;cursor:pointer;}
+  .cg-photo-edit{position:absolute;right:-2px;bottom:-2px;width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid var(--surface);}
   .as-row{cursor:pointer;}
   .as-att{outline:2px solid var(--warning);}
   .as-photo{width:84px;height:84px;border-radius:14px;overflow:hidden;background:var(--surface-container-high);flex:0 0 84px;}
@@ -942,7 +951,7 @@ function toggleDarkMode(){
 
 /* ---------------------------- NAVIGASI: tombol Back & refresh tetap di halaman terakhir ---------------------------- */
 var NAV = {stack:[], last:null, popping:false, ready:false};
-var NAV_KEYS = ['view','boardTab','todoTab','accTab','boardMonth','payrollDetailEmp'];
+var NAV_KEYS = ['view','boardTab','todoTab','accTab','boardMonth','payrollDetailEmp','chatWith','personId'];
 function navSnap(){ var o = {}; NAV_KEYS.forEach(function(k){ o[k] = STATE[k]===undefined ? null : STATE[k]; }); return o; }
 function navSnapKey(o){ return JSON.stringify(o); }
 function navSaveView(){
@@ -960,26 +969,40 @@ function navInit(){
   if(NAV.ready) return; NAV.ready = true;
   try{ history.replaceState({abcNav:0}, ''); history.pushState({abcNav:1}, ''); }catch(e){ return; }
   window.addEventListener('popstate', function(){
-    if(!SESSION.role){ try{ history.pushState({abcNav:1}, ''); }catch(e){} return; }
     try{ history.pushState({abcNav:1}, ''); }catch(e){}
-    var modal = document.getElementById('modalRoot');
-    if(modal && modal.innerHTML.trim()){ closeModal(); return; }
-    if(STATE.sidebarOpen || STATE.notifPanelOpen){ STATE.sidebarOpen = false; STATE.notifPanelOpen = false; render(); return; }
-    var prev = NAV.stack.pop();
-    if(!prev){ if(typeof toast==='function' && STATE.view!=='dashboard') toast('Sudah di halaman awal.'); return; }
+    if(!NAV.nativeBack) navBack();
+  });
+}
+/* Tombol Back: tutup popup/menu dulu, lalu kembali ke layar sebelumnya. Mengembalikan true bila ditangani.
+   Dipanggil juga oleh APK Android (MainActivity) — kalau false, aplikasi diminimalkan, tidak ditutup. */
+function navBack(){
+  if(!SESSION.role) return false;
+  var modal = document.getElementById('modalRoot');
+  if(modal && modal.innerHTML.trim()){ closeModal(); return true; }
+  if(STATE.sidebarOpen || STATE.notifPanelOpen){ STATE.sidebarOpen = false; STATE.notifPanelOpen = false; render(); return true; }
+  if(STATE.view==='chat' && CHAT && (CHAT.replyTo || CHAT.pending)){ CHAT.replyTo = null; CHAT.pending = null; render(); return true; }
+  if(STATE.view==='chat' && STATE.chatNew){ STATE.chatNew = false; render(); return true; }
+  var prev = NAV.stack.pop();
+  if(prev){
     NAV.popping = true;
-    NAV_KEYS.forEach(function(k){ STATE[k] = prev[k]===null ? STATE[k] : prev[k]; });
+    NAV_KEYS.forEach(function(k){ if(k==='chatWith' || k==='personId') STATE[k] = prev[k]; else if(prev[k]!==null) STATE[k] = prev[k]; });
     STATE.view = prev.view;
     render();
     NAV.popping = false;
-  });
+    return true;
+  }
+  if(STATE.view==='chat' && STATE.chatWith){ STATE.chatWith = null; render(); return true; }
+  if(STATE.view==='chat' && CHAT && CHAT.showArchived){ CHAT.showArchived = false; render(); return true; }
+  if(STATE.view!=='dashboard'){ STATE.view = 'dashboard'; render(); return true; }
+  return false;
 }
+window.__abcBack = function(){ NAV.nativeBack = true; setTimeout(function(){ NAV.nativeBack = false; }, 400); try{ return navBack() ? 'ok' : 'no'; }catch(e){ return 'no'; } };
 function navTrack(){
   if(!SESSION.role){ NAV.stack = []; NAV.last = null; return; }
   var cur = navSnap(), key = navSnapKey(cur);
   if(NAV.last!==null && NAV.last!==key && !NAV.popping){
     var prev = JSON.parse(NAV.last);
-    if(prev.view!==cur.view || prev.boardTab!==cur.boardTab || prev.accTab!==cur.accTab){
+    if(prev.view!==cur.view || prev.boardTab!==cur.boardTab || prev.accTab!==cur.accTab || prev.chatWith!==cur.chatWith || prev.personId!==cur.personId){
       NAV.stack.push(prev); if(NAV.stack.length>40) NAV.stack.shift();
     }
   }
@@ -2854,13 +2877,13 @@ function renderShell(){
 
   return ''+
   '<div class="shell'+(STATE.sidebarHidden?' sidebar-collapsed':'')+'">'+
-    '<div class="sidebar '+(STATE.sidebarOpen?'open':'')+'">'+
+    (STATE.sidebarOpen ? '<div class="sidebar-backdrop" data-action="sidebar-close" aria-hidden="true"></div>' : '')+
+    '<div class="sidebar '+(STATE.sidebarOpen?'open':'')+'" id="appSidebar">'+
       '<div class="sidebar-brand">'+
         '<div class="sb-brand-row">'+
           '<img src="'+LOGO_DATA_URI+'" alt="" class="sb-logo">'+
           '<div class="sb-brand-text"><div class="name">ABC Selaras</div>'+
           '<div class="role">'+escapeHtml(DB.company.name)+'</div></div>'+
-          '<button class="sidebar-close" data-action="toggle-sidebar" aria-label="Tutup menu">&times;</button>'+
         '</div>'+
       '</div>'+
       navHtml+
@@ -8548,6 +8571,9 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Foto grup chat bisa diganti (admin grup)',
+    'Tombol Back HP kembali ke layar sebelumnya; di halaman awal aplikasi diminimalkan, tidak tertutup',
+    'Menu samping ditutup dengan geser ke kiri atau ketuk area luar (tanpa tombol X); geser dari tepi kiri untuk membuka',
     'Chat: tahan / klik kanan pesan untuk Balas, Teruskan, Salin, Beri bintang, Simpan media, Hapus',
     'Chat: tahan / klik kanan daftar chat untuk Sematkan, Arsipkan, Tandai dibaca, Hapus chat',
     'Ketuk foto/nama di chat untuk membuka laman profil akun; simpan foto & berkas ke perangkat',
@@ -9383,6 +9409,7 @@ function openImageViewer(src){
 }
 function chatGroupAvatar(g, size){
   var s = size || 44;
+  if(g && (g.photoKey || g.photoUrl)){ var gl = {name:g.name, photoKey:g.photoKey||null, photoUrl:g.photoUrl||null}; return '<span class="avatar" style="width:'+s+'px;height:'+s+'px;font-size:'+Math.round(s*0.38)+'px;flex-shrink:0;"'+avatarKeyAttr(gl)+'>'+avatarInner(gl)+'</span>'; }
   return '<span class="avatar chat-grp-av" style="width:'+s+'px;height:'+s+'px;font-size:'+Math.round(s*0.4)+'px;">'+iconSvg('users', Math.round(s*0.48))+'</span>';
 }
 function chatAvatar(conv, size){
@@ -9545,7 +9572,8 @@ function chatGroupModalHtml(g){
   var people = chatPeers().filter(function(p){ return p.sub!=='Nonaktif'; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
   var isNew = !g;
   return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:520px;"><h3>'+(isNew?'Buat Grup':'Tambah Anggota')+'</h3>'+
-    (isNew ? '<div class="form-group"><label>Nama grup</label><input id="cg_name" maxlength="60" placeholder="Contoh: Tim Marcomm"></div>' : '')+
+    (isNew ? '<div class="form-group"><label>Nama grup</label><input id="cg_name" maxlength="60" placeholder="Contoh: Tim Marcomm"></div>'+
+      '<div class="form-group"><label>Foto grup (opsional)</label><input type="file" id="cg_photo" accept="image/*"></div>' : '')+
     '<div class="form-group"><label>Pilih anggota</label><input id="cg_q" placeholder="Cari nama..." data-role="cg-search"></div>'+
     '<div class="cg-list" id="cgList">'+people.filter(function(p){ return !g || (g.members||[]).indexOf(p.id)===-1; }).map(function(p){
       return '<label class="cg-item" data-name="'+escapeHtml(p.name.toLowerCase())+'"><input type="checkbox" value="'+escapeHtml(p.id)+'" data-role="cg-pick"'+(sel[p.id]?' checked':'')+'>'+avatarHtml(p.emp, 32)+'<span><b>'+escapeHtml(p.name)+'</b><em>'+escapeHtml(p.sub||'')+'</em></span></label>';
@@ -9555,7 +9583,8 @@ function chatGroupModalHtml(g){
 function chatGroupInfoHtml(g){
   var me = chatMe(), admin = (g.admins||[g.createdBy]).indexOf(me)!==-1 || SESSION.role==='hr';
   return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:520px;">'+
-    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">'+chatGroupAvatar(g, 52)+'<div><h3 style="margin:0;">'+escapeHtml(g.name)+'</h3><div class="muted" style="font-size:12.5px;">Grup &middot; '+(g.members||[]).length+' anggota &middot; dibuat '+escapeHtml(chatPeerName(g.createdBy))+'</div></div></div>'+
+    '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;"><span class="cg-photo"'+(admin?' data-action="chat-group-photo" data-id="'+g.id+'" title="Ganti foto grup"':'')+'>'+chatGroupAvatar(g, 64)+(admin?'<span class="cg-photo-edit">'+iconSvg('image',14)+'</span>':'')+'</span><div><h3 style="margin:0;">'+escapeHtml(g.name)+'</h3><div class="muted" style="font-size:12.5px;">Grup &middot; '+(g.members||[]).length+' anggota &middot; dibuat '+escapeHtml(chatPeerName(g.createdBy))+'</div></div></div>'+
+    (admin ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"><button class="btn btn-secondary btn-sm" data-action="chat-group-photo" data-id="'+g.id+'">'+((g.photoKey||g.photoUrl)?'Ganti Foto Grup':'Tambah Foto Grup')+'</button>'+((g.photoKey||g.photoUrl)?'<button class="btn btn-ghost btn-sm" style="color:var(--danger);" data-action="chat-group-photo-del" data-id="'+g.id+'">Hapus Foto</button>':'')+'<input type="file" id="grpPhotoFile" accept="image/*" style="display:none;" data-gid="'+g.id+'"></div>' : '')+
     (admin ? '<div class="form-group"><label>Nama grup</label><div style="display:flex;gap:8px;"><input id="cg_rename" value="'+escapeHtml(g.name)+'" maxlength="60" style="flex:1;"><button class="btn btn-secondary btn-sm" data-action="chat-group-rename" data-id="'+g.id+'">Simpan</button></div></div>' : '')+
     '<div class="cg-list">'+(g.members||[]).map(function(id){
       var isAdm = (g.admins||[g.createdBy]).indexOf(id)!==-1;
@@ -9564,6 +9593,14 @@ function chatGroupInfoHtml(g){
     }).join('')+'</div>'+
     '<div class="modal-actions">'+(admin ? '<button class="btn btn-secondary" data-action="chat-group-addopen" data-id="'+g.id+'">+ Tambah Anggota</button>' : '')+
     '<button class="btn btn-ghost" style="color:var(--danger);" data-action="chat-group-leave" data-id="'+g.id+'">Keluar Grup</button><button class="btn btn-primary" data-action="close-modal">Tutup</button></div></div></div>';
+}
+function chatGroupSetPhoto(g, file){
+  if(!file || !file.type || file.type.indexOf('image/')!==0){ toast('Pilih file gambar.'); return Promise.resolve(false); }
+  toast('Mengunggah foto grup...');
+  return compressSquare(file, 320, 0.82).then(function(du){ return uploadAttachment('grp_'+g.id+'_'+Date.now()+'.jpg', du, 'image/jpeg'); })
+    .then(function(r){ g.photoKey = r.key; g.photoUrl = r.url || null; return chatGroupSave(g); })
+    .then(function(){ chatGroupSys(g, chatPeerName(chatMe())+' mengganti foto grup'); toast('Foto grup diperbarui.'); if(document.getElementById('modalRoot').innerHTML.trim()) openModal(chatGroupInfoHtml(g)); render(); return true; })
+    .catch(function(){ toast('Gagal mengunggah foto grup.'); return false; });
 }
 function chatGroupSys(g, text){ return chatPostSystem('g:'+g.id, text, {kind:'sys'}); }
 function chatGroupSave(g){ g.updatedAt = new Date().toISOString(); return saveDB(true); }
@@ -9892,6 +9929,24 @@ function chatJumpTo(id){
   document.addEventListener('click', function(e){
     if(fired && target(e.target)){ e.stopPropagation(); e.preventDefault(); fired = false; }
   }, true);
+})();
+
+/* geser untuk menutup sidebar (geser ke kiri) & membuka dari tepi kiri layar (geser ke kanan) */
+(function(){
+  var sx = 0, sy = 0, tracking = false, fromEdge = false;
+  document.addEventListener('touchstart', function(e){
+    if(isDesktopWidth() || !SESSION.role) return;
+    var t = e.touches[0]; sx = t.clientX; sy = t.clientY;
+    fromEdge = !STATE.sidebarOpen && sx < 22;
+    tracking = STATE.sidebarOpen || fromEdge;
+  }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    if(!tracking) return; tracking = false;
+    var t = e.changedTouches[0], dx = t.clientX - sx, dy = Math.abs(t.clientY - sy);
+    if(dy > 60) return;
+    if(STATE.sidebarOpen && dx < -60){ STATE.sidebarOpen = false; render(); }
+    else if(fromEdge && dx > 60){ STATE.sidebarOpen = true; render(); }
+  }, {passive:true});
 })();
 
 /* ---- Laman profil akun lain ---- */
@@ -10445,6 +10500,7 @@ document.addEventListener('click', function(e){
   } else if(action==='chat-group-new'){
     STATE.chatGrpSel = {}; openModal(chatGroupModalHtml(null));
   } else if(action==='chat-group-create'){
+    var cgPhotoFile = ((document.getElementById('cg_photo')||{}).files||[])[0] || null;
     var cgName = (document.getElementById('cg_name').value||'').trim(), cgSel = Object.keys(STATE.chatGrpSel||{}).filter(function(k){ return STATE.chatGrpSel[k]; });
     if(!cgName){ toast('Isi nama grup.'); return; }
     if(!cgSel.length){ toast('Pilih minimal 1 anggota.'); return; }
@@ -10458,7 +10514,14 @@ document.addEventListener('click', function(e){
       cgSel.forEach(function(t){ addNotification(chatAudience(t), chatPeerName(cgMe)+' menambahkanmu ke grup chat "'+cg.name+'".', 'chat', 'chat'); });
       saveDB(true);
     });
+    var cgPhoto = cgPhotoFile;
     STATE.chatNew = false; STATE.chatWith = 'g:'+cg.id; CHAT.groupKey = ''; render(); toast('Grup "'+cg.name+'" dibuat.');
+    if(cgPhoto) setTimeout(function(){ chatGroupSetPhoto(cg, cgPhoto); }, 300);
+  } else if(action==='chat-group-photo'){
+    var gpI = document.getElementById('grpPhotoFile'); if(gpI){ gpI.value = ''; gpI.click(); }
+  } else if(action==='chat-group-photo-del'){
+    var gpdG = chatGroup('g:'+el.getAttribute('data-id')); if(!gpdG) return;
+    gpdG.photoKey = null; gpdG.photoUrl = null; chatGroupSave(gpdG).then(function(){ openModal(chatGroupInfoHtml(gpdG)); render(); });
   } else if(action==='chat-group-info'){
     var giG = chatGroup(STATE.chatWith); if(giG) openModal(chatGroupInfoHtml(giG));
   } else if(action==='chat-group-addopen'){
@@ -10617,6 +10680,8 @@ document.addEventListener('click', function(e){
     STATE.sidebarOpen = false;
     STATE.notifPanelOpen = false;
     render();
+  } else if(action==='sidebar-close'){
+    STATE.sidebarOpen = false; render();
   } else if(action==='toggle-sidebar'){
     if(isDesktopWidth()){ STATE.sidebarHidden = !STATE.sidebarHidden; saveSidebarHiddenPref(); }
     else { STATE.sidebarOpen = !STATE.sidebarOpen; }
@@ -12022,6 +12087,7 @@ document.addEventListener('change', function(e){
   var t = e.target;
   if(t.getAttribute && t.getAttribute('data-role')==='fwd-pick'){ STATE.chatFwdSel = STATE.chatFwdSel || {}; STATE.chatFwdSel[t.value] = t.checked; return; }
   if(t.getAttribute && t.getAttribute('data-role')==='cg-pick'){ STATE.chatGrpSel = STATE.chatGrpSel || {}; STATE.chatGrpSel[t.value] = t.checked; return; }
+  if(t.id==='grpPhotoFile'){ var gpF = t.files && t.files[0], gpG = chatGroup('g:'+t.getAttribute('data-gid')); if(gpF && gpG) chatGroupSetPhoto(gpG, gpF); return; }
   if(t.id==='chatImgFile'){
     var ciFile = t.files && t.files[0];
     if(ciFile) chatAttachFromFile(ciFile);
