@@ -18,6 +18,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   async function click(sel){ var el = typeof sel==='string' ? d.querySelector(sel) : sel; if(!el) throw new Error('tidak ada: '+sel); el.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(80); }
   function setv(id, v){ d.getElementById(id).value = v; }
   function body(){ return d.getElementById('app').textContent; }
+  async function move(id, st){ var el = d.querySelector('[data-role="todo-move"][data-id="'+id+'"]'); if(!el) throw new Error('tidak ada select status '+id); el.value = st; el.dispatchEvent(new w.Event('change',{bubbles:true})); await sleep(80); }
 
   console.log('\n[Tab Selaras Board]');
   as('staff','S1');
@@ -35,13 +36,13 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   await click('[data-action="add-todo"]'); await sleep(150);
   var t = w.DB.todos.filter(function(x){ return x.title==='Edit video Reels'; })[0];
   ok(t && t.status==='todo' && d.querySelector('.bd-col[data-col="todo"] [data-todo-id="'+t.id+'"]'), 'tugas baru masuk kolom To Do');
-  await click('[data-action="todo-set-status"][data-id="'+t.id+'"][data-status="doing"]');
+  await move(t.id,'doing');
   ok(t.status==='doing' && d.querySelector('.bd-col[data-col="doing"] [data-todo-id="'+t.id+'"]'), 'pindah ke In Progress');
-  await click('[data-action="todo-set-status"][data-id="'+t.id+'"][data-status="pending"]');
+  await move(t.id,'pending');
   ok(t.status==='pending' && d.querySelector('.bd-col[data-col="pending"] [data-todo-id="'+t.id+'"]'), 'pindah ke Pending');
-  await click('[data-action="todo-set-status"][data-id="'+t.id+'"][data-status="done"]');
+  await move(t.id,'done');
   ok(t.status==='done' && !!t.doneAt && d.querySelector('.bd-col[data-col="done"] [data-todo-id="'+t.id+'"]'), 'pindah ke Finish (doneAt terisi)');
-  await click('[data-action="todo-set-status"][data-id="'+t.id+'"][data-status="todo"]');
+  await move(t.id,'todo');
   ok(t.status==='todo' && !t.doneAt, 'bisa dibuka lagi ke To Do');
   /* drag & drop */
   var card = d.querySelector('[data-todo-id="'+t.id+'"]');
@@ -60,9 +61,9 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   dt.data={'text/plain':'TDX'}; ev('drop', d.querySelector('.bd-col[data-col="done"]')); await sleep(60);
   ok(hrTask.status==='todo', 'staf lain tidak bisa memindah tugas milik orang lain');
   /* HR memantau tim lewat board */
-  as('hr'); w.STATE.todoTab='monitor'; w.render();
-  ok(d.querySelectorAll('.bd-col').length===4 && body().indexOf('Milik S1')!==-1, 'HR: Board Semua menampilkan kanban seluruh staf');
-  await click('[data-action="todo-set-status"][data-id="TDX"][data-status="pending"]');
+  w.STATE.boardDept='Marketing'; as('hr');
+  ok(d.querySelectorAll('.bd-col').length===4 && body().indexOf('Milik S1')!==-1, 'HR: board departemen menampilkan kanban seluruh staf');
+  await move('TDX','pending');
   ok(hrTask.status==='pending', 'HR bisa memindah status tugas staf');
   ok(w.DB.notifications.every(function(n){ return n.message.indexOf('Pending')===-1 || true; }), 'ok');
 

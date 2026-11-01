@@ -238,7 +238,6 @@ function typeInto(w, id, v){ var e = w.document.getElementById(id); e.value = v;
   /* pesan tugas dari HOD */
   w.DB.employees.filter(function(e){ return e.id==='E1'; })[0].department = 'Marketing Communication';
   await login(w, 'E2'); await click(w, 'nav', {view:'todo'});
-  await click(w, 'todo-tab', {tab:'monitor'});
   var ta = w.document.getElementById('ta_owner'); ta.value = 'E1';
   w.document.getElementById('ta_title').value = 'Siapkan konten Reels';
   w.document.getElementById('ta_note').value = 'Pakai referensi terlampir';

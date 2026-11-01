@@ -38,6 +38,7 @@ function click(w, action, attrs){
 }
 function setVal(w, id, v){ var e = w.document.getElementById(id); if(!e) throw new Error('#'+id+' tidak ada'); e.value = v; }
 function change(w, id, v){ var e = w.document.getElementById(id); e.value = v; e.dispatchEvent(new w.Event('change', {bubbles:true})); return sleep(80); }
+function move(w, id, st){ var e = w.document.querySelector('[data-role="todo-move"][data-id="'+id+'"]'); if(!e) throw new Error('select status tidak ada: '+id); e.value = st; e.dispatchEvent(new w.Event('change', {bubbles:true})); return sleep(120); }
 function text(w){ return w.document.getElementById('app').textContent; }
 function nav(w, view){ return click(w, 'nav', {view:view}); }
 
@@ -116,26 +117,27 @@ function login(w, who){
   ok(td1 && td1.ownerId==='E1' && td1.title==='Siapkan konten IG', 'Staff: menambah tugas sendiri');
   ok(w.DB.notifications.some(function(n){ return n.audience.type==='hr' && n.message.indexOf('Budi Staff menambahkan tugas')!==-1; }), 'HR dapat notifikasi saat staf menambah tugas');
   ok(text(w).indexOf('Lewat ')!==-1, 'Staff: tugas lewat tenggat ditandai');
-  await click(w, 'todo-set-status', {id:td1.id, status:'doing'});
+  await move(w, td1.id, 'doing');
   ok(td1.status==='doing', 'Staff: ubah status ke Dikerjakan');
   var nBefore = w.DB.notifications.length;
-  await click(w, 'todo-set-status', {id:td1.id, status:'done'});
+  await move(w, td1.id, 'done');
   ok(td1.status==='done' && !!td1.doneAt, 'Staff: tugas diselesaikan');
   ok(w.DB.notifications.length===nBefore+1 && w.DB.notifications[0].message.indexOf('menyelesaikan tugas')!==-1 && w.DB.notifications[0].audience.type==='hr', 'HR dapat notifikasi saat tugas selesai');
   /* HR memantau & menugaskan */
   await login(w, 'hr'); await nav(w, 'todo');
-  ok(text(w).indexOf('Board Saya')!==-1 && text(w).indexOf('Board Semua')!==-1, 'HR: ada tab Board Saya dan Board Semua');
-  await click(w, 'todo-tab', {tab:'monitor'});
+  ok(!!w.document.getElementById('boardDeptSel'), 'HR: bisa memilih board departemen');
+  await change(w, 'boardDeptSel', 'Marketing Communication');
   ok(text(w).indexOf('Budi Staff')!==-1 && text(w).indexOf('Siapkan konten IG')!==-1, 'HR: memantau tugas semua karyawan');
+  await change(w, 'boardDeptSel', 'Front Office');
   setVal(w, 'ta_owner', 'E3'); setVal(w, 'ta_title', 'Rapikan lobby display'); setVal(w, 'ta_due', '2030-01-01');
   await click(w, 'assign-todo'); await sleep(150);
   var td2 = w.DB.todos[0];
   ok(td2.ownerId==='E3' && td2.createdById==='hr', 'HR: menugaskan tugas ke karyawan');
   ok(w.DB.notifications.some(function(n){ return n.audience.type==='emp' && n.audience.empId==='E3' && n.message.indexOf('HR memberi tugas baru')!==-1; }), 'Karyawan dapat notifikasi tugas dari HR');
-  await change(w, 'todoFilterEmp', 'E1');
-  ok(text(w).indexOf('Siapkan konten IG')!==-1 && text(w).indexOf('Rapikan lobby')===-1, 'HR: filter karyawan di pantauan bekerja');
+  await change(w, 'boardDeptSel', 'Marketing Communication'); await change(w, 'boardWhoSel', 'E1');
+  ok(text(w).indexOf('Siapkan konten IG')!==-1 && text(w).indexOf('Rapikan lobby')===-1, 'HR: filter anggota di board bekerja');
   /* HOD hanya bisa menugaskan tim sendiri */
-  await login(w, 'E2'); await nav(w, 'todo'); await click(w, 'todo-tab', {tab:'monitor'});
+  await login(w, 'E2'); await nav(w, 'todo');
   var ownerOpts = Array.prototype.map.call(w.document.querySelectorAll('#ta_owner option'), function(o){ return o.value; });
   ok(ownerOpts.indexOf('E1')!==-1 && ownerOpts.indexOf('E3')===-1, 'HOD: hanya bisa menugaskan anggota timnya');
   setVal(w, 'ta_owner', 'E1'); setVal(w, 'ta_title', 'Laporan mingguan');
@@ -144,7 +146,7 @@ function login(w, who){
   ok(w.DB.notifications.filter(function(n){ return n.audience.type==='hr'; }).length===hrNotifBefore+1, 'HR ikut diberi tahu saat HOD menugaskan staf');
   var td3 = w.DB.todos[0];
   await login(w, 'E1'); await nav(w, 'todo');
-  await click(w, 'todo-set-status', {id:td3.id, status:'done'});
+  await move(w, td3.id, 'done');
   ok(w.DB.notifications.some(function(n){ return n.audience.type==='emp' && n.audience.empId==='E2' && n.message.indexOf('menyelesaikan tugas yang kamu berikan')!==-1; }), 'HOD dapat notifikasi saat stafnya menyelesaikan tugas');
   await nav(w, 'dashboard');
   ok(text(w).indexOf('Board Saya')!==-1, 'Staff: widget Board di dashboard');

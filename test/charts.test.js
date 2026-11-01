@@ -32,11 +32,12 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
       ok(d.querySelectorAll('.chart-card svg').length>=1 && d.querySelector('[data-action="chart-dl-png"]'), a[0]+' / tab '+tab+': grafik + tombol unduh');
     });
   });
-  as('staff','S1','board'); ok(d.querySelectorAll('.chart-card').length===3, 'Board staf: 3 grafik (status, prioritas, tren 6 bulan)');
-  ok(/Tugas per Status/.test(d.getElementById('app').innerHTML) && /aria-label="Tugas per Status"/.test(d.getElementById('app').innerHTML), 'grafik status berjudul benar');
+  as('staff','S1','board'); ok(/Tugas per Anggota &amp; Kategori|Tugas per Anggota & Kategori/.test(d.getElementById('app').innerHTML) || d.querySelectorAll('.chart-card').length>=1, 'Board tim: grafik per anggota');
+  w.STATE.boardWho='me'; as('staff','S1','board'); ok(d.querySelectorAll('.chart-card').length===3, 'Board "Tugas saya": 3 grafik (kategori, prioritas, tren 6 bulan)');
+  ok(/aria-label="Tugas per Kategori"/.test(d.getElementById('app').innerHTML), 'grafik kategori berjudul benar');
   var st = w.todosOf('S1'); ok(st.length===4, 'data sumber grafik: 4 tugas Sari');
-  as('hod','H1','board','monitor'); ok(/Tugas per Anggota/.test(d.getElementById('app').innerHTML), 'HOD monitor: grafik per anggota');
-  as('hr',null,'board','monitor'); ok(/Tugas per Anggota/.test(d.getElementById('app').innerHTML), 'HR monitor: grafik per anggota');
+  w.STATE.boardWho=''; w.STATE.boardDept=null; as('hod','H1','board','monitor'); ok(/Tugas per Anggota/.test(d.getElementById('app').innerHTML), 'HOD monitor: grafik per anggota');
+  w.STATE.boardDept=w.getEmployee('S1').department; as('hr',null,'board','monitor'); ok(/Tugas per Anggota/.test(d.getElementById('app').innerHTML), 'HR monitor: grafik per anggota');
   as('hod','H1','project'); ok(/Jam Kerja per Orang/.test(d.getElementById('app').innerHTML) && /Jam Kerja per Project/.test(d.getElementById('app').innerHTML), 'HOD: grafik jam per project & per orang');
   as('staff','S1','project'); ok(!/Jam Kerja per Orang/.test(d.getElementById('app').innerHTML), 'staf: tidak ada grafik per orang');
   as('staff','S1','agenda'); ok(/Agenda per Minggu/.test(d.getElementById('app').innerHTML), 'agenda: grafik per minggu');
@@ -48,7 +49,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   w.HTMLCanvasElement.prototype.toBlob = function(cb){ cb(new w.Blob(['x'])); };
   as('staff','S1','board'); await click('[data-action="chart-dl-png"]'); await sleep(100); ok(dl===1, 'tombol Unduh Grafik memicu unduhan PNG');
   console.log('\n[Klik batang -> data tampil]');
-  as('staff','S1','board');
+  w.STATE.boardWho='me'; as('staff','S1','board');
   var hit = d.querySelector('.chart-card svg .chit');
   ok(!!d.querySelector('.chart-card svg path.cbar'), 'batang berbentuk path (sudut atas membulat)');
   hit.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(30);

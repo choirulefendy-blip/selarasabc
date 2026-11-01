@@ -618,7 +618,24 @@
   .bd-add[open] > summary{border-bottom:1px solid var(--border);margin-bottom:12px;}
   .bd-add > *:not(summary){margin-left:18px;margin-right:18px;}
   .bd-add > *:last-child{margin-bottom:18px;}
-  .bd-board{display:grid;grid-template-columns:repeat(4,minmax(240px,1fr));gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x proximity;}
+  .bd-board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(240px,1fr);gap:12px;overflow-x:auto;padding-bottom:6px;scroll-snap-type:x proximity;}
+  .bd-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;}
+  .bd-title{display:flex;align-items:center;gap:8px;font-size:16px;}
+  .bd-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .bd-filters select{min-width:150px;max-width:100%;padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--text);font:inherit;font-size:13px;}
+  .bd-status-sel{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid var(--border);background:var(--surface-container-high);color:var(--text);max-width:150px;}
+  .bd-card.mine{border-color:var(--primary);}
+  .bd-clean{font-size:11px;padding:2px 8px;color:var(--danger);}
+  .bd-note{font-size:12px;margin:8px 2px 14px;line-height:1.5;}
+  .bd-note svg{vertical-align:-2px;margin-right:4px;}
+  .badge-purple{background:rgba(139,92,246,.16);color:#7C3AED;}
+  .bc-list{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+  .bc-row{display:grid;grid-template-columns:auto 1fr 120px auto;gap:8px;align-items:center;padding:8px 10px;border-radius:14px;background:var(--surface);border:1px solid var(--border);}
+  .bc-row input,.bc-row select{width:100%;min-width:0;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface-container-low);color:var(--text);font:inherit;font-size:14px;box-sizing:border-box;}
+  .bc-prev{min-width:64px;justify-content:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;}
+  .bc-btns{display:flex;gap:2px;align-items:center;justify-content:flex-end;}
+  .bc-btns .btn{padding:4px 8px;min-width:0;}
+  @media(max-width:560px){ .bc-row{grid-template-columns:1fr 1fr;} .bc-label{grid-column:1 / -1;} .bc-prev{display:none;} }
   .bd-col{background:var(--surface-container-low);border-radius:var(--radius);padding:10px;min-height:140px;scroll-snap-align:start;transition:box-shadow .12s;}
   .bd-col.over{box-shadow:0 0 0 2px var(--primary) inset;}
   .bd-col-head{display:flex;justify-content:space-between;align-items:center;margin:2px 2px 10px;}
@@ -648,7 +665,7 @@
   .ag-item:last-child{border-bottom:none;}
   .ag-time{min-width:78px;font-weight:700;font-size:13px;color:var(--primary);}
   .ag-main{flex:1;min-width:0;}
-  @media(max-width:700px){.bd-board{grid-template-columns:repeat(4,82%);} .ag-grid .cal-tag{font-size:8px;}}
+  @media(max-width:700px){.bd-board{grid-auto-columns:82%;} .ag-grid .cal-tag{font-size:8px;}}
   .work-timer{margin-top:14px;padding:14px 16px;border-radius:16px;background:var(--surface-container);}
   .wt-label{font-size:12px;color:var(--text-muted);margin-bottom:6px;}
   .wt-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
@@ -2460,6 +2477,7 @@ function afterRender(){
     if(sbEl && STATE.sbScroll) sbEl.scrollTop = STATE.sbScroll;
   }catch(e){}
   navTrack();
+  try{ todoPurgeOld(false); }catch(e){}
   try{ workReminderSync(); tomorrowReminderSync(); shiftReminderSync(); nativeNotifAutoAsk(); assetServiceReminders(); assetHydratePhoto(); }catch(e){}
   applyOtPrefill();
   var npanel = document.querySelector('.notif-panel');
@@ -5834,61 +5852,150 @@ function todoSortActive(a, b){
   return (pr[a.priority]||1) - (pr[b.priority]||1);
 }
 
-function todoCanMove(t){
-  return SESSION.role==='hr' || t.ownerId===todoSelfKey() || t.createdById===todoSelfKey();
+/* ---------- Board per Departemen: kategori (kolom) bisa diatur, edit tugas, auto-hapus Selesai 30 hari ---------- */
+var BOARD_DONE_PURGE_DAYS = 30;
+var BOARD_COL_COLORS = {neutral:'Abu-abu', info:'Biru', success:'Hijau', warning:'Kuning', danger:'Merah', purple:'Ungu'};
+var BOARD_DEFAULT_COLOR = {todo:'neutral', doing:'info', done:'success', pending:'warning'};
+function boardColKey(dept){ return dept ? dept : '_hr'; }
+function boardColsFor(dept){
+  var c = DB.boardCols && DB.boardCols[boardColKey(dept)];
+  if(c && c.length && c.some(function(x){ return x.id==='done'; })) return c;
+  return BOARD_COLUMNS.map(function(k){ return {id:k, label:TODO_STATUS[k].label, color:BOARD_DEFAULT_COLOR[k]}; });
 }
-function todoItemHtml(t, mode){
-  /* kartu Board. mode: 'mine' | 'monitor' */
+function boardColCls(col){ return col.color==='purple' ? 'badge-purple' : 'badge-'+(BOARD_COL_COLORS[col.color] ? col.color : 'neutral'); }
+function todoDept(t){
+  if(!t || t.ownerId==='hr') return '';
+  var e = getEmployee(t.ownerId); return e ? (e.department||'') : '';
+}
+function todoStatusInfo(status, dept){
+  var cols = boardColsFor(dept||''), c = cols.filter(function(x){ return x.id===status; })[0];
+  if(!c && DB.boardCols){ Object.keys(DB.boardCols).some(function(k){ c = (DB.boardCols[k]||[]).filter(function(x){ return x.id===status; })[0]; return !!c; }); }
+  if(c) return {label:c.label, cls:boardColCls(c)};
+  return TODO_STATUS[status] || {label:'To Do', cls:'badge-neutral'};
+}
+function todoColOf(t, cols){
+  if(cols.some(function(c){ return c.id===t.status; })) return t.status;
+  var first = cols.filter(function(c){ return c.id!=='done'; })[0];
+  return first ? first.id : cols[0].id;
+}
+function boardFirstCol(dept){ var cols = boardColsFor(dept); var f = cols.filter(function(c){ return c.id!=='done'; })[0]; return f ? f.id : 'todo'; }
+function isHodOfDept(dept){ return SESSION.role==='hod' && !!dept && getHodDepartments(SESSION.empId).indexOf(dept)!==-1; }
+function boardDeptsVisible(){
+  if(SESSION.role==='hr'){
+    var hl = getDepartments().slice();
+    activeEmployees().forEach(function(e){ if(e.department && hl.indexOf(e.department)===-1) hl.push(e.department); });
+    return hl;
+  }
+  var out = [], me = getEmployee(SESSION.empId);
+  if(me && me.department) out.push(me.department);
+  if(SESSION.role==='hod') getHodDepartments(SESSION.empId).forEach(function(d){ if(out.indexOf(d)===-1) out.push(d); });
+  return out;
+}
+function boardCurrentDept(){
+  var list = boardDeptsVisible();
+  if(SESSION.role==='hr' && STATE.boardDept==='_hr') return '';
+  if(STATE.boardDept && list.indexOf(STATE.boardDept)!==-1) return STATE.boardDept;
+  if(SESSION.role==='hod'){ var hd = getHodDepartments(SESSION.empId); if(hd.length) return hd[0]; }
+  return list[0] || '';
+}
+function boardMembers(dept){
+  if(!dept) return [];
+  return activeEmployees().filter(function(e){ return e.department===dept; });
+}
+function boardAssignScope(dept){
+  /* siapa yang boleh diberi tugas dari board ini */
+  if(SESSION.role==='hr') return boardMembers(dept);
+  if(isHodOfDept(dept)) return boardMembers(dept);
+  return [];
+}
+function boardCanEditCols(dept){ return SESSION.role==='hr' || isHodOfDept(dept); }
+function todoCanMove(t){
+  return SESSION.role==='hr' || t.ownerId===todoSelfKey() || t.createdById===todoSelfKey() || isHodOfDept(todoDept(t));
+}
+function todoCanEdit(t){ return todoCanMove(t); }
+function todoCanReassign(t){ return SESSION.role==='hr' || t.createdById===todoSelfKey() || isHodOfDept(todoDept(t)); }
+function todoCanDelete(t){ return SESSION.role==='hr' || t.createdById===todoSelfKey() || isHodOfDept(todoDept(t)); }
+function boardTodos(dept){
+  return (DB.todos||[]).filter(function(t){
+    if(t.deleted) return false;
+    if(!dept) return t.ownerId==='hr';
+    return t.ownerId!=='hr' && todoDept(t)===dept;
+  });
+}
+/* hapus otomatis tugas Selesai yang sudah lewat 30 hari (kecuali tugas dari Rekap Kerja) */
+function todoPurgeOld(force){
+  if(!DB || !DB.todos || !STATE.loaded) return 0;
+  if(!force && STATE.todoPurgeDay===todayISO()) return 0;
+  STATE.todoPurgeDay = todayISO();
+  var limit = Date.now() - BOARD_DONE_PURGE_DAYS*86400000, now = new Date().toISOString(), n = 0;
+  DB.todos.forEach(function(t){
+    if(t.deleted || t.status!=='done' || t.rekap) return;
+    var at = Date.parse(t.doneAt || t.updatedAt || '');
+    if(at && at < limit){ t.deleted = true; t.purged = true; t.updatedAt = now; n++; }
+  });
+  if(n){ try{ saveDB(true); }catch(e){} }
+  return n;
+}
+
+function todoItemHtml(t, mode, cols){
+  /* kartu Board */
+  cols = cols || boardColsFor(todoDept(t));
   var pr = TODO_PRIORITY[t.priority] || TODO_PRIORITY.normal;
   var overdue = todoIsOverdue(t);
   var proj = t.projectId ? getProjectById(t.projectId) : null;
+  var mine = t.ownerId===todoSelfKey();
   var meta = '<span class="badge '+pr.cls+'">'+pr.label+'</span>'+
     (t.due ? ' <span class="badge '+(overdue?'badge-danger':'badge-neutral')+'">'+(overdue?'Lewat ':'')+formatDateID(t.due)+'</span>' : '')+
     (proj ? ' <span class="badge badge-info">'+escapeHtml(proj.name)+'</span>' : '')+
     (t.createdById && t.createdById!==t.ownerId ? ' <span class="badge badge-warning">Ditugaskan '+escapeHtml(t.createdByLabel||'')+'</span>' : '');
   var actions = '';
   if(todoCanMove(t)){
-    BOARD_COLUMNS.forEach(function(k){
-      if(k===t.status) return;
-      actions += '<button class="btn btn-secondary btn-sm bd-move" data-action="todo-set-status" data-id="'+t.id+'" data-status="'+k+'" title="Pindah ke '+TODO_STATUS[k].label+'">'+TODO_STATUS[k].label+'</button>';
-    });
+    actions += '<select class="bd-status-sel" data-role="todo-move" data-id="'+t.id+'" aria-label="Pindah kategori">'+
+      cols.map(function(c){ return '<option value="'+escapeHtml(c.id)+'"'+(c.id===todoColOf(t, cols)?' selected':'')+'>'+escapeHtml(c.label)+'</option>'; }).join('')+'</select>';
   }
-  if(SESSION.role==='hr' || t.createdById===todoSelfKey()){
-    actions += '<button class="btn btn-ghost btn-sm" data-action="delete-todo" data-id="'+t.id+'" style="color:var(--danger);">Hapus</button>';
+  if(todoCanEdit(t)) actions += '<button class="btn btn-ghost btn-sm" data-action="todo-edit" data-id="'+t.id+'">'+iconSvg('edit',14)+' Ubah</button>';
+  if(todoCanDelete(t)) actions += '<button class="btn btn-ghost btn-sm bd-del" data-action="delete-todo" data-id="'+t.id+'" title="Hapus tugas" aria-label="Hapus tugas" style="color:var(--danger);">'+iconSvg('trash',14)+'</button>';
+  var purgeLeft = '';
+  if(t.status==='done' && t.doneAt && !t.rekap){
+    var left = BOARD_DONE_PURGE_DAYS - Math.floor((Date.now()-Date.parse(t.doneAt))/86400000);
+    purgeLeft = ' &middot; terhapus otomatis '+(left<=1 ? 'besok' : 'dalam '+left+' hari');
   }
-  return '<div class="bd-card'+(t.status==='done'?' done':'')+'"'+(todoCanMove(t)?' draggable="true"':'')+' data-todo-id="'+t.id+'">'+
-    (mode==='monitor' ? '<div class="todo-owner">'+escapeHtml(todoOwnerName(t.ownerId))+'</div>' : '')+
+  return '<div class="bd-card'+(t.status==='done'?' done':'')+(mine?' mine':'')+'"'+(todoCanMove(t)?' draggable="true"':'')+' data-todo-id="'+t.id+'">'+
+    (mode!=='mine' ? '<div class="todo-owner">'+escapeHtml(todoOwnerName(t.ownerId))+(mine?' <span class="muted" style="font-weight:500;">(kamu)</span>':'')+'</div>' : '')+
     '<div class="todo-title">'+escapeHtml(t.title)+'</div>'+
     (t.note ? '<div class="todo-note">'+escapeHtml(t.note)+'</div>' : '')+
     ((t.photoKey || t.photoUrl) ? imgThumbHtml(t.photoKey, t.photoUrl, 'todo-photo') : '')+
     '<div class="todo-meta">'+meta+'</div>'+
-    (t.doneAt ? '<div class="todo-note">Selesai: '+timeAgoID(t.doneAt)+'</div>' : '')+
-    '<div class="bd-actions">'+actions+'</div>'+
+    (t.doneAt ? '<div class="todo-note">Selesai: '+timeAgoID(t.doneAt)+purgeLeft+'</div>' : '')+
+    (actions ? '<div class="bd-actions">'+actions+'</div>' : '')+
   '</div>';
 }
 
-function renderKanban(list, mode){
+function renderKanban(list, mode, dept){
+  var cols = boardColsFor(dept===undefined ? '' : dept);
   list = list.filter(function(t){ return !(t.rekap && (t.status==='done' || t.status==='batal')); });
-  var cols = BOARD_COLUMNS.map(function(k){
-    var items = list.filter(function(t){ return (TODO_STATUS[t.status] ? t.status : 'todo')===k; });
-    items = k==='done'
-      ? items.sort(function(a,b){ return (b.doneAt||'').localeCompare(a.doneAt||''); }).slice(0,20)
-      : items.sort(todoSortActive);
-    return '<div class="bd-col" data-col="'+k+'">'+
-      '<div class="bd-col-head"><span class="badge '+TODO_STATUS[k].cls+'">'+TODO_STATUS[k].label+'</span><span class="bd-count">'+list.filter(function(t){ return (TODO_STATUS[t.status] ? t.status : 'todo')===k; }).length+'</span></div>'+
-      '<div class="bd-col-body">'+(items.map(function(t){ return todoItemHtml(t, mode); }).join('') || '<div class="bd-empty">Kosong</div>')+'</div>'+
+  var html = cols.map(function(c){
+    var all = list.filter(function(t){ return todoColOf(t, cols)===c.id; });
+    var items = c.id==='done'
+      ? all.slice().sort(function(a,b){ return (b.doneAt||'').localeCompare(a.doneAt||''); }).slice(0,30)
+      : all.slice().sort(todoSortActive);
+    var clean = (c.id==='done' && all.length && boardCanEditCols(dept||'')) ? '<button class="btn btn-ghost btn-sm bd-clean" data-action="board-clean-done" title="Hapus semua tugas Selesai">'+iconSvg('trash',13)+' Bersihkan</button>' : '';
+    return '<div class="bd-col" data-col="'+escapeHtml(c.id)+'">'+
+      '<div class="bd-col-head"><span class="badge '+boardColCls(c)+'">'+escapeHtml(c.label)+'</span><span style="display:flex;align-items:center;gap:6px;">'+clean+'<span class="bd-count">'+all.length+'</span></span></div>'+
+      '<div class="bd-col-body">'+(items.map(function(t){ return todoItemHtml(t, mode, cols); }).join('') || '<div class="bd-empty">Kosong</div>')+'</div>'+
     '</div>';
   }).join('');
-  return '<div class="bd-board">'+cols+'</div>';
+  return '<div class="bd-board" style="--bd-cols:'+cols.length+';">'+html+'</div>';
 }
 
-function todoFormHtml(prefix, withOwner){
+function todoFormHtml(prefix, withOwner, scope, selfOpt){
   var ownerSel = '';
   if(withOwner){
-    var scope = todoMonitorScope();
+    scope = scope || todoMonitorScope();
     ownerSel = '<div class="form-group"><label>Tugaskan ke</label><select id="'+prefix+'_owner">'+
       '<option value="">Pilih karyawan...</option>'+
-      scope.map(function(e){ return '<option value="'+e.id+'">'+escapeHtml(e.name)+' &middot; '+escapeHtml(e.department||'')+'</option>'; }).join('')+
+      (selfOpt ? '<option value="'+selfOpt.id+'">'+escapeHtml(selfOpt.name)+' (saya sendiri)</option>' : '')+
+      scope.filter(function(e){ return !selfOpt || e.id!==selfOpt.id; }).map(function(e){ return '<option value="'+e.id+'">'+escapeHtml(e.name)+' &middot; '+escapeHtml(e.position||e.department||'')+'</option>'; }).join('')+
     '</select></div>';
   }
   return ownerSel+
@@ -5915,73 +6022,155 @@ function renderTodoPage(){
   if(bt==='project') return head + boardChartsHtml('project') + renderProjectTab();
   if(bt==='agenda') return head + boardChartsHtml('agenda') + renderAgendaTab();
   if(bt==='rekap') return head + renderRekapTab();
-  var canMonitor = SESSION.role==='hr' || SESSION.role==='hod';
-  var tab = (canMonitor && STATE.todoTab==='monitor') ? 'monitor' : 'mine';
-  var tabs = canMonitor
-    ? '<div class="todo-tabs">'+
-        '<button class="todo-tab'+(tab==='mine'?' active':'')+'" data-action="todo-tab" data-tab="mine">Board Saya</button>'+
-        '<button class="todo-tab'+(tab==='monitor'?' active':'')+'" data-action="todo-tab" data-tab="monitor">'+(SESSION.role==='hr'?'Board Semua':'Board Tim')+'</button>'+
-      '</div>'
-    : '';
-  return head + tabs + boardChartsHtml('board') + (tab==='monitor' ? renderTodoMonitor() : renderTodoMine());
+  return head + renderDeptBoard();
 }
 
-function renderTodoMine(){
-  var mine = todosOf(todoSelfKey());
-  return ''+
-  '<details class="card bd-add"><summary>+ Tambah Tugas</summary>'+
-    '<div class="card-sub" style="margin-top:10px;">Catat pekerjaan yang harus kamu selesaikan. Tugas baru masuk ke kolom To Do.</div>'+
-    todoFormHtml('td', false)+
-    '<button class="btn btn-primary" data-action="add-todo">Tambah ke Board</button>'+
-  '</details>'+
-  renderKanban(mine, 'mine');
-}
-
-function renderTodoMonitor(){
-  var scope = todoMonitorScope();
-  var deptFilter = SESSION.role==='hr' ? (STATE.todoFilterDept||'') : '';
-  var empFilter = STATE.todoFilterEmp||'';
-  var statusFilter = STATE.todoFilterStatus||'';
-  var people = scope.filter(function(e){
-    return (!deptFilter || e.department===deptFilter) && (!empFilter || e.id===empFilter);
+function renderDeptBoard(){
+  var dept = boardCurrentDept(), depts = boardDeptsVisible();
+  var me = todoSelfKey(), who = STATE.boardWho || '';
+  var all = boardTodos(dept);
+  var members = dept ? boardMembers(dept) : [];
+  var list = all.filter(function(t){
+    if(who==='me') return t.ownerId===me;
+    if(who) return t.ownerId===who;
+    return true;
   });
-  var summaryRows = people.map(function(e){
-    var list = todosOf(e.id);
-    var act = list.filter(function(t){ return t.status!=='done'; }).length;
-    var dn = list.filter(function(t){ return t.status==='done'; }).length;
-    var od = list.filter(todoIsOverdue).length;
-    var total = act+dn;
-    var pct = total ? Math.round(dn/total*100) : 0;
-    return '<tr><td>'+escapeHtml(e.name)+'<div class="muted" style="font-size:11.5px;">'+escapeHtml(e.department||'')+'</div></td>'+
-      '<td class="num">'+act+'</td><td class="num">'+dn+'</td>'+
-      '<td class="num">'+(od?'<span class="badge badge-danger">'+od+'</span>':'0')+'</td>'+
-      '<td style="min-width:110px;"><div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:var(--success);"></div></div><div class="muted" style="font-size:11px;">'+pct+'%</div></td></tr>';
+  /* pemilih departemen */
+  var deptSel = '';
+  if(SESSION.role==='hr' || depts.length>1){
+    deptSel = '<select id="boardDeptSel" aria-label="Departemen">'+
+      depts.map(function(d){ return '<option value="'+escapeHtml(d)+'"'+(d===dept?' selected':'')+'>'+escapeHtml(d)+'</option>'; }).join('')+
+      (SESSION.role==='hr' ? '<option value="_hr"'+(!dept?' selected':'')+'>Tugas HR (pribadi)</option>' : '')+'</select>';
+  }
+  var whoSel = dept ? '<select id="boardWhoSel" aria-label="Tampilkan tugas">'+
+      '<option value="">Semua anggota ('+all.length+')</option>'+
+      (SESSION.role!=='hr' ? '<option value="me"'+(who==='me'?' selected':'')+'>Tugas saya</option>' : '')+
+      members.map(function(e){ return '<option value="'+e.id+'"'+(who===e.id?' selected':'')+'>'+escapeHtml(e.name)+'</option>'; }).join('')+'</select>' : '';
+  var tools = '<div class="bd-toolbar">'+
+    '<div class="bd-title">'+iconSvg('listCheck',18)+' <b>'+(dept ? 'Board '+escapeHtml(dept) : 'Board HR')+'</b>'+(dept ? ' <span class="muted">&middot; '+members.length+' anggota</span>' : '')+'</div>'+
+    '<div class="bd-filters">'+deptSel+whoSel+
+      (boardCanEditCols(dept) ? '<button class="btn btn-secondary btn-sm" data-action="board-cols-open">'+iconSvg('settings',14)+' Atur Kategori</button>' : '')+
+    '</div></div>';
+
+  /* form tambah tugas */
+  var scope = boardAssignScope(dept), form;
+  if(!dept){
+    form = '<details class="card bd-add"><summary>+ Tambah Tugas</summary><div style="margin-top:10px;">'+todoFormHtml('td', false)+'<button class="btn btn-primary" data-action="add-todo">Tambah ke Board</button></div></details>';
+  } else if(scope.length){
+    var selfE = SESSION.role==='hod' ? getEmployee(SESSION.empId) : null;
+    form = '<details class="card bd-add"><summary>+ Tambah / Tugaskan Tugas</summary>'+
+      '<div class="card-sub" style="margin-top:10px;">Tugas masuk ke kolom pertama board '+escapeHtml(dept)+'. Anggota yang ditugaskan langsung mendapat notifikasi'+(SESSION.role==='hod'?', HR ikut diberi tahu':'')+'.</div>'+
+      todoFormHtml('ta', true, scope, selfE && selfE.department===dept ? selfE : (selfE ? selfE : null))+'<button class="btn btn-primary" data-action="assign-todo">Simpan Tugas</button></details>';
+  } else {
+    form = '<details class="card bd-add"><summary>+ Tambah Tugas</summary>'+
+      '<div class="card-sub" style="margin-top:10px;">Tugasmu tampil di board tim '+escapeHtml(dept)+' dan bisa dilihat rekan satu departemen.</div>'+
+      todoFormHtml('td', false)+'<button class="btn btn-primary" data-action="add-todo">Tambah ke Board</button></details>';
+  }
+
+  /* ringkasan progres (HR/HOD) */
+  var summary = '';
+  if(dept && (SESSION.role==='hr' || isHodOfDept(dept))){
+    var rows = members.map(function(e){
+      var l = all.filter(function(t){ return t.ownerId===e.id; });
+      var act = l.filter(function(t){ return t.status!=='done'; }).length, dn = l.length-act, od = l.filter(todoIsOverdue).length;
+      var pct = l.length ? Math.round(dn/l.length*100) : 0;
+      return '<tr><td>'+escapeHtml(e.name)+'</td><td class="num">'+act+'</td><td class="num">'+dn+'</td>'+
+        '<td class="num">'+(od?'<span class="badge badge-danger">'+od+'</span>':'0')+'</td>'+
+        '<td style="min-width:110px;"><div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:var(--success);"></div></div><div class="muted" style="font-size:11px;">'+pct+'%</div></td></tr>';
+    }).join('');
+    summary = '<details class="card bd-add"><summary>Ringkasan Progres Tim</summary><div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Nama</th><th class="num">Aktif</th><th class="num">Selesai</th><th class="num">Telat</th><th>Progres</th></tr></thead><tbody>'+
+      (rows || '<tr><td colspan="5" class="empty-state">Belum ada anggota.</td></tr>')+'</tbody></table></div></details>';
+  }
+  var note = '<div class="muted bd-note">'+iconSvg('info',13)+' Tugas di kolom <b>'+escapeHtml((boardColsFor(dept).filter(function(c){ return c.id==='done'; })[0]||{label:'Finish'}).label)+'</b> otomatis terhapus '+BOARD_DONE_PURGE_DAYS+' hari setelah selesai.</div>';
+  return tools + form + renderKanban(list, dept ? 'team' : 'mine', dept) + note + summary + boardChartsHtml('board');
+}
+
+/* modal: atur kategori board */
+function boardColsModalHtml(){
+  var dept = STATE.bcDept, cols = STATE.bcEdit || [];
+  var colorOpts = function(sel){ return Object.keys(BOARD_COL_COLORS).map(function(k){ return '<option value="'+k+'"'+(k===sel?' selected':'')+'>'+BOARD_COL_COLORS[k]+'</option>'; }).join(''); };
+  var rows = cols.map(function(c, i){
+    var isDone = c.id==='done';
+    return '<div class="bc-row">'+
+      '<span class="badge '+boardColCls(c)+' bc-prev">'+escapeHtml(c.label||'…')+'</span>'+
+      '<input class="bc-label" data-i="'+i+'" maxlength="30" value="'+escapeHtml(c.label)+'" placeholder="Nama kategori">'+
+      '<select class="bc-color" data-i="'+i+'">'+colorOpts(c.color)+'</select>'+
+      '<div class="bc-btns">'+
+        '<button class="btn btn-ghost btn-sm" data-action="bc-move" data-i="'+i+'" data-dir="-1" '+(i===0?'disabled':'')+' aria-label="Naik">&uarr;</button>'+
+        '<button class="btn btn-ghost btn-sm" data-action="bc-move" data-i="'+i+'" data-dir="1" '+(i===cols.length-1?'disabled':'')+' aria-label="Turun">&darr;</button>'+
+        (isDone ? '<span class="badge badge-success" title="Kategori penanda selesai, tidak bisa dihapus">Selesai</span>' : '<button class="btn btn-ghost btn-sm" data-action="bc-del" data-i="'+i+'" style="color:var(--danger);" aria-label="Hapus kategori">'+iconSvg('trash',14)+'</button>')+
+      '</div></div>';
   }).join('');
-  var ids = {}; people.forEach(function(e){ ids[e.id]=true; });
-  var feed = (DB.todos||[]).filter(function(t){
-    return !t.deleted && ids[t.ownerId] && (!statusFilter || (statusFilter==='overdue' ? todoIsOverdue(t) : t.status===statusFilter));
-  }).sort(function(a,b){ return (b.updatedAt||b.createdAt||'').localeCompare(a.updatedAt||a.createdAt||''); }).slice(0,120);
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:560px;">'+
+    '<h3>Atur Kategori Board '+escapeHtml(dept||'HR')+'</h3>'+
+    '<div class="card-sub">Ubah nama, warna, dan urutan kolom. Kategori bertanda <b>Selesai</b> dipakai untuk tugas yang sudah beres (tidak bisa dihapus). Tugas di kategori yang dihapus dipindah ke kategori pertama.</div>'+
+    '<div class="bc-list">'+rows+'</div>'+
+    (cols.length<8 ? '<button class="btn btn-secondary btn-sm" data-action="bc-add" style="margin-top:8px;">+ Tambah Kategori</button>' : '')+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap;">'+
+      '<button class="btn btn-ghost" data-action="bc-reset">Kembalikan bawaan</button>'+
+      '<button class="btn btn-ghost" data-action="close-modal">Batal</button>'+
+      '<button class="btn btn-primary" data-action="bc-save">Simpan Kategori</button></div>'+
+  '</div></div>';
+}
+function bcReadInputs(){
+  var cols = STATE.bcEdit || [];
+  document.querySelectorAll('.bc-label').forEach(function(el){ var i = +el.getAttribute('data-i'); if(cols[i]) cols[i].label = el.value; });
+  document.querySelectorAll('.bc-color').forEach(function(el){ var i = +el.getAttribute('data-i'); if(cols[i]) cols[i].color = el.value; });
+}
 
-  var deptSel = SESSION.role==='hr'
-    ? '<select id="todoFilterDept"><option value="">Semua departemen</option>'+getDepartments().map(function(d){ return '<option value="'+escapeHtml(d)+'" '+(d===deptFilter?'selected':'')+'>'+escapeHtml(d)+'</option>'; }).join('')+'</select>'
-    : '';
-  var empSel = '<select id="todoFilterEmp"><option value="">Semua karyawan</option>'+scope.filter(function(e){ return !deptFilter || e.department===deptFilter; }).map(function(e){ return '<option value="'+e.id+'" '+(e.id===empFilter?'selected':'')+'>'+escapeHtml(e.name)+'</option>'; }).join('')+'</select>';
-  var statSel = '<select id="todoFilterStatus">'+
-    [['','Semua status'],['todo','To Do'],['doing','In Progress'],['done','Finish'],['pending','Pending'],['overdue','Lewat tenggat']].map(function(o){ return '<option value="'+o[0]+'" '+(o[0]===statusFilter?'selected':'')+'>'+o[1]+'</option>'; }).join('')+'</select>';
-
-  return ''+
-  '<details class="card bd-add"><summary>+ Tugaskan ke '+(SESSION.role==='hr'?'Karyawan':'Anggota Tim')+'</summary>'+
-    '<div class="card-sub" style="margin-top:10px;">Karyawan yang ditugaskan langsung mendapat notifikasi'+(SESSION.role==='hod'?', dan HR ikut diberi tahu':'')+'.</div>'+
-    (scope.length ? todoFormHtml('ta', true)+'<button class="btn btn-primary" data-action="assign-todo">Tugaskan</button>' : '<div class="empty-state">Belum ada karyawan yang bisa ditugaskan.</div>')+
-  '</details>'+
-  '<div class="card">'+
-    '<div class="card-title">Ringkasan Progres</div>'+
-    '<div class="toolbar" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">'+deptSel+empSel+statSel+'</div>'+
-    '<div class="table-wrap"><table><thead><tr><th>Nama</th><th class="num">Aktif</th><th class="num">Selesai</th><th class="num">Telat</th><th>Progres</th></tr></thead><tbody>'+
-    (summaryRows || '<tr><td colspan="5" class="empty-state">Tidak ada karyawan pada filter ini.</td></tr>')+'</tbody></table></div>'+
-  '</div>'+
-  '<div class="card-title" style="margin:6px 2px 10px;">Papan Tugas</div>'+
-  renderKanban(feed, 'monitor');
+/* modal: ubah tugas */
+function todoEditModalHtml(t){
+  var dept = todoDept(t), cols = boardColsFor(dept);
+  var ownerField = '';
+  if(todoCanReassign(t) && t.ownerId!=='hr'){
+    var scope = SESSION.role==='hr' ? activeEmployees() : boardMembers(dept);
+    if(scope.every(function(e){ return e.id!==t.ownerId; })){ var oe = getEmployee(t.ownerId); if(oe) scope = [oe].concat(scope); }
+    ownerField = '<div class="form-group"><label>Ditugaskan ke</label><select id="te_owner">'+
+      scope.map(function(e){ return '<option value="'+e.id+'"'+(e.id===t.ownerId?' selected':'')+'>'+escapeHtml(e.name)+(SESSION.role==='hr' ? ' &middot; '+escapeHtml(e.department||'') : '')+'</option>'; }).join('')+'</select></div>';
+  } else {
+    ownerField = '<div class="form-group"><label>Ditugaskan ke</label><input value="'+escapeHtml(todoOwnerName(t.ownerId))+'" disabled></div>';
+  }
+  var pr = function(k){ return (t.priority||'normal')===k ? ' selected' : ''; };
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:520px;">'+
+    '<h3>Ubah Tugas</h3>'+
+    '<div class="form-group"><label>Judul Tugas</label><input id="te_title" maxlength="120" value="'+escapeHtml(t.title)+'"></div>'+
+    '<div class="form-group"><label>Catatan</label><textarea id="te_note" maxlength="240" rows="2">'+escapeHtml(t.note||'')+'</textarea></div>'+
+    '<div class="form-row">'+
+      '<div class="form-group"><label>Status / Kategori</label><select id="te_status">'+cols.map(function(c){ return '<option value="'+escapeHtml(c.id)+'"'+(c.id===todoColOf(t, cols)?' selected':'')+'>'+escapeHtml(c.label)+'</option>'; }).join('')+'</select></div>'+
+      '<div class="form-group"><label>Prioritas</label><select id="te_prio"><option value="normal"'+pr('normal')+'>Normal</option><option value="tinggi"'+pr('tinggi')+'>Tinggi</option><option value="rendah"'+pr('rendah')+'>Rendah</option></select></div>'+
+    '</div>'+
+    '<div class="form-row">'+
+      '<div class="form-group"><label>Tenggat</label><input type="date" id="te_due" value="'+escapeHtml(t.due||'')+'"></div>'+
+      ownerField+
+    '</div>'+
+    projectSelectHtml('te_proj', t.projectId)+
+    '<div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;flex-wrap:wrap;">'+
+      (todoCanDelete(t) ? '<button class="btn btn-ghost" data-action="delete-todo" data-id="'+t.id+'" style="color:var(--danger);">'+iconSvg('trash',14)+' Hapus</button>' : '<span></span>')+
+      '<div style="display:flex;gap:8px;"><button class="btn btn-ghost" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="todo-edit-save" data-id="'+t.id+'">Simpan</button></div>'+
+    '</div></div></div>';
+}
+function todoApplyEdit(t, f){
+  var changes = [], now = new Date().toISOString(), selfKey = todoSelfKey();
+  var meName = SESSION.role==='hr' ? 'HR' : ((getEmployee(SESSION.empId)||{}).name||'');
+  if(f.title && f.title!==t.title){ changes.push('judul'); t.title = f.title; }
+  if((f.note||'')!==(t.note||'')){ changes.push('catatan'); t.note = f.note||''; }
+  if((f.priority||'normal')!==(t.priority||'normal')){ changes.push('prioritas'); t.priority = f.priority; }
+  if((f.due||'')!==(t.due||'')){ changes.push('tenggat'); t.due = f.due||''; }
+  if((f.projectId||null)!==(t.projectId||null)){ changes.push('project'); t.projectId = f.projectId||null; }
+  var oldOwner = t.ownerId;
+  if(f.ownerId && f.ownerId!==t.ownerId && todoCanReassign(t)){
+    t.ownerId = f.ownerId; changes.push('penerima');
+    addNotification({type:'emp', empId:f.ownerId}, (SESSION.role==='hr' ? 'HR' : meName)+' memberi tugas: '+t.title+(t.due ? ' (tenggat '+formatDateID(t.due)+')' : '')+'.', 'todo', 'todo');
+    if(oldOwner!=='hr' && oldOwner!==selfKey) addNotification({type:'emp', empId:oldOwner}, 'Tugas "'+t.title+'" dialihkan ke '+todoOwnerName(f.ownerId)+'.', 'todo', 'todo');
+  }
+  if(f.status && f.status!==t.status){ setTodoStatus(t, f.status); changes.push('status'); }
+  t.updatedAt = now;
+  var otherChanges = changes.filter(function(c){ return c!=='penerima' && c!=='status'; });
+  if(otherChanges.length && t.ownerId!==selfKey && t.ownerId!=='hr' && t.ownerId===oldOwner){
+    addNotification({type:'emp', empId:t.ownerId}, meName+' mengubah '+otherChanges.join(', ')+' tugas "'+t.title+'"'+(otherChanges.indexOf('tenggat')!==-1 && t.due ? ' (tenggat baru '+formatDateID(t.due)+')' : '')+'.', 'todo', 'todo');
+  }
+  if(changes.length) logActivity('Mengubah tugas "'+t.title+'" ('+changes.join(', ')+').');
+  return changes;
 }
 
 function renderTodoWidget(){
@@ -6331,7 +6520,7 @@ function renderAgendaTab(){
     '<div class="cal-grid ag-grid">'+cells+'</div></div>'+
     '<div class="card"><div class="card-title">'+formatDateID(sel)+'</div>'+
     (dayEvs.map(agendaItemHtml).join('') || '<div class="empty-state" style="padding:10px 0;">Tidak ada agenda di tanggal ini.</div>')+
-    dayDue.map(function(t){ return '<div class="ag-item"><div class="ag-time">Tenggat</div><div class="ag-main"><div class="todo-title">'+escapeHtml(t.title)+'</div><div class="todo-meta"><span class="badge '+TODO_STATUS[t.status||'todo'].cls+'">'+TODO_STATUS[t.status||'todo'].label+'</span></div></div></div>'; }).join('')+'</div>'+
+    dayDue.map(function(t){ return '<div class="ag-item"><div class="ag-time">Tenggat</div><div class="ag-main"><div class="todo-title">'+escapeHtml(t.title)+'</div><div class="todo-meta"><span class="badge '+todoStatusInfo(t.status||'todo', todoDept(t)).cls+'">'+escapeHtml(todoStatusInfo(t.status||'todo', todoDept(t)).label)+'</span></div></div></div>'; }).join('')+'</div>'+
     '<details class="card bd-add"'+(editing?' open':'')+'><summary>'+(editing?'Ubah Agenda':'+ Tambah Agenda')+'</summary><div style="margin-top:10px;">'+agendaFormHtml(editing)+'</div></details>'+
     '<div class="card"><div class="card-title">Google Kalender</div><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">'+gcard+
       ' <button class="btn btn-secondary btn-sm" data-action="agenda-ics">Unduh .ics ('+monthLabel(ym)+')</button></div></div>';
@@ -7844,7 +8033,7 @@ function erSheets(){
   reps.forEach(function(r){ r.kpis.forEach(function(k){ kp.push([r.emp.name, r.emp.department||'', k.period, pctTxt(k.totalScore), (KPI_STATUS_META && KPI_STATUS_META[k.totalStatus] ? KPI_STATUS_META[k.totalStatus].label : (k.totalStatus||'')), starText(starsOf(k.totalScore))]); }); });
   var tk = [['Nama','Judul Tugas','Status','Prioritas','Tenggat','Selesai Pada','Project']];
   reps.forEach(function(r){ r.tasks.forEach(function(t){ var pj = (DB.projects||[]).filter(function(p){ return p.id===t.projectId; })[0];
-    tk.push([r.emp.name, t.title, TODO_STATUS[t.status] ? TODO_STATUS[t.status].label : t.status, t.priority||'', t.due||'', t.doneAt ? String(t.doneAt).slice(0,10) : '', pj ? pj.name : '']); }); });
+    tk.push([r.emp.name, t.title, todoStatusInfo(t.status, todoDept(t)).label, t.priority||'', t.due||'', t.doneAt ? String(t.doneAt).slice(0,10) : '', pj ? pj.name : '']); }); });
   var dl = [['Nama','Tanggal','Status','Masuk','Pulang','Menit Telat']];
   reps.forEach(function(r){ r.daily.forEach(function(x){ dl.push([r.emp.name].concat(x)); }); });
   var mt = [['Metode Penilaian'],['Skor akhir = 40% kehadiran + 40% KPI rata-rata + 20% tugas selesai. Komponen yang tidak punya data diabaikan dan bobotnya dibagi ulang.'],
@@ -7886,23 +8075,23 @@ function boardChartCard(svg){
 function boardChartsHtml(tab){
   var me = todoSelfKey(), ym = boardMonth(), svgs = [];
   if(tab==='board'){
-    var monitor = (SESSION.role==='hr' || SESSION.role==='hod') && STATE.todoTab==='monitor';
-    var order = BOARD_COLUMNS, names = order.map(function(k){ return TODO_STATUS[k].label; });
-    if(monitor){
-      var people = todoMonitorScope().map(function(e){ return {e:e, l:todosOf(e.id)}; }).filter(function(x){ return x.l.length; })
+    var bDept = boardCurrentDept(), bCols = boardColsFor(bDept), bAll = boardTodos(bDept);
+    var bWho = STATE.boardWho || '';
+    if(bWho==='me') bAll = bAll.filter(function(t){ return t.ownerId===me; }); else if(bWho) bAll = bAll.filter(function(t){ return t.ownerId===bWho; });
+    var names = bCols.map(function(c){ return c.label; });
+    if(bDept && !bWho){
+      var people = boardMembers(bDept).map(function(e){ return {e:e, l:bAll.filter(function(t){ return t.ownerId===e.id; })}; }).filter(function(x){ return x.l.length; })
         .sort(function(a,b){ return b.l.length-a.l.length; }).slice(0,10);
-      svgs.push(svgBarChart('Tugas per Anggota & Status', people.map(function(x){ return x.e.name.split(' ')[0]; }),
-        order.map(function(k){ return {name:TODO_STATUS[k].label, values:people.map(function(x){ return x.l.filter(function(t){ return (TODO_STATUS[t.status]?t.status:'todo')===k; }).length; })}; }), fmtCount));
+      svgs.push(svgBarChart('Tugas per Anggota & Kategori', people.map(function(x){ return x.e.name.split(' ')[0]; }),
+        bCols.map(function(c){ return {name:c.label, values:people.map(function(x){ return x.l.filter(function(t){ return todoColOf(t, bCols)===c.id; }).length; })}; }), fmtCount));
     } else {
-      var mine = todosOf(me);
-      svgs.push(svgBarChart('Tugas per Status', names, [{name:'Jumlah tugas', values:order.map(function(k){ return mine.filter(function(t){ return (TODO_STATUS[t.status]?t.status:'todo')===k; }).length; })}], fmtCount));
+      svgs.push(svgBarChart('Tugas per Kategori', names, [{name:'Jumlah tugas', values:bCols.map(function(c){ return bAll.filter(function(t){ return todoColOf(t, bCols)===c.id; }).length; })}], fmtCount));
       var pr = ['tinggi','normal','rendah'], prl = ['Tinggi','Sedang','Rendah'];
       svgs.push(svgBarChart('Tugas Aktif vs Selesai per Prioritas', prl, [
-        {name:'Aktif', values:pr.map(function(k){ return mine.filter(function(t){ return (t.priority||'normal')===k && t.status!=='done'; }).length; })},
-        {name:'Selesai', values:pr.map(function(k){ return mine.filter(function(t){ return (t.priority||'normal')===k && t.status==='done'; }).length; })}], fmtCount));
+        {name:'Aktif', values:pr.map(function(k){ return bAll.filter(function(t){ return (t.priority||'normal')===k && t.status!=='done'; }).length; })},
+        {name:'Selesai', values:pr.map(function(k){ return bAll.filter(function(t){ return (t.priority||'normal')===k && t.status==='done'; }).length; })}], fmtCount));
     }
-    var scopeIds = monitor ? todoMonitorScope().map(function(e){ return e.id; }) : [me], ms = monthsBack(todayParts().ym, 6);
-    var all = (DB.todos||[]).filter(function(t){ return !t.deleted && scopeIds.indexOf(t.ownerId)!==-1; });
+    var ms = monthsBack(todayParts().ym, 6), all = bAll;
     svgs.push(svgBarChart('Tugas Dibuat vs Selesai (6 Bulan)', ms.map(monthShort), [
       {name:'Dibuat', values:ms.map(function(m){ return all.filter(function(t){ return String(t.createdAt||'').slice(0,7)===m; }).length; })},
       {name:'Selesai', values:ms.map(function(m){ return all.filter(function(t){ return t.status==='done' && String(t.doneAt||t.updatedAt||'').slice(0,7)===m; }).length; })}], fmtCount));
@@ -8697,6 +8886,10 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Selaras Board: satu board bersama per departemen (filter Semua anggota / Tugas saya / per orang)',
+    'Selaras Board: HOD/HR bisa mengatur kategori (nama, warna, urutan, tambah/hapus kolom)',
+    'Selaras Board: ubah tugas (judul, catatan, status, tenggat, prioritas, penerima, project)',
+    'Selaras Board: tugas Selesai terhapus otomatis setelah 30 hari, plus tombol Bersihkan untuk HOD/HR',
     'Pengingat shift: notifikasi 30 menit sebelum shift dimulai, "pekerjaan akan dimulai, jangan lupa absen masuk"',
     'Kartu jadwal di Beranda: Jadwal Hari Ini (sampai shift mulai/berlangsung) dan Jadwal Besok (mulai 18.00), mendukung shift siang/malam',
     'Foto grup chat bisa diganti (admin grup)',
@@ -8868,6 +9061,8 @@ function mergeLiveData(remote){
     .sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); }).slice(0,600);
   if(SESSION.role!=='hr' && remote.banners) DB.banners = remote.banners;
   if(remote.privileges && (remote.privUpdatedAt||'') > (DB.privUpdatedAt||'')){ DB.privileges = remote.privileges; DB.privUpdatedAt = remote.privUpdatedAt; }
+  if(remote.boardCols){ DB.boardCols = DB.boardCols || {}; DB.boardColsAt = DB.boardColsAt || {};
+    Object.keys(remote.boardCols).forEach(function(k){ var ra = (remote.boardColsAt||{})[k]||''; if(ra > (DB.boardColsAt[k]||'')){ DB.boardCols[k] = remote.boardCols[k]; DB.boardColsAt[k] = ra; } }); }
   ['shiftRemNative','shiftRemSent'].forEach(function(k){
     if(!remote[k]) return; DB[k] = DB[k] || {};
     Object.keys(remote[k]).forEach(function(id){ if(String(remote[k][id]||'') > String(DB[k][id]||'')) DB[k][id] = remote[k][id]; });
@@ -9009,7 +9204,7 @@ function createTodo(f){
   var selfName = SESSION.role==='hr' ? 'HR' : (selfEmp ? selfEmp.name : '');
   var t = {
     id: uid('TD'), ownerId: f.ownerId, title: f.title, note: f.note||'', due: f.due||'',
-    priority: f.priority||'normal', status:'todo',
+    priority: f.priority||'normal', status: f.ownerId==='hr' ? boardFirstCol('') : boardFirstCol((getEmployee(f.ownerId)||{}).department||''),
     createdById: selfKey, createdByLabel: 'oleh '+selfName,
     createdAt: now, updatedAt: now, doneAt: null,
     photoKey: f.photoKey || null, photoUrl: f.photoUrl || null,
@@ -10563,7 +10758,10 @@ document.addEventListener('click', function(e){
     var tdTitle = document.getElementById(tdPrefix+'_title').value.trim();
     var tdOwner = action==='add-todo' ? todoSelfKey() : (document.getElementById('ta_owner').value || '');
     if(!tdOwner){ toast('Pilih karyawan yang ditugaskan.'); return; }
-    if(action==='assign-todo' && todoMonitorScope().every(function(e){ return e.id!==tdOwner; })){ toast('Karyawan tidak valid.'); return; }
+    if(action==='assign-todo'){
+      var tdScope = STATE.view==='todo' ? boardAssignScope(boardCurrentDept()) : todoMonitorScope();
+      if(tdScope.every(function(e){ return e.id!==tdOwner; }) && todoMonitorScope().every(function(e){ return e.id!==tdOwner; }) && !(SESSION.role==='hod' && tdOwner===SESSION.empId)){ toast('Karyawan tidak valid.'); return; }
+    }
     if(!tdTitle){ toast('Isi judul tugas.'); return; }
     if(STATE.todoBusy) return;
     var tdFileEl = document.getElementById(tdPrefix+'_photo');
@@ -10598,18 +10796,77 @@ document.addEventListener('click', function(e){
       console.error('add todo error', err);
       toast('Gagal menyimpan tugas. Coba lagi.');
     });
+  } else if(action==='todo-edit'){
+    var teT = getTodoById(el.getAttribute('data-id'));
+    if(!teT || !todoCanEdit(teT)) return;
+    openModal(todoEditModalHtml(teT));
+  } else if(action==='todo-edit-save'){
+    var tesT = getTodoById(el.getAttribute('data-id'));
+    if(!tesT || !todoCanEdit(tesT)) return;
+    var tesTitle = (document.getElementById('te_title').value||'').trim();
+    if(!tesTitle){ toast('Judul tugas wajib diisi.'); return; }
+    var tesOwnerEl = document.getElementById('te_owner');
+    var tesCh = todoApplyEdit(tesT, {
+      title: tesTitle,
+      note: (document.getElementById('te_note').value||'').trim(),
+      status: document.getElementById('te_status').value,
+      priority: document.getElementById('te_prio').value,
+      due: document.getElementById('te_due').value || '',
+      projectId: (document.getElementById('te_proj') && document.getElementById('te_proj').value) || null,
+      ownerId: tesOwnerEl ? tesOwnerEl.value : null
+    });
+    closeModal();
+    saveDB().then(function(){ toast(tesCh.length ? 'Tugas diperbarui.' : 'Tidak ada perubahan.'); render(); });
+  } else if(action==='board-cols-open'){
+    var bcD = boardCurrentDept();
+    if(!boardCanEditCols(bcD)) return;
+    STATE.bcDept = bcD;
+    STATE.bcEdit = JSON.parse(JSON.stringify(boardColsFor(bcD)));
+    openModal(boardColsModalHtml());
+  } else if(action==='bc-add' || action==='bc-del' || action==='bc-move' || action==='bc-reset'){
+    bcReadInputs();
+    var bcL = STATE.bcEdit || [], bcI = +el.getAttribute('data-i');
+    if(action==='bc-add'){ if(bcL.length>=8) return; var bcDoneIdx = bcL.map(function(c){ return c.id; }).indexOf('done'); bcL.splice(bcDoneIdx===-1 ? bcL.length : bcDoneIdx, 0, {id:uid('BC'), label:'Kategori baru', color:'purple'}); }
+    else if(action==='bc-del'){ if(bcL[bcI] && bcL[bcI].id!=='done'){ if(bcL.length<=2){ toast('Minimal 2 kategori.'); return; } bcL.splice(bcI,1); } }
+    else if(action==='bc-move'){ var bcJ = bcI + (+el.getAttribute('data-dir')); if(bcJ>=0 && bcJ<bcL.length){ var bcTmp = bcL[bcI]; bcL[bcI] = bcL[bcJ]; bcL[bcJ] = bcTmp; } }
+    else { STATE.bcEdit = BOARD_COLUMNS.map(function(k){ return {id:k, label:TODO_STATUS[k].label, color:BOARD_DEFAULT_COLOR[k]}; }); }
+    openModal(boardColsModalHtml());
+  } else if(action==='bc-save'){
+    bcReadInputs();
+    var bsD = STATE.bcDept || '', bsCols = (STATE.bcEdit||[]).map(function(c){ return {id:c.id, label:String(c.label||'').trim().slice(0,30), color:BOARD_COL_COLORS[c.color] ? c.color : 'neutral'}; });
+    if(!boardCanEditCols(bsD)) return;
+    if(bsCols.some(function(c){ return !c.label; })){ toast('Nama kategori tidak boleh kosong.'); return; }
+    if(!bsCols.some(function(c){ return c.id==='done'; })){ toast('Kategori Selesai wajib ada.'); return; }
+    var bsKeep = {}; bsCols.forEach(function(c){ bsKeep[c.id] = true; });
+    var bsFirst = (bsCols.filter(function(c){ return c.id!=='done'; })[0] || bsCols[0]).id, bsNow = new Date().toISOString(), bsMoved = 0;
+    boardTodos(bsD).forEach(function(t){ if(!bsKeep[t.status] && !t.rekap){ t.status = bsFirst; t.updatedAt = bsNow; bsMoved++; } });
+    DB.boardCols = DB.boardCols || {}; DB.boardColsAt = DB.boardColsAt || {};
+    DB.boardCols[boardColKey(bsD)] = bsCols; DB.boardColsAt[boardColKey(bsD)] = bsNow;
+    logActivity('Mengubah kategori board '+(bsD||'HR')+'.');
+    closeModal();
+    saveDB().then(function(){ toast('Kategori disimpan.'+(bsMoved ? ' '+bsMoved+' tugas dipindah ke "'+bsCols.filter(function(c){ return c.id===bsFirst; })[0].label+'".' : '')); render(); });
+  } else if(action==='board-clean-done'){
+    var cdD = boardCurrentDept();
+    if(!boardCanEditCols(cdD)) return;
+    var cdList = boardTodos(cdD).filter(function(t){ return t.status==='done' && !t.rekap; });
+    if(!cdList.length) return;
+    if(!confirm('Hapus '+cdList.length+' tugas yang sudah selesai dari board '+(cdD||'HR')+'?')) return;
+    var cdNow = new Date().toISOString();
+    cdList.forEach(function(t){ t.deleted = true; t.updatedAt = cdNow; });
+    logActivity('Membersihkan '+cdList.length+' tugas selesai di board '+(cdD||'HR')+'.');
+    saveDB().then(function(){ toast(cdList.length+' tugas selesai dihapus.'); render(); });
   } else if(action==='todo-set-status'){
     var tsT = getTodoById(el.getAttribute('data-id'));
     var tsNew = el.getAttribute('data-status');
-    if(!tsT || !TODO_STATUS[tsNew] || !todoCanMove(tsT)) return;
+    if(!tsT || !todoCanMove(tsT) || !(TODO_STATUS[tsNew] || boardColsFor(todoDept(tsT)).some(function(c){ return c.id===tsNew; }))) return;
     setTodoStatus(tsT, tsNew);
     saveDB().then(function(){ render(); });
   } else if(action==='delete-todo'){
     var dtT = getTodoById(el.getAttribute('data-id'));
     if(!dtT) return;
-    if(!(SESSION.role==='hr' || dtT.createdById===todoSelfKey())){ toast('Kamu hanya bisa menghapus tugas buatanmu sendiri.'); return; }
+    if(!todoCanDelete(dtT)){ toast('Kamu hanya bisa menghapus tugas buatanmu sendiri.'); return; }
     if(confirm('Hapus tugas "'+dtT.title+'"?')){
-      dtT.deleted = true; dtT.updatedAt = new Date().toISOString();
+      dtT.deleted = true; dtT.updatedAt = new Date().toISOString(); closeModal();
       logActivity('Menghapus tugas "'+dtT.title+'".');
       saveDB().then(function(){ toast('Tugas dihapus.'); render(); });
     }
@@ -12231,7 +12488,7 @@ document.addEventListener('drop', function(e){
   e.preventDefault(); col.classList.remove('over');
   var id = ''; try{ id = e.dataTransfer.getData('text/plain'); }catch(x){}
   var t = getTodoById(id), to = col.getAttribute('data-col');
-  if(!t || !TODO_STATUS[to] || t.status===to || !todoCanMove(t)) return;
+  if(!t || t.status===to || !todoCanMove(t) || !boardColsFor(todoDept(t)).some(function(c){ return c.id===to; })) return;
   setTodoStatus(t, to);
   saveDB().then(function(){ render(); });
 });
@@ -12280,6 +12537,19 @@ document.addEventListener('change', function(e){
   }
   if(t.id==='reportDept'){ STATE.reportDept = t.value; STATE.reportEmp = ''; render(); return; }
   if(t.id==='reportEmp'){ STATE.reportEmp = t.value; render(); return; }
+  if(t.id==='boardDeptSel'){ STATE.boardDept = t.value; STATE.boardWho = ''; render(); return; }
+  if(t.id==='boardWhoSel'){ STATE.boardWho = t.value; render(); return; }
+  if(t.getAttribute && t.getAttribute('data-role')==='todo-move'){
+    var tmT = getTodoById(t.getAttribute('data-id')), tmTo = t.value;
+    if(!tmT || !todoCanMove(tmT) || tmT.status===tmTo || !boardColsFor(todoDept(tmT)).some(function(c){ return c.id===tmTo; })) return;
+    setTodoStatus(tmT, tmTo); saveDB().then(function(){ render(); }); return;
+  }
+  if(t.classList && (t.classList.contains('bc-label') || t.classList.contains('bc-color'))){
+    bcReadInputs();
+    var bcRow = t.closest('.bc-row'), bcC = (STATE.bcEdit||[])[+t.getAttribute('data-i')], bcP = bcRow && bcRow.querySelector('.bc-prev');
+    if(bcP && bcC){ bcP.className = 'badge '+boardColCls(bcC)+' bc-prev'; bcP.textContent = bcC.label || '…'; }
+    return;
+  }
   if(t.id==='todoFilterDept'){ STATE.todoFilterDept = t.value; STATE.todoFilterEmp = ''; render(); return; }
   if(t.id==='todoFilterEmp'){ STATE.todoFilterEmp = t.value; render(); return; }
   if(t.id==='todoFilterStatus'){ STATE.todoFilterStatus = t.value; render(); return; }
