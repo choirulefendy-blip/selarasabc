@@ -50,6 +50,7 @@ function mkEmp(id, name, dept, user){
 
 function seedTestData(w){
   var d = w.DB;
+  d.settings = d.settings || {}; d.settings.flexDepts = [];  /* tes aturan telat biasa; jam fleksibel diuji di flex.test.js */
   d.employees.push(mkEmp('E1','Budi Staff','Marketing Communication','budi'));
   d.employees.push(mkEmp('E2','Sari HOD','Marketing Communication','sari'));
   d.employees.push(mkEmp('E3','Dewi Front','Front Office','dewi'));

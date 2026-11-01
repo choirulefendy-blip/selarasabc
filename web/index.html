@@ -220,6 +220,7 @@
     .toast{bottom:calc(92px + env(safe-area-inset-bottom)) !important;}
   }
   .toolbar select{padding:9px 14px;border:1px solid var(--outline);border-radius:999px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;max-width:100%;}
+  .flex-note{font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.35;max-width:180px;}
   .nsc-card{padding:18px 18px 14px;}
   .nsc-head{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
   .nsc-ic{width:38px;height:38px;border-radius:12px;background:var(--primary-container);color:var(--primary);display:flex;align-items:center;justify-content:center;flex:0 0 38px;}
@@ -2357,10 +2358,52 @@ function getMatchDay(empId, ym, day){
   var grace = DB.settings.gracePeriodMinutes || 0;
   var inMin = timeToMinutes(att.checkIn);
   var lateBy = inMin - startMin - grace;
+  var flex = flexInfo(empId, att);
   if(lateBy > 0){
-    return {status:'telat', sched:sched, att:att, lateMinutes:lateBy};
+    if(flex && flex.covered){
+      /* jam fleksibel: datang lebih lambat tapi bekerja >= 8 jam -> tidak dihitung telat */
+      return {status:'hadir', sched:sched, att:att, lateMinutes:0, flex:flex, flexLateRaw:lateBy};
+    }
+    return {status:'telat', sched:sched, att:att, lateMinutes:lateBy, flex:flex, flexLateRaw:flex ? lateBy : 0};
   }
-  return {status:'hadir', sched:sched, att:att, lateMinutes:0};
+  return {status:'hadir', sched:sched, att:att, lateMinutes:0, flex:flex};
+}
+
+/* ---------- JAM FLEKSIBEL (Marketing, Sales, Finance, Accounting, Purchasing) ----------
+   Telat masuk tidak dihitung bila total jam kerja (masuk -> pulang) mencapai 8 jam.
+   Kelebihan dari 8 jam dicatat sebagai lembur (informasi). */
+var FLEX_DEPT_KEYWORDS = ['marketing','sales','finance','accounting','akuntansi','keuangan','purchasing','pembelian'];
+var FLEX_OT_MIN_SHOW = 30;
+function flexDeptDefault(dept){ var d = String(dept||'').toLowerCase(); return FLEX_DEPT_KEYWORDS.some(function(k){ return d.indexOf(k)!==-1; }); }
+function isFlexDept(dept){
+  if(!dept) return false;
+  var list = DB && DB.settings && DB.settings.flexDepts;
+  if(Array.isArray(list)) return list.indexOf(dept)!==-1;
+  return flexDeptDefault(dept);
+}
+function isFlexEmp(empId){ var e = getEmployee(empId); return !!(e && isFlexDept(e.department)); }
+function flexInfo(empId, att){
+  if(!att || !att.checkIn || !isFlexEmp(empId)) return null;
+  var a = timeToMinutes(att.checkIn);
+  var needOut = minToHm((a + WORK_TARGET_MIN) % 1440);
+  if(!att.checkOut) return {covered:false, pending:true, needOut:needOut, workedMin:0, extraMin:0};
+  var b = timeToMinutes(att.checkOut); if(b < a) b += 1440;
+  var w = b - a;
+  return {covered: w >= WORK_TARGET_MIN, pending:false, needOut:needOut, workedMin:w, extraMin:Math.max(0, w - WORK_TARGET_MIN)};
+}
+function fmtMinHM(m){ m = Math.round(m||0); var h = Math.floor(m/60), r = m%60; return ((h ? h+'j ' : '')+(r||!h ? r+'m' : '')).trim(); }
+function flexNoteHtml(m){
+  if(!m || !m.flex) return '';
+  var f = m.flex, out = '';
+  if(f.covered && m.flexLateRaw) out = 'Masuk +'+m.flexLateRaw+' mnt, 8 jam terpenuhi';
+  else if(m.status==='telat' && f.pending) out = 'Jam fleksibel: tidak telat bila pulang &ge; '+f.needOut;
+  else if(m.status==='telat' && !f.pending) out = 'Kerja '+fmtMinHM(f.workedMin)+' (kurang dari 8 jam)';
+  if(f.covered && f.extraMin >= FLEX_OT_MIN_SHOW) out += (out ? ' &middot; ' : '')+'Lembur +'+fmtMinHM(f.extraMin);
+  return out ? '<div class="flex-note">'+out+'</div>' : '';
+}
+function attStatusBadgeHtml(m){
+  var meta = STATUS_META[m.status] || STATUS_META.unset;
+  return '<span class="badge '+meta.cls+'">'+meta.label+'</span>'+flexNoteHtml(m);
 }
 
 function getMonthSummary(empId, ym){
@@ -3523,7 +3566,7 @@ function renderHodAttendancePage(){
       '<td style="font-size:12.5px;">'+propsTxt+'</td>'+
       '<td>'+schedTxt+'</td>'+
       '<td>'+(m.att&&m.att.checkIn ? m.att.checkIn+' &ndash; '+(m.att.checkOut||'&mdash;') : '&mdash;')+'</td>'+
-      '<td><span class="badge '+meta.cls+'">'+meta.label+'</span></td>'+
+      '<td>'+attStatusBadgeHtml(m)+'</td>'+
       '<td>'+(hasProof ? '<button class="btn btn-ghost btn-sm" data-action="view-attendance-proof" data-emp="'+e.id+'" data-ym="'+t.ym+'" data-day="'+t.day+'">Lihat</button>' : '<span class="muted">&mdash;</span>')+'</td>'+
     '</tr>';
   }).join('');
@@ -3574,7 +3617,7 @@ function renderHodAttendanceMonthlyDetail(team){
       '<td>'+d+' <span class="muted">('+DAY_SHORT_ID[m.weekday]+')</span></td>'+
       '<td class="muted">'+schedTxt+'</td>'+
       '<td>'+(m.att&&m.att.checkIn ? m.att.checkIn+' &ndash; '+(m.att.checkOut||'&mdash;') : '&mdash;')+'</td>'+
-      '<td><span class="badge '+meta.cls+'">'+meta.label+'</span></td>'+
+      '<td>'+attStatusBadgeHtml(m)+'</td>'+
       '<td class="num">'+(m.lateMinutes?m.lateMinutes+' mnt':'&mdash;')+'</td>'+
       '<td>'+(hasProof ? '<button class="btn btn-ghost btn-sm" data-action="view-attendance-proof" data-emp="'+empId+'" data-ym="'+ym+'" data-day="'+d+'">Lihat</button>' : '<span class="muted">&mdash;</span>')+'</td>'+
     '</tr>';
@@ -3891,7 +3934,7 @@ function renderAttendancePage(){
       '<td class="muted">'+schedTxt+'</td>'+
       '<td><input type="time" data-role="att-in" data-day="'+d+'" value="'+(m.att&&m.att.checkIn?m.att.checkIn:'')+'"></td>'+
       '<td><input type="time" data-role="att-out" data-day="'+d+'" value="'+(m.att&&m.att.checkOut?m.att.checkOut:'')+'"></td>'+
-      '<td><span class="badge '+meta.cls+'">'+meta.label+'</span></td>'+
+      '<td>'+attStatusBadgeHtml(m)+'</td>'+
       '<td class="num">'+(m.lateMinutes?m.lateMinutes+' mnt':'&mdash;')+'</td>'+
       '<td>'+(hasProof ? '<button class="btn btn-ghost btn-sm" data-action="view-attendance-proof" data-emp="'+empId+'" data-ym="'+ym+'" data-day="'+d+'">Lihat</button>' : '<span class="muted">&mdash;</span>')+'</td>'+
     '</tr>';
@@ -4108,7 +4151,7 @@ function renderHodDashboard(){
       '<td>'+d+' <span class="muted">('+DAY_SHORT_ID[m.weekday]+')</span></td>'+
       '<td class="muted">'+schedTxt+'</td>'+
       '<td>'+(m.att&&m.att.checkIn ? m.att.checkIn+' &ndash; '+(m.att.checkOut||'&mdash;') : '&mdash;')+'</td>'+
-      '<td><span class="badge '+meta.cls+'">'+meta.label+'</span></td>'+
+      '<td>'+attStatusBadgeHtml(m)+'</td>'+
       '<td class="num">'+(m.lateMinutes?m.lateMinutes+' mnt':'&mdash;')+'</td>'+
     '</tr>';
   }
@@ -4385,6 +4428,9 @@ function renderSettingsPage(){
       '<div class="form-group"><label>Tarif Potongan per Menit Telat (Rp)</label><input type="number" id="s_rate" value="'+s.lateRatePerMinute+'"></div>'+
     '</div>'+
     '<div class="form-group"><label>Batas Maksimum Potongan Telat per Bulan (Rp, kosongkan/0 = tanpa batas)</label><input type="number" id="s_cap" value="'+(s.lateDeductionCap||0)+'"></div>'+
+    '<div class="form-group"><label>Departemen Jam Fleksibel</label>'+
+      '<div class="card-sub" style="margin:2px 0 8px;">Karyawan di departemen ini tidak dihitung telat bila total jam kerjanya (absen masuk → pulang) mencapai 8 jam. Kelebihan dari 8 jam tercatat sebagai lembur.</div>'+
+      '<div class="pj-members">'+getDepartments().map(function(d){ return '<label class="pj-member"><input type="checkbox" class="s_flex" value="'+escapeHtml(d)+'"'+(isFlexDept(d)?' checked':'')+'> '+escapeHtml(d)+'</label>'; }).join('')+'</div></div>'+
     '<button class="btn btn-primary" data-action="save-payroll-settings">Simpan Aturan</button>'+
   '</div>'+
   '<div class="card">'+
@@ -4621,7 +4667,7 @@ function renderStaffAttendance(){
     rows += '<tr>'+
       '<td>'+d+' ('+DAY_SHORT_ID[m.weekday]+')</td>'+
       '<td>'+(m.att&&m.att.checkIn ? m.att.checkIn+' &ndash; '+(m.att.checkOut||'&mdash;') : '&mdash;')+'</td>'+
-      '<td><span class="badge '+meta.cls+'">'+meta.label+'</span></td>'+
+      '<td>'+attStatusBadgeHtml(m)+'</td>'+
       '<td class="num">'+(m.lateMinutes?m.lateMinutes+' mnt':'&mdash;')+'</td>'+
     '</tr>';
   }
@@ -6534,7 +6580,7 @@ function renderTodayAlertsCard(){
     var m = getMatchDay(e.id, t.ym, t.day);
     if(!m.att || !m.att.checkIn) return;
     var flags = [];
-    if(m.lateMinutes>0) flags.push('<span class="badge badge-warning">Telat '+m.lateMinutes+' mnt</span>');
+    if(m.lateMinutes>0) flags.push('<span class="badge badge-warning">Telat '+m.lateMinutes+' mnt</span>'+(m.flex && m.flex.pending ? '<span class="badge badge-info">Jam fleksibel: aman bila pulang &ge; '+m.flex.needOut+'</span>' : ''));
     var g = m.att.checkInGeo;
     if(g && !g.withinRange) flags.push('<span class="badge badge-danger">Di luar jangkauan ('+g.distance+' m dari '+escapeHtml(g.name)+')</span>');
     if(!flags.length) return;
@@ -6576,7 +6622,7 @@ function myActivityItems(){
       if(rec.checkIn){
         var m = getMatchDay(SESSION.empId, ym, parseInt(day,10));
         items.push({ts:stamp(rec.checkIn), kind:'absen', warn:(m.lateMinutes>0 || (rec.checkInGeo && !rec.checkInGeo.withinRange)),
-          text:'Absen masuk pukul '+rec.checkIn+(m.lateMinutes>0?' · Telat '+m.lateMinutes+' menit':' · Tepat waktu')+geoText(rec.checkInGeo)});
+          text:'Absen masuk pukul '+rec.checkIn+(m.lateMinutes>0?' · Telat '+m.lateMinutes+' menit'+(m.flex && m.flex.pending ? ' (jam fleksibel: tidak dihitung bila pulang ≥ '+m.flex.needOut+')' : ''):(m.flexLateRaw ? ' · Masuk +'+m.flexLateRaw+' menit, 8 jam terpenuhi' : ' · Tepat waktu'))+geoText(rec.checkInGeo)});
       }
       if(rec.checkOut){
         items.push({ts:stamp(rec.checkOut), kind:'absen', warn:!!(rec.checkOutGeo && !rec.checkOutGeo.withinRange),
@@ -7180,8 +7226,17 @@ function raiseAttendanceAlerts(empId, ym, day, type, time, loc, geo){
   var label = type==='in' ? 'absen masuk' : 'absen pulang';
   if(type==='in'){
     var m = getMatchDay(empId, ym, day);
-    if(m.lateMinutes>0){
+    if(m.lateMinutes>0 && m.flex){
+      addNotification(hr, who+' '+label+' pukul '+time+' (lewat '+m.lateMinutes+' menit dari jadwal '+(m.sched && m.sched.start ? m.sched.start : '')+'). Jam fleksibel: tidak dihitung telat bila pulang ≥ '+m.flex.needOut+' (8 jam).', 'attendance', 'late');
+    } else if(m.lateMinutes>0){
       addNotification(hr, who+' '+label+' TELAT '+m.lateMinutes+' menit (pukul '+time+(m.sched && m.sched.start ? ', jadwal '+m.sched.start : '')+').', 'attendance', 'late');
+    }
+  } else {
+    var mo = getMatchDay(empId, ym, day);
+    if(mo.flex && mo.status==='telat'){
+      addNotification(hr, who+' '+label+' pukul '+time+': jam kerja '+fmtMinHM(mo.flex.workedMin)+' (kurang dari 8 jam) → dihitung TELAT '+mo.lateMinutes+' menit.', 'attendance', 'late');
+    } else if(mo.flex && mo.flexLateRaw){
+      addNotification(hr, who+' '+label+' pukul '+time+': masuk +'+mo.flexLateRaw+' menit tapi sudah bekerja '+fmtMinHM(mo.flex.workedMin)+' → tidak dihitung telat'+(mo.flex.extraMin>=FLEX_OT_MIN_SHOW ? ' (lebih '+fmtMinHM(mo.flex.extraMin)+')' : '')+'.', 'attendance', 'late');
     }
   }
   if((DB.officeLocations||[]).length){
@@ -8886,6 +8941,7 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Jam fleksibel (Marketing, Sales, Finance, Accounting, Purchasing): masuk telat tidak dihitung telat bila bekerja 8 jam; lebihnya tercatat lembur. Departemen bisa diatur HR di Pengaturan',
     'Selaras Board: satu board bersama per departemen (filter Semua anggota / Tugas saya / per orang)',
     'Selaras Board: HOD/HR bisa mengatur kategori (nama, warna, urutan, tambah/hapus kolom)',
     'Selaras Board: ubah tugas (judul, catatan, status, tenggat, prioritas, penerima, project)',
@@ -12398,6 +12454,8 @@ document.addEventListener('click', function(e){
     DB.settings.gracePeriodMinutes = Number(document.getElementById('s_grace').value)||0;
     DB.settings.lateRatePerMinute = Number(document.getElementById('s_rate').value)||0;
     DB.settings.lateDeductionCap = Number(document.getElementById('s_cap').value)||0;
+    var sfEls = document.querySelectorAll('.s_flex');
+    if(sfEls.length){ DB.settings.flexDepts = Array.prototype.filter.call(sfEls, function(x){ return x.checked; }).map(function(x){ return x.value; }); }
     logActivity('Mengubah aturan BPJS/potongan telat.');
     saveDB().then(function(){ toast('Aturan penggajian disimpan.'); render(); });
   } else if(action==='export-data'){
