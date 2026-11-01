@@ -83,6 +83,45 @@ export function runDue(db, nowMs) {
   return sent;
 }
 
+// ---- Pengingat 30 menit sebelum shift dimulai ----
+export const SHIFT_REM_MIN = 30;
+const pad2 = (n) => String(n).padStart(2, '0');
+function shiftAllowed(db, empId) {
+  const p = ((db.notifPrefs || {}).emp || {})[empId] || {};
+  return p.enabled !== false && p.shift !== false;
+}
+export function runShiftReminders(db, nowMs) {
+  const out = [];
+  const isHod = (id) => Object.values(db.departmentHods || {}).some((a) => (a || []).includes(id));
+  const today = nsWib(nowMs).iso;
+  db.shiftRemSent = db.shiftRemSent || {};
+  for (const e of (db.employees || []).filter((x) => x.active)) {
+    if (!shiftAllowed(db, e.id)) continue;
+    for (const off of [0, 1]) {               // hari ini + besok (shift dini hari, mis. 00:15 -> pengingat 23:45)
+      const w = nsWib(nowMs + off * 86400000);
+      const ym = w.y + '-' + pad2(w.m + 1);
+      const sc = (((db.schedules || {})[ym] || {})[e.id] || {})[w.d];
+      if (!sc || sc.type !== 'kerja' || !sc.start) continue;
+      const startMs = nsOccMs(w.y, w.m, w.d, sc.start);
+      if (nowMs < startMs - SHIFT_REM_MIN * 60000 || nowMs >= startMs) continue;
+      const key = w.iso + '|' + sc.start;
+      if (db.shiftRemSent[e.id] === key) continue;
+      const att = (((db.attendance || {})[ym] || {})[e.id] || {})[w.d];
+      if (att && att.checkIn) continue;
+      const nat = (db.shiftRemNative || {})[e.id];
+      const nativeRecent = nat && (Date.parse(today) - Date.parse(nat)) <= 6 * 86400000;
+      const text = '⏰ Pengingat shift: pekerjaan akan dimulai pukul ' + sc.start + (sc.shift ? ' (' + sc.shift + ')' : '') + ', 30 menit lagi. Jangan lupa absen masuk ya!';
+      db.notifications = db.notifications || [];
+      db.notifications.unshift({ id: uid('N'), audience: { type: 'emp', empId: e.id }, message: text, link: 'checkin', category: 'shift', createdAt: new Date(nowMs).toISOString(), read: false });
+      db.notifications = db.notifications.slice(0, 200);
+      db.shiftRemSent[e.id] = key;
+      // APK Android sudah menjadwalkan notifikasi lokal yang tepat waktu -> jangan kirim push lagi (hindari dobel)
+      out.push({ empId: e.id, text, link: 'checkin', push: !nativeRecent, title: 'Shift dimulai 30 menit lagi' });
+    }
+  }
+  return out;
+}
+
 async function main() {
   if (!SUPABASE_URL || !ANON) { console.log('Supabase belum diatur; lewati.'); return; }
   const h = { apikey: ANON, Authorization: 'Bearer ' + ANON };
@@ -91,7 +130,11 @@ async function main() {
   const rows = await r.json();
   if (!rows.length || !rows[0].value) { console.log('Data kosong.'); return; }
   const db = JSON.parse(rows[0].value);
-  const sent = runDue(db, Date.now());
+  const nowMs = Date.now();
+  const sent = runDue(db, nowMs);
+  const shifts = runShiftReminders(db, nowMs);
+  if (shifts.length) console.log('Pengingat shift: ' + shifts.length + ' orang');
+  sent.push(...shifts);
   if (!sent.length) { console.log('Tidak ada jadwal yang jatuh tempo.'); return; }
   if (DRY) { console.log('[dry] ' + sent.length + ' notifikasi'); return; }
   const w = await fetch(SUPABASE_URL + '/rest/v1/kv_store', {
@@ -102,8 +145,9 @@ async function main() {
   if (!w.ok) throw new Error('Gagal menyimpan: HTTP ' + w.status);
   if (PUSH_URL) {
     for (const x of sent) {
+      if (x.push === false) continue;
       try {
-        await fetch(PUSH_URL, { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ recipient: x.empId, title: 'ABC Selaras', body: x.text, url: x.link ? '#' + x.link : '#' }) });
+        await fetch(PUSH_URL, { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ recipient: x.empId, title: x.title || 'ABC Selaras', body: x.text, url: x.link ? '#' + x.link : '#' }) });
       } catch (e) { console.log('push gagal untuk ' + x.empId); }
     }
   }

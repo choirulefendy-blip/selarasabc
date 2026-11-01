@@ -2460,7 +2460,7 @@ function afterRender(){
     if(sbEl && STATE.sbScroll) sbEl.scrollTop = STATE.sbScroll;
   }catch(e){}
   navTrack();
-  try{ workReminderSync(); tomorrowReminderSync(); nativeNotifAutoAsk(); assetServiceReminders(); assetHydratePhoto(); }catch(e){}
+  try{ workReminderSync(); tomorrowReminderSync(); shiftReminderSync(); nativeNotifAutoAsk(); assetServiceReminders(); assetHydratePhoto(); }catch(e){}
   applyOtPrefill();
   var npanel = document.querySelector('.notif-panel');
   if(npanel && window.innerWidth<=860){
@@ -6436,6 +6436,7 @@ var NOTIF_CATS_HR = [
 var NOTIF_CATS_EMP = [
   {k:'todo', label:'Tugas Selaras Board', sub:'Tugas baru dari HR/HOD dan pembaruan tugasmu.'},
   {k:'chat', label:'Pesan chat', sub:'Pesan baru dari HR dan rekan kerja.'},
+  {k:'shift', label:'Pengingat shift', sub:'30 menit sebelum shift dimulai: pekerjaan akan dimulai, jangan lupa absen masuk.'},
   {k:'general', label:'Pengajuan, pengumuman & lainnya', sub:'Status persetujuan, pengumuman HR, dan pemberitahuan sistem lain.'}
 ];
 
@@ -6538,6 +6539,7 @@ function nativeNotifChannel(){
   var ln = nativeLocalNotif();
   if(!ln || STATE.lnChannel) return;
   STATE.lnChannel = true;
+  try{ if(ln.addListener) ln.addListener('localNotificationActionPerformed', function(a){ var x = a && a.notification && a.notification.extra; if(x && x.link) fcmHandleLink(x.link); }); }catch(e){}
   try{ if(ln.createChannel) ln.createChannel({id:'selaras_alert', name:'Notifikasi ABC Selaras', description:'Tugas, absen, pengajuan, pengumuman, dan chat', importance:5, visibility:1, vibration:true, sound:'default'}); }catch(e){}
 }
 function systemNotify(title, body){
@@ -6764,6 +6766,61 @@ function tomorrowReminderSync(){
   var body = tm.kind==='kerja' ? 'Besok ('+DAY_NAME_ID_FULL(tm.wd)+') kamu masuk pukul '+tm.sched.start+'–'+tm.sched.end+'. Selamat istirahat!' : 'Besok ('+DAY_NAME_ID_FULL(tm.wd)+') kamu '+tm.txt.toLowerCase()+'.';
   nativeNotifChannel();
   try{ ln.schedule({notifications:[{id:id, title:'📅 Jadwal Besok', body:body, channelId:'selaras_alert', schedule:{at:at, allowWhileIdle:true}}]}); }catch(e){}
+}
+
+/* ---------------------------- PENGINGAT 30 MENIT SEBELUM SHIFT ----------------------------
+   - APK Android: notifikasi lokal dijadwalkan untuk 7 hari ke depan (tepat waktu walau aplikasi tertutup/offline).
+   - iPhone/web: dikirim server (GitHub Action tiap 10 menit -> send-push), lihat scripts/run-schedules.mjs.
+   - Lonceng notifikasi diisi server; saat aplikasi terbuka muncul juga toast.
+   - Tidak dikirim bila sudah absen masuk, atau kategori "Pengingat shift" dimatikan. */
+var SHIFT_REM_MIN = 30;
+function shiftRemId(iso){ return 400000000 + (parseInt(String(iso).replace(/-/g,''),10) % 100000000); }
+function shiftRemMsg(start, shift){ return '⏰ Pengingat shift: pekerjaan akan dimulai pukul '+start+(shift ? ' ('+shift+')' : '')+', 30 menit lagi. Jangan lupa absen masuk ya!'; }
+function shiftRemPlan(empId, nowMs){
+  var base = new Date(nowMs); base.setHours(12,0,0,0);
+  var out = [], i;
+  for(i=0;i<=7;i++){
+    var dt = new Date(base.getTime()+i*86400000), x = nsDayInfo(empId, dt);
+    if(x.kind!=='kerja' || !x.sched.start) continue;
+    var st = new Date(dt.getTime()); var hm = String(x.sched.start).split(':'); st.setHours(+hm[0]||0, +hm[1]||0, 0, 0);
+    out.push({iso:x.iso, start:x.sched.start, shift:x.sched.shift||'', startMs:st.getTime(), atMs:st.getTime()-SHIFT_REM_MIN*60000});
+  }
+  return out;
+}
+function shiftReminderSync(){
+  if(!SESSION.role || SESSION.role==='hr' || !SESSION.empId || !STATE.loaded) return;
+  var nowMs = Date.now(), today = todayISO(), att = wrTodayAtt(), checked = !!(att && att.checkIn);
+  var allowed = notifAllowed({type:'emp', empId:SESSION.empId}, 'shift');
+  var plan = shiftRemPlan(SESSION.empId, nowMs).filter(function(p){ return !(p.iso===today && checked); });
+  var ln = nativeLocalNotif();
+  if(ln && isNativeApp()){
+    var key = SESSION.empId+'|'+allowed+'|'+checked+'|'+plan.map(function(p){ return p.iso+p.start; }).join(',');
+    if(STATE.shiftRemKey!==key){
+      STATE.shiftRemKey = key;
+      var base = new Date(nowMs); base.setHours(12,0,0,0); var ids = [];
+      for(var i=-1;i<=8;i++){ ids.push({id:shiftRemId(new Date(base.getTime()+i*86400000).toISOString().slice(0,10))}); }
+      plan.forEach(function(p){ ids.push({id:shiftRemId(p.iso)}); });
+      try{ ln.cancel({notifications:ids}); }catch(e){}
+      if(allowed){
+        var list = plan.filter(function(p){ return p.atMs > nowMs+5000; }).map(function(p){
+          return {id:shiftRemId(p.iso), title:'⏰ Shift dimulai 30 menit lagi', body:'Pekerjaan akan dimulai pukul '+p.start+(p.shift?' ('+p.shift+')':'')+'. Jangan lupa absen masuk ya!', channelId:'selaras_alert', extra:{link:'checkin'}, schedule:{at:new Date(p.atMs), allowWhileIdle:true}};
+        });
+        if(list.length){ nativeNotifChannel(); try{ ln.schedule({notifications:list}); }catch(e){} }
+      }
+    }
+    /* beri tahu server bahwa HP ini sudah pakai pengingat lokal (supaya tidak dobel dengan push) */
+    DB.shiftRemNative = DB.shiftRemNative || {};
+    if(DB.shiftRemNative[SESSION.empId]!==today){ DB.shiftRemNative[SESSION.empId] = today; try{ saveDB(true); }catch(e){} }
+  }
+  if(!allowed) return;
+  plan.forEach(function(p){
+    if(nowMs < p.atMs || nowMs >= p.startMs) return;
+    var lk = 'abcShiftRem_'+SESSION.empId+'_'+p.iso+'_'+p.start, done = false;
+    try{ done = !!localStorage.getItem(lk); localStorage.setItem(lk,'1'); }catch(e){ done = !!STATE[lk]; STATE[lk] = 1; }
+    if(done) return;
+    toast('⏰ Shift dimulai pukul '+p.start+'. Jangan lupa absen masuk!');
+    if(!isNativeApp()) systemNotify('⏰ Shift dimulai 30 menit lagi', 'Pekerjaan akan dimulai pukul '+p.start+'. Jangan lupa absen masuk ya!');
+  });
 }
 
 /* ---------------------------- PENGINGAT 8 JAM & KIRIM NOTIFIKASI (HR) ---------------------------- */
@@ -8640,6 +8697,8 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Pengingat shift: notifikasi 30 menit sebelum shift dimulai, "pekerjaan akan dimulai, jangan lupa absen masuk"',
+    'Kartu jadwal di Beranda: Jadwal Hari Ini (sampai shift mulai/berlangsung) dan Jadwal Besok (mulai 18.00), mendukung shift siang/malam',
     'Foto grup chat bisa diganti (admin grup)',
     'Tombol Back HP kembali ke layar sebelumnya; di halaman awal aplikasi diminimalkan, tidak tertutup',
     'Menu samping ditutup dengan geser ke kiri atau ketuk area luar (tanpa tombol X); geser dari tepi kiri untuk membuka',
@@ -8809,6 +8868,10 @@ function mergeLiveData(remote){
     .sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); }).slice(0,600);
   if(SESSION.role!=='hr' && remote.banners) DB.banners = remote.banners;
   if(remote.privileges && (remote.privUpdatedAt||'') > (DB.privUpdatedAt||'')){ DB.privileges = remote.privileges; DB.privUpdatedAt = remote.privUpdatedAt; }
+  ['shiftRemNative','shiftRemSent'].forEach(function(k){
+    if(!remote[k]) return; DB[k] = DB[k] || {};
+    Object.keys(remote[k]).forEach(function(id){ if(String(remote[k][id]||'') > String(DB[k][id]||'')) DB[k][id] = remote[k][id]; });
+  });
   if(remote.org && (remote.orgUpdatedAt||'') > (DB.orgUpdatedAt||'')){ DB.org = remote.org; DB.orgUpdatedAt = remote.orgUpdatedAt; }
 
   /* absensi: ambil catatan check-in/out baru milik orang lain supaya tidak tertimpa saat menyimpan */
@@ -8911,7 +8974,7 @@ function startLiveSync(){
   window.__liveSyncStarted = true;
   setInterval(function(){ liveTick(false); }, 5000);
   setInterval(tickWorkTimers, 1000);
-  setInterval(function(){ try{ workReminderSync(); }catch(e){} }, 60000);
+  setInterval(function(){ try{ workReminderSync(); shiftReminderSync(); }catch(e){} }, 60000);
   /* kartu Jadwal Hari Ini/Besok berganti otomatis (mis. pukul 18.00, saat shift mulai) */
   setInterval(function(){
     try{
