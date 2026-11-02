@@ -186,6 +186,13 @@
   .osd-unset{color:var(--text-muted);}
   .osd-sun{color:var(--danger);}
   .osd-table .osd-today{box-shadow:inset 0 0 0 2px var(--primary);}
+  .osd-click{cursor:pointer;}
+  .osd-table td.osd-click:hover{outline:2px solid var(--primary);outline-offset:-2px;}
+  .osd-table th.osd-click:hover{color:var(--primary);}
+  #teamRosterWrap{max-height:none;}
+  .sv-toggle{display:inline-flex;background:var(--surface-container-high);border-radius:999px;padding:3px;gap:2px;}
+  .sv-toggle button{border:0;background:transparent;color:var(--text-muted);font:inherit;font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;}
+  .sv-toggle button.on{background:var(--surface);color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.12);}
   .osd-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:11.5px;color:var(--text-muted);}
   .osd-legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-2px;border:1px solid var(--border);}
   .sop-unread{border-left:4px solid #F59E0B;}
@@ -2628,7 +2635,7 @@ function afterRender(){
   }catch(e){}
   navTrack();
   try{ todoPurgeOld(false); }catch(e){}
-  try{ var ow = document.getElementById('osdWrap'), ot = ow && ow.querySelector('th.osd-today'); if(ow && ot){ var nm = ow.querySelector('th.osd-name'); ow.scrollLeft = Math.max(0, ot.offsetLeft - (nm ? nm.offsetWidth : 0) - 60); } }catch(e){}
+  ['osdWrap','teamRosterWrap'].forEach(function(wid){ try{ var ow = document.getElementById(wid), ot = ow && ow.querySelector('th.osd-today'); if(ow && ot && !ow.getAttribute('data-scrolled')){ var nm = ow.querySelector('th.osd-name'); if(ot.offsetLeft + ot.offsetWidth > ow.clientWidth) ow.scrollLeft = Math.max(0, ot.offsetLeft - (nm ? nm.offsetWidth : 0) - 60); ow.setAttribute('data-scrolled','1'); } }catch(e){} });
   try{ workReminderSync(); tomorrowReminderSync(); shiftReminderSync(); nativeNotifAutoAsk(); assetServiceReminders(); assetHydratePhoto(); }catch(e){}
   applyOtPrefill();
   var npanel = document.querySelector('.notif-panel');
@@ -3888,6 +3895,7 @@ function renderKpiHistoryCard(empId, hrView){
 
 function renderSchedulePage(){
   var ym = STATE.currentMonth;
+  if(!STATE.schedView){ try{ STATE.schedView = localStorage.getItem('abcSchedView') || 'cal'; }catch(x){ STATE.schedView = 'cal'; } }
   var myDepts = getHodDepartments(SESSION.empId);
   if(myDepts.length===0){
     return '<div class="card"><div class="empty-state">Anda belum ditunjuk sebagai HOD departemen mana pun. Minta HR mengatur lewat halaman Karyawan &rarr; "Kelola HOD".</div></div>';
@@ -3942,11 +3950,12 @@ function renderSchedulePage(){
   '</div>'+
   '<div class="card">'+
     '<div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">'+
-      '<span>Kalender Jadwal Tim '+escapeHtml(dept)+' &mdash; '+monthLabel(ym)+'</span>'+
+      '<span>'+(STATE.schedView==='list' ? 'Tabel' : 'Kalender')+' Jadwal Tim '+escapeHtml(dept)+' &mdash; '+monthLabel(ym)+'</span>'+
+      '<span class="sv-toggle no-print"><button type="button" class="'+(STATE.schedView!=='list'?'on':'')+'" data-action="sched-view" data-v="cal">'+iconSvg('calendar',14)+' Kalender</button><button type="button" class="'+(STATE.schedView==='list'?'on':'')+'" data-action="sched-view" data-v="list">'+iconSvg('listCheck',14)+' Tabel</button></span>'+
       (approvalMeta ? '<span class="badge '+approvalMeta.cls+'">'+approvalMeta.label+'</span>' : '<span class="badge badge-neutral">Belum diajukan</span>')+
     '</div>'+
-    '<div class="card-sub">Setiap kotak tanggal menampilkan ringkasan berapa staf Kerja/Libur/Cuti hari itu. Klik tanggalnya untuk mengatur. '+(approval && approval.status==='rejected' && approval.hrNote ? '<span style="color:var(--danger);">Catatan HR: '+escapeHtml(approval.hrNote)+'</span>' : '')+'</div>'+
-    renderTeamCalendarGrid(deptEmployees, ym, true)+
+    '<div class="card-sub">'+(STATE.schedView==='list' ? 'Ketuk sel untuk mengatur jadwal satu orang di tanggal itu, atau ketuk tanggal di baris atas untuk mengatur seluruh tim. ' : 'Setiap kotak tanggal menampilkan ringkasan berapa staf Kerja/Libur/Cuti/Sakit hari itu. Klik tanggalnya untuk mengatur. ')+(approval && approval.status==='rejected' && approval.hrNote ? '<span style="color:var(--danger);">Catatan HR: '+escapeHtml(approval.hrNote)+'</span>' : '')+'</div>'+
+    (STATE.schedView==='list' ? scheduleRosterHtml(deptEmployees.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }), ym, true, 'teamRosterWrap') : renderTeamCalendarGrid(deptEmployees, ym, true))+
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Isi Cepat Pola Mingguan (Seluruh Tim '+escapeHtml(dept)+')</div>'+
@@ -3957,16 +3966,14 @@ function renderSchedulePage(){
   otherDeptScheduleHtml(myDepts);
 }
 
-/* HOD: lihat (hanya baca) jadwal departemen lain di bulan berjalan */
-function otherDeptScheduleHtml(myDepts){
-  var all = getDepartments().slice(); activeEmployees().forEach(function(e){ if(e.department && all.indexOf(e.department)===-1) all.push(e.department); });
-  var others = all.filter(function(d){ return myDepts.indexOf(d)===-1 && activeEmployees().some(function(e){ return e.department===d; }); });
-  if(!others.length) return '';
-  var od = (STATE.otherSchedDept && others.indexOf(STATE.otherSchedDept)!==-1) ? STATE.otherSchedDept : others[0];
-  var t = todayParts(), ym = t.ym, n = daysInMonth(ym);
-  var emps = activeEmployees().filter(function(e){ return e.department===od; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+/* tabel jadwal (baris = karyawan, kolom = tanggal). clickable: sel/kolom membuka editor jadwal */
+function scheduleRosterHtml(emps, ym, clickable, wrapId){
+  var t = todayParts(), n = daysInMonth(ym), isCur = ym===t.ym;
   var head = '<th class="osd-name">Nama</th>';
-  for(var d=1; d<=n; d++){ var wd = weekdayOf(ym, d); head += '<th class="osd-day'+(d===t.day?' osd-today':'')+(wd===0?' osd-sun':'')+'">'+DAY_SHORT_ID[wd].slice(0,2)+'<br>'+d+'</th>'; }
+  for(var d=1; d<=n; d++){
+    var wd = weekdayOf(ym, d), cur = isCur && d===t.day;
+    head += '<th class="osd-day'+(cur?' osd-today':'')+(wd===0?' osd-sun':'')+(clickable?' osd-click':'')+'"'+(clickable ? ' data-action="open-date-schedule-editor" data-day="'+d+'" title="Atur jadwal tim tanggal '+d+'"' : '')+'>'+DAY_SHORT_ID[wd].slice(0,2)+'<br>'+d+'</th>';
+  }
   var rows = emps.map(function(e){
     var cells = '';
     for(var d=1; d<=n; d++){
@@ -3975,10 +3982,21 @@ function otherDeptScheduleHtml(myDepts){
       var cls = 'osd-'+(sk==='izin' ? 'sakit' : sk);
       var txt = sk==='unset' ? '&middot;' : (sk==='kerja' ? escapeHtml(String(sc.start||'').replace(/:00$/,'')) : SCHED_KIND_SHORT[sk]);
       var tip = sk==='kerja' ? sc.start+'–'+sc.end+(sc.shift?' ('+sc.shift+')':'') : SCHED_KIND_LABEL[sk];
-      cells += '<td class="'+cls+(d===t.day?' osd-today':'')+'" title="'+escapeHtml(e.name+' · '+d+' · '+tip)+'">'+txt+'</td>';
+      cells += '<td class="'+cls+(isCur && d===t.day?' osd-today':'')+(clickable?' osd-click':'')+'"'+(clickable ? ' data-action="open-date-schedule-editor" data-day="'+d+'" data-emp="'+e.id+'"' : '')+' title="'+escapeHtml(e.name+' · '+d+' · '+tip)+'">'+txt+'</td>';
     }
     return '<tr><td class="osd-name"><b>'+escapeHtml(e.name)+'</b><span>'+escapeHtml(e.position||'')+'</span></td>'+cells+'</tr>';
   }).join('');
+  return '<div class="osd-wrap"'+(wrapId?' id="'+wrapId+'"':'')+'><table class="osd-table"><thead><tr>'+head+'</tr></thead><tbody>'+(rows || '<tr><td class="empty-state">Belum ada karyawan.</td></tr>')+'</tbody></table></div>'+
+    '<div class="osd-legend"><span><i class="osd-kerja"></i>Jam masuk</span><span><i class="osd-libur"></i>L = Libur</span><span><i class="osd-cuti"></i>C = Cuti</span><span><i class="osd-sakit"></i>S = Sakit &middot; I = Izin</span><span><i class="osd-unset"></i>Belum diatur</span></div>';
+}
+/* HOD: lihat (hanya baca) jadwal departemen lain di bulan berjalan */
+function otherDeptScheduleHtml(myDepts){
+  var all = getDepartments().slice(); activeEmployees().forEach(function(e){ if(e.department && all.indexOf(e.department)===-1) all.push(e.department); });
+  var others = all.filter(function(d){ return myDepts.indexOf(d)===-1 && activeEmployees().some(function(e){ return e.department===d; }); });
+  if(!others.length) return '';
+  var od = (STATE.otherSchedDept && others.indexOf(STATE.otherSchedDept)!==-1) ? STATE.otherSchedDept : others[0];
+  var t = todayParts(), ym = t.ym, n = daysInMonth(ym);
+  var emps = activeEmployees().filter(function(e){ return e.department===od; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
   /* ringkasan hari ini */
   var today = emps.map(function(e){ var sc = DB.schedules[ym] && DB.schedules[ym][e.id] ? DB.schedules[ym][e.id][t.day] : null; return {e:e, sc:sc}; });
   var on = today.filter(function(x){ return x.sc && x.sc.type==='kerja'; });
@@ -3986,8 +4004,7 @@ function otherDeptScheduleHtml(myDepts){
     '<div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;"><span>Jadwal Departemen Lain &mdash; '+monthLabel(ym)+'</span>'+
       '<select id="otherSchedDept" class="sop-dept-sel">'+others.map(function(d){ return '<option value="'+escapeHtml(d)+'"'+(d===od?' selected':'')+'>'+escapeHtml(d)+'</option>'; }).join('')+'</select></div>'+
     '<div class="card-sub">Hanya bisa dilihat (tidak bisa diubah) &middot; bulan berjalan. Hari ini <b>'+on.length+'</b> dari '+emps.length+' orang '+escapeHtml(od)+' masuk'+(on.length ? ': '+on.map(function(x){ return escapeHtml(x.e.name.split(' ')[0])+' '+escapeHtml(x.sc.start); }).join(', ') : '')+'.</div>'+
-    '<div class="osd-wrap" id="osdWrap"><table class="osd-table"><thead><tr>'+head+'</tr></thead><tbody>'+(rows || '<tr><td class="empty-state">Belum ada karyawan.</td></tr>')+'</tbody></table></div>'+
-    '<div class="osd-legend"><span><i class="osd-kerja"></i>Jam masuk</span><span><i class="osd-libur"></i>L = Libur</span><span><i class="osd-cuti"></i>C = Cuti</span><span><i class="osd-sakit"></i>S = Sakit &middot; I = Izin</span><span><i class="osd-unset"></i>Belum diatur</span></div>'+
+    scheduleRosterHtml(emps, ym, false, 'osdWrap')+
   '</div>';
 }
 
@@ -9346,6 +9363,7 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Jadwal Tim: pilihan tampilan Kalender atau Tabel (ketuk sel untuk atur jadwal satu orang)',
     'Warna jadwal: Libur & Cuti merah, Sakit & Izin oranye (kalender, jadwal tim, dashboard, PDF); HOD bisa set Cuti/Sakit/Izin di pengaturan jadwal tim; cuti Sakit/Izin yang disetujui tercatat sesuai jenisnya',
     'HOD: lihat jadwal departemen lain di bulan berjalan (hanya baca, ringkasan siapa masuk hari ini)',
     'SOP Departemen: HOD bisa menambah & memperbarui SOP departemennya (versi + riwayat + catatan perubahan); staf dapat notifikasi & tanda Baru/Diperbarui, tombol "Saya sudah membaca"; HR/HOD memantau status baca per departemen + tombol Ingatkan',
@@ -11672,6 +11690,10 @@ document.addEventListener('click', function(e){
   } else if(action==='toggle-notifications'){
     STATE.notifPanelOpen = !STATE.notifPanelOpen;
     render();
+  } else if(action==='sched-view'){
+    STATE.schedView = el.getAttribute('data-v')==='list' ? 'list' : 'cal';
+    try{ localStorage.setItem('abcSchedView', STATE.schedView); }catch(x){}
+    render();
   } else if(action==='osd-jump'){
     var oj = document.getElementById('osdWrap'); if(oj){ try{ oj.closest('.card').scrollIntoView({behavior:'smooth', block:'start'}); }catch(x){} } else toast('Belum ada departemen lain dengan karyawan aktif.');
   } else if(action==='switch-mode'){
@@ -12094,6 +12116,15 @@ document.addEventListener('click', function(e){
     var deDept = STATE.selectedHodDepartment;
     var deEmployees = activeEmployees().filter(function(e){ return e.department===deDept; });
     openModal(dateScheduleEditorModalHtml(deDay, deYm, deEmployees));
+    var deEmp = el.getAttribute('data-emp');
+    if(deEmp){
+      var deAll = document.getElementById('dse_selectAll'); if(deAll) deAll.checked = false;
+      deEmployees.forEach(function(e){ var cb = document.getElementById('dse_emp_'+e.id); if(cb) cb.checked = e.id===deEmp; });
+      var deSc = DB.schedules[deYm] && DB.schedules[deYm][deEmp] ? DB.schedules[deYm][deEmp][deDay] : null, deK = schedKind(deSc);
+      var deT = document.getElementById('dse_type');
+      if(deT && deK!=='unset'){ deT.value = deK; deT.dispatchEvent(new Event('change', {bubbles:true})); }
+      if(deK==='kerja'){ var ds = document.getElementById('dse_start'), dn = document.getElementById('dse_end'); if(ds) ds.value = deSc.start; if(dn) dn.value = deSc.end; }
+    }
   } else if(action==='apply-date-schedule'){
     var adStartDay = parseInt(el.getAttribute('data-day'),10);
     var adYm = STATE.currentMonth;
