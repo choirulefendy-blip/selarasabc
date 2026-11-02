@@ -251,7 +251,7 @@ function typeInto(w, id, v){ var e = w.document.getElementById(id); e.value = v;
   ok(tm && tm.body.indexOf('Siapkan konten Reels')===0 && tm.body.indexOf('Tenggat')!==-1 && tm.image_url, 'tugas dari HOD ikut terkirim ke chat penerima (dengan foto)');
   await login(w, 'E1'); await w.chatPoll(); await sleep(50);
   w.STATE.view='chat'; w.STATE.chatWith='E2'; w.render(); await sleep(60);
-  ok(!!w.document.querySelector('.chat-bubble.is-task') && text(w).indexOf('Tugas baru')!==-1 && !!w.document.querySelector('.chat-bubble.is-task img.chat-img'), 'penerima melihat kartu tugas + foto di chat');
+  ok(!!w.document.querySelector('.chat-bubble.is-task') && !!w.document.querySelector('.chat-bubble.is-task .chat-taskcard') && !!w.document.querySelector('.chat-bubble.is-task img.chat-img'), 'penerima melihat kartu tugas + foto di chat');
   await login(w, 'hr'); await click(w, 'nav', {view:'todo'});
   /* tugas sendiri tidak masuk chat */
   var nBefore = w.chatLocalAll().length;

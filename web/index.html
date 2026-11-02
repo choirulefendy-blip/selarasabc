@@ -862,6 +862,15 @@
   .chat-compose{display:flex;gap:10px;padding:12px;border-top:1px solid var(--border);background:var(--surface);align-items:flex-end;}
   /* iPhone men-zoom halaman bila font kolom isian < 16px -> di layar sentuh pakai 16px */
   @media (hover:none) and (pointer:coarse){ input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea{font-size:16px !important;} }
+  .chat-taskcard{background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:10px 12px;margin:2px 0 6px;min-width:200px;max-width:280px;text-align:left;}
+  .chat-taskcard.gone{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--text-muted);}
+  .ctc-head{display:flex;gap:6px;align-items:center;font-size:11.5px;font-weight:700;color:var(--primary);}
+  .ctc-title{font-weight:700;font-size:14px;margin-top:4px;}
+  .ctc-title.done{text-decoration:line-through;color:var(--text-muted);}
+  .ctc-note{font-size:12.5px;color:var(--text-muted);margin-top:2px;}
+  .ctc-meta{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;}
+  .ctc-open{margin-top:8px;width:100%;}
+  .bd-flash{box-shadow:0 0 0 3px var(--primary);transition:box-shadow .3s;}
   .ck-cam{position:relative;width:100%;max-width:300px;margin:0 auto;border-radius:20px;overflow:hidden;background:#000;aspect-ratio:3/4;}
   .ck-cam video{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1);}
   .ck-guide{position:absolute;inset:0;pointer-events:none;}
@@ -6074,6 +6083,7 @@ function todoItemHtml(t, mode, cols){
       cols.map(function(c){ return '<option value="'+escapeHtml(c.id)+'"'+(c.id===todoColOf(t, cols)?' selected':'')+'>'+escapeHtml(c.label)+'</option>'; }).join('')+'</select>';
   }
   if(todoCanEdit(t)) actions += '<button class="btn btn-ghost btn-sm" data-action="todo-edit" data-id="'+t.id+'">'+iconSvg('edit',14)+' Ubah</button>';
+  actions += '<button class="btn btn-ghost btn-sm" data-action="todo-share" data-id="'+t.id+'" title="Kirim ke chat" aria-label="Kirim ke chat">'+iconSvg('chat',14)+'</button>';
   if(todoCanDelete(t)) actions += '<button class="btn btn-ghost btn-sm bd-del" data-action="delete-todo" data-id="'+t.id+'" title="Hapus tugas" aria-label="Hapus tugas" style="color:var(--danger);">'+iconSvg('trash',14)+'</button>';
   var purgeLeft = '';
   if(t.status==='done' && t.doneAt && !t.rekap){
@@ -6280,6 +6290,7 @@ function todoApplyEdit(t, f){
   var oldOwner = t.ownerId;
   if(f.ownerId && f.ownerId!==t.ownerId && todoCanReassign(t)){
     t.ownerId = f.ownerId; changes.push('penerima');
+    if(f.ownerId!==selfKey && f.ownerId!=='hr') chatSendTask(f.ownerId, t, 'Tugas dialihkan ke kamu', true);
     addNotification({type:'emp', empId:f.ownerId}, meName+' memberi tugas: '+t.title+(t.due ? ' (tenggat '+formatDateID(t.due)+')' : '')+'.', 'todo', 'todo');
     if(oldOwner!=='hr' && oldOwner!==selfKey) addNotification({type:'emp', empId:oldOwner}, 'Tugas "'+t.title+'" dialihkan ke '+todoOwnerName(f.ownerId)+'.', 'todo', 'todo');
   }
@@ -9165,6 +9176,7 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Chat: lampirkan tugas Selaras Board (tombol 📋 di kolom chat atau ikon chat di kartu Board); tugas yang ditugaskan/dialihkan otomatis masuk chat sebagai kartu dengan status terbaru + tombol Buka di Board',
     'Kamera absen: panduan siluet wajah & bahu, label Absen Masuk/Pulang + jam berjalan, "Posisikan tubuh tegap dan wajah menghadap ke kamera"',
     'Akses HR untuk karyawan: login pakai akun sendiri, nama & foto tetap, bisa pindah Mode HR / Mode Karyawan. Semua akun HR kini tampil dengan nama orangnya (tugas, notifikasi, chat, log)',
     'Impor Paket Dokumen (HR): SOP, Job Description, Flowchart, Template & Struktur Organisasi sekaligus; kategori dokumen baru, flowchart bergambar langkah, isi panjang bisa diringkas',
@@ -9509,7 +9521,7 @@ function createTodo(f){
     if(t.note) tl.push(t.note);
     if(t.due) tl.push('Tenggat: '+formatDateID(t.due));
     tl.push('Prioritas: '+(TODO_PRIORITY[t.priority] || TODO_PRIORITY.normal).label);
-    chatPostSystem(f.ownerId, tl.join('\n'), {kind:'task', image_key:t.photoKey||null, image_url:t.photoUrl||null});
+    chatPostSystem(f.ownerId, tl.join('\n') + chatTaskMark(t.id), {kind:'task', image_key:t.photoKey||null, image_url:t.photoUrl||null});
   }
   logActivity('Membuat tugas "'+t.title+'"'+(f.ownerId!==selfKey ? ' untuk '+ownerName : '')+'.');
   return t;
@@ -10115,12 +10127,20 @@ function chatMessagesHtml(){
     if(m.kind==='sys') return head+'<div class="chat-sys">'+escapeHtml(m.body)+'</div>';
     var mine = m.sender===me;
     var hasImg = !!(m.image_key || m.image_url), hasFile = !!(m.file_key || m.file_url);
-    var txt = chatBodyText(m);
+    var txt = chatBodyText(m), tid = chatTaskId(m);
+    if(tid && m.kind==='task'){
+      var tObj = getTodoById(tid), tLines = txt.split('\n');
+      if(tObj && !tObj.deleted){
+        if(tLines[tLines.length-1]===tObj.title) txt = tLines.slice(0,-1).join('\n');
+        else if(tLines[0]===tObj.title) txt = '';
+      }
+    }
     var hrn = m.sender==='hr' ? chatHrName(m) : '';
     var inner = (isGrp && !mine ? '<div class="chat-sender" data-action="person-open" data-id="'+escapeHtml(m.sender)+'">'+escapeHtml(hrn ? hrn+' · HR' : chatPeerName(m.sender))+'</div>' : (hrn ? '<div class="chat-sender">'+escapeHtml(mine ? 'Dikirim oleh '+hrn : hrn+' · HR')+'</div>' : ''))+
       (chatIsFwd(m) ? '<div class="chat-fwd">↪ Diteruskan</div>' : '')+
       (m.kind==='msg' && m.ref_id ? chatQuoteHtml(m) : '')+
-      (m.kind==='task' ? '<div class="chat-task-tag">'+CHAT_ICON_TASK+' Tugas baru</div>' : '')+
+      (m.kind==='task' && !tid ? '<div class="chat-task-tag">'+CHAT_ICON_TASK+' Tugas baru</div>' : '')+
+      (tid ? chatTaskCardHtml(tid) : '')+
       (hasImg ? imgThumbHtml(m.image_key, m.image_url, 'chat-img') : '')+
       (hasFile ? chatFileCardHtml(m) : '')+
       (txt ? '<div class="chat-text">'+escapeHtml(txt)+'</div>' : '');
@@ -10165,6 +10185,7 @@ function renderChatPage(){
         : '<div class="chat-pending"><img src="'+escapeHtml(CHAT.pending.dataUrl)+'" alt="Foto"><span>Foto siap dikirim</span><button type="button" class="btn btn-ghost btn-sm" data-action="chat-attach-remove">Batal</button></div>') : '')+
       '<div class="chat-compose">'+
         '<button type="button" class="btn btn-ghost chat-attach" data-action="chat-attach" aria-label="Lampirkan foto/berkas">'+iconSvg('image',20)+'</button>'+
+        '<button type="button" class="btn btn-ghost chat-attach" data-action="chat-task-pick" aria-label="Lampirkan tugas" title="Lampirkan tugas">'+iconSvg('clipboard',20)+'</button>'+
         '<input type="file" id="chatImgFile" style="display:none;">'+
         '<textarea id="chatInput" rows="1" maxlength="1000" placeholder="Tulis pesan..." data-role="chat-input">'+escapeHtml(CHAT.draft||'')+'</textarea>'+
         '<button type="button" class="btn btn-primary" data-action="chat-send">Kirim</button>'+
@@ -10447,7 +10468,58 @@ var CHAT_FWD = '⁣FWD⁣';
 var CHAT_HRN_RE = /⁣HRN:([^⁣]{0,80})⁣$/;
 function chatIsFwd(m){ return String(m.body||'').indexOf(CHAT_FWD)===0; }
 function chatHrName(m){ var x = CHAT_HRN_RE.exec(String(m.body||'')); return x ? x[1] : ''; }
-function chatBodyText(m){ var b = String(m.body||'').replace(CHAT_HRN_RE, ''); return b.indexOf(CHAT_FWD)===0 ? b.slice(CHAT_FWD.length) : b; }
+var CHAT_TASK_RE = /⁣TASK:([A-Za-z0-9_-]{1,40})⁣/;
+function chatTaskId(m){ var x = CHAT_TASK_RE.exec(String(m.body||'')); return x ? x[1] : ''; }
+function chatTaskMark(id){ return '⁣TASK:'+id+'⁣'; }
+function chatBodyText(m){ var b = String(m.body||'').replace(CHAT_HRN_RE, '').replace(CHAT_TASK_RE, ''); return b.indexOf(CHAT_FWD)===0 ? b.slice(CHAT_FWD.length) : b; }
+/* kartu tugas di gelembung chat (status selalu terbaru dari Board) */
+function chatTaskCardHtml(tid){
+  var t = getTodoById(tid);
+  if(!t || t.deleted) return '<div class="chat-taskcard gone">'+iconSvg('clipboard',16)+' <span>Tugas ini sudah dihapus dari Selaras Board.</span></div>';
+  var st = todoStatusInfo(t.status, todoDept(t)), pr = TODO_PRIORITY[t.priority] || TODO_PRIORITY.normal, od = todoIsOverdue(t);
+  return '<div class="chat-taskcard">'+
+    '<div class="ctc-head">'+iconSvg('clipboard',15)+' <span>Tugas · '+escapeHtml(todoOwnerName(t.ownerId))+'</span></div>'+
+    '<div class="ctc-title'+(t.status==='done'?' done':'')+'">'+escapeHtml(t.title)+'</div>'+
+    (t.note ? '<div class="ctc-note">'+escapeHtml(t.note)+'</div>' : '')+
+    '<div class="ctc-meta"><span class="badge '+st.cls+'">'+escapeHtml(st.label)+'</span> <span class="badge '+pr.cls+'">'+pr.label+'</span>'+
+      (t.due ? ' <span class="badge '+(od?'badge-danger':'badge-neutral')+'">'+(od?'Lewat ':'Tenggat ')+formatDateID(t.due)+'</span>' : '')+'</div>'+
+    '<button type="button" class="btn btn-secondary btn-sm ctc-open" data-action="chat-task-open" data-tid="'+escapeHtml(t.id)+'">Buka di Board</button>'+
+  '</div>';
+}
+/* daftar tugas yang boleh dilampirkan akun ini */
+function chatTaskChoices(){
+  var me = todoSelfKey(), depts = SESSION.role==='hr' ? null : boardDeptsVisible();
+  return (DB.todos||[]).filter(function(t){
+    if(t.deleted || (t.rekap && t.status==='done')) return false;
+    if(SESSION.role==='hr') return true;
+    return t.ownerId===me || t.createdById===me || (t.ownerId!=='hr' && depts.indexOf(todoDept(t))!==-1);
+  }).sort(function(a,b){ return (a.status==='done'?1:0)-(b.status==='done'?1:0) || (b.updatedAt||b.createdAt||'').localeCompare(a.updatedAt||a.createdAt||''); }).slice(0,150);
+}
+function chatTaskPickHtml(){
+  var list = chatTaskChoices();
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:520px;"><h3>Lampirkan Tugas</h3>'+
+    '<div class="card-sub">Pilih tugas dari Selaras Board untuk dikirim ke '+escapeHtml(chatPeerName(STATE.chatWith))+'.</div>'+
+    '<div class="form-group"><input placeholder="Cari tugas atau nama..." data-role="cg-search"></div>'+
+    '<div class="cg-list" id="cgList">'+(list.map(function(t){
+      var st = todoStatusInfo(t.status, todoDept(t));
+      return '<button type="button" class="cg-item" data-action="chat-task-send" data-tid="'+escapeHtml(t.id)+'" data-name="'+escapeHtml((t.title+' '+todoOwnerName(t.ownerId)).toLowerCase())+'" style="text-align:left;width:100%;">'+
+        '<span style="min-width:0;flex:1;"><b>'+escapeHtml(t.title)+'</b><em>'+escapeHtml(todoOwnerName(t.ownerId))+' · '+escapeHtml(st.label)+(t.due ? ' · '+escapeHtml(formatDateID(t.due)) : '')+'</em></span></button>';
+    }).join('') || '<div class="empty-state">Belum ada tugas di Selaras Board.</div>')+'</div>'+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button></div></div></div>';
+}
+/* kirim kartu tugas ke satu percakapan (manual / otomatis) */
+function chatSendTask(to, t, note, auto){
+  var me = chatMe(); if(!me || !to || !t) return Promise.resolve(false);
+  var body = (note ? note+'\n' : '') + t.title + chatTaskMark(t.id);
+  return chatSendStore(me, to, body, {kind:'task'}).then(function(row){
+    if(CHAT.me===me){ chatMergeRows([row]); if(STATE.view==='chat') updateChatDom(); }
+    if(!auto){
+      var from = chatIsGroup(to) ? chatPeerName(to)+' · '+chatShortName(me) : chatPeerName(me);
+      chatPushTargets(to).forEach(function(x){ var au = chatAudience(x); if(notifAllowed(au,'chat')) triggerPush(au, 'Pesan dari '+from+': '+CHAT_ICON_TASK+' '+t.title.slice(0,80), 'chat'); });
+    }
+    return true;
+  }).catch(function(){ return false; });
+}
 function chatMsgById(id){ return CHAT.msgs.filter(function(x){ return x.id===id; })[0] || null; }
 function chatIsStarred(id){ return (CHAT.prefs.starred||[]).indexOf(id)!==-1; }
 function chatIsHidden(id){ return (CHAT.prefs.hidden||[]).indexOf(id)!==-1; }
@@ -11309,6 +11381,37 @@ document.addEventListener('click', function(e){
   } else if(action==='chat-del-all'){
     var daId = parseInt(el.getAttribute('data-id'),10); closeModal();
     if(/jsdom/i.test(navigator.userAgent||'') || confirm('Hapus pesan ini untuk semua orang?')) chatDeleteMessage(daId);
+  } else if(action==='chat-task-pick'){
+    if(!STATE.chatWith) return; openModal(chatTaskPickHtml());
+  } else if(action==='chat-task-send'){
+    var ctT = getTodoById(el.getAttribute('data-tid')); closeModal();
+    if(!ctT || !STATE.chatWith) return;
+    chatSendTask(STATE.chatWith, ctT, '', false).then(function(ok){ if(ok){ chatScrollToEnd(); } else toast('Gagal mengirim tugas.'); });
+  } else if(action==='chat-task-open'){
+    var coT = getTodoById(el.getAttribute('data-tid')); closeModal();
+    if(!coT){ toast('Tugas tidak ditemukan.'); return; }
+    STATE.view = 'todo'; STATE.boardTab = 'board'; STATE.chatWith = null;
+    STATE.boardDept = coT.ownerId==='hr' ? '_hr' : todoDept(coT); STATE.boardWho = '';
+    render();
+    setTimeout(function(){ var c = document.querySelector('.bd-card[data-todo-id="'+coT.id+'"]'); if(c){ try{ c.scrollIntoView({block:'center', inline:'center'}); }catch(x){} c.classList.add('bd-flash'); setTimeout(function(){ c.classList.remove('bd-flash'); }, 2200); } else if(todoCanEdit(coT)) openModal(todoEditModalHtml(coT)); }, 120);
+  } else if(action==='todo-share'){
+    var tsh = getTodoById(el.getAttribute('data-id')); if(!tsh) return;
+    chatEnsureIdentity(); STATE.shareTodo = tsh.id;
+    var shConvs = chatConvs().filter(function(p){ return p.sub!=='Nonaktif'; }).sort(function(a,b){ return a.name.localeCompare(b.name); });
+    if(tsh.ownerId!==chatMe() && tsh.ownerId!=='hr') shConvs.sort(function(a,b){ return (a.id===tsh.ownerId?-1:0)-(b.id===tsh.ownerId?-1:0); });
+    STATE.chatFwdSel = {};
+    openModal('<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:480px;"><h3>Kirim Tugas ke Chat</h3>'+
+      '<div class="chat-fwd-prev">'+CHAT_ICON_TASK+' '+escapeHtml(tsh.title)+'</div>'+
+      '<div class="form-group"><input placeholder="Cari nama atau grup..." data-role="cg-search"></div>'+
+      '<div class="cg-list" id="cgList">'+shConvs.map(function(p){ return '<label class="cg-item" data-name="'+escapeHtml(p.name.toLowerCase())+'"><input type="checkbox" value="'+escapeHtml(p.id)+'" data-role="fwd-pick">'+chatAvatar(p.id, 32)+'<span><b>'+escapeHtml(p.name)+'</b><em>'+escapeHtml(p.sub||'')+'</em></span></label>'; }).join('')+'</div>'+
+      '<div class="form-group" style="margin-top:10px;"><input id="shareNote" maxlength="200" placeholder="Pesan tambahan (opsional)"></div>'+
+      '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="todo-share-send">Kirim</button></div></div></div>');
+  } else if(action==='todo-share-send'){
+    var tss = getTodoById(STATE.shareTodo), tsTo = Object.keys(STATE.chatFwdSel||{}).filter(function(k){ return STATE.chatFwdSel[k]; });
+    if(!tss || !tsTo.length){ toast('Pilih tujuan.'); return; }
+    var tsNote = ((document.getElementById('shareNote')||{}).value||'').trim();
+    closeModal();
+    Promise.all(tsTo.map(function(to){ return chatSendTask(to, tss, tsNote, false); })).then(function(r){ toast('Tugas dikirim ke '+r.filter(Boolean).length+' chat.'); });
   } else if(action==='chat-forward'){
     var fwM = chatMsgById(parseInt(el.getAttribute('data-id'),10)); if(fwM) openModal(chatForwardHtml(fwM));
   } else if(action==='chat-forward-send'){
