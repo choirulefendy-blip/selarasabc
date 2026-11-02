@@ -181,8 +181,8 @@
   .osd-table thead .osd-name{z-index:3;background:var(--surface-container-high);}
   .osd-name b{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;} .osd-name span{font-size:10.5px;color:var(--text-muted);}
   .osd-kerja{background:var(--primary-container);color:var(--primary);font-weight:700;}
-  .osd-libur{background:var(--surface-container-high);color:var(--text-muted);}
-  .osd-cuti{background:rgba(139,92,246,.15);color:#7C3AED;font-weight:700;}
+  .osd-libur,.osd-cuti{background:rgba(220,38,38,.12);color:#DC2626;font-weight:700;}
+  .osd-sakit{background:rgba(234,88,12,.15);color:#EA580C;font-weight:700;}
   .osd-unset{color:var(--text-muted);}
   .osd-sun{color:var(--danger);}
   .osd-table .osd-today{box-shadow:inset 0 0 0 2px var(--primary);}
@@ -275,7 +275,10 @@
   .nsc-day span{color:var(--text-muted);}
   .nsc-day.nsc-kerja{background:var(--primary-container);}
   .nsc-day.nsc-kerja span{color:var(--primary);font-weight:700;}
-  .nsc-day.nsc-cuti span{color:#8B5CF6;font-weight:600;}
+  .nsc-day.nsc-libur span,.nsc-day.nsc-cuti span{color:#DC2626;font-weight:600;}
+  .nsc-day.nsc-libur,.nsc-day.nsc-cuti{background:rgba(220,38,38,.10);}
+  .nsc-day.nsc-sakit,.nsc-day.nsc-izin{background:rgba(234,88,12,.12);}
+  .nsc-day.nsc-sakit span,.nsc-day.nsc-izin span{color:#EA580C;font-weight:600;}
   .nsc-day.nsc-sel{box-shadow:inset 0 0 0 2px var(--primary);}
   .nsc-title{display:flex;align-items:center;white-space:nowrap;}
   .nsc-live{display:inline-block;white-space:nowrap;vertical-align:middle;margin-left:6px;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:rgba(34,197,94,.16);color:#16A34A;}
@@ -502,6 +505,8 @@
   .badge-success{background:var(--success-bg);color:var(--success);}
   .badge-warning{background:var(--warning-bg);color:var(--warning);}
   .badge-danger{background:var(--danger-bg);color:var(--danger);}
+  .badge-off{background:rgba(220,38,38,.12);color:#DC2626;}
+  .badge-leave{background:rgba(234,88,12,.14);color:#EA580C;}
   .badge-neutral{background:var(--neutral-bg);color:var(--neutral);}
   .badge-info{background:var(--info-bg);color:var(--info);}
 
@@ -553,24 +558,25 @@
   .cal-info{color:var(--text-muted);line-height:1.3;word-break:break-word;}
   .cal-day.cal-kerja{background:var(--success-bg);border-color:transparent;}
   .cal-day.cal-kerja .cal-info{color:var(--success);}
-  .cal-day.cal-libur{background:var(--neutral-bg);border-color:transparent;}
-  .cal-day.cal-cuti{background:var(--info-bg);border-color:transparent;}
-  .cal-day.cal-cuti .cal-info{color:var(--info);}
+  .cal-day.cal-libur,.cal-day.cal-cuti{background:rgba(220,38,38,.10);border-color:transparent;}
+  .cal-day.cal-libur .cal-info,.cal-day.cal-cuti .cal-info{color:#DC2626;font-weight:600;}
+  .cal-day.cal-sakit{background:rgba(234,88,12,.12);border-color:transparent;}
+  .cal-day.cal-sakit .cal-info{color:#EA580C;font-weight:600;}
   .cal-day.cal-unset{background:var(--surface-container-low);}
   .cal-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:11.5px;color:var(--text-muted);}
   .cal-legend span{display:inline-flex;align-items:center;gap:5px;}
   .cal-dot{width:9px;height:9px;border-radius:3px;display:inline-block;}
   .cal-dot.cal-kerja{background:var(--success);}
-  .cal-dot.cal-libur{background:var(--neutral);}
-  .cal-dot.cal-cuti{background:var(--info);}
+  .cal-dot.cal-libur,.cal-dot.cal-cuti{background:#DC2626;}
+  .cal-dot.cal-sakit{background:#EA580C;}
   .cal-dot.cal-unset{background:var(--surface);border:1px solid var(--border);}
   .cal-day.cal-clickable{cursor:pointer;min-height:74px;transition:box-shadow .12s,border-color .12s;}
   .cal-day.cal-clickable:hover{border-color:var(--primary);box-shadow:var(--shadow-1);}
   .cal-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px;}
   .cal-tag{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap;}
   .cal-tag-kerja{background:var(--success);color:#fff;}
-  .cal-tag-libur{background:var(--neutral);color:#fff;}
-  .cal-tag-cuti{background:var(--info);color:#fff;}
+  .cal-tag-libur,.cal-tag-cuti{background:#DC2626;color:#fff;}
+  .cal-tag-sakit{background:#EA580C;color:#fff;}
   .cal-tag-unset{background:var(--surface-container-highest);color:var(--text-muted);}
 
   .bar-chart-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
@@ -2349,6 +2355,19 @@ function nameInitials(name){
   return (parts[0][0]+parts[parts.length-1][0]).toUpperCase();
 }
 
+/* jenis hari di jadwal: kerja | libur | cuti | sakit | izin | unset
+   Warna: Libur & Cuti = merah, Sakit & Izin = oranye */
+function schedKind(sc){ if(!sc) return 'unset'; if(sc.type==='kerja') return 'kerja'; if(sc.leave==='sakit' || sc.leave==='izin') return sc.leave; return sc.cuti ? 'cuti' : 'libur'; }
+var SCHED_KIND_LABEL = {kerja:'Kerja', libur:'Libur', cuti:'Cuti', sakit:'Sakit', izin:'Izin', unset:'Belum diatur'};
+var SCHED_KIND_SHORT = {libur:'L', cuti:'C', sakit:'S', izin:'I'};
+function schedOffLabel(sc){ return SCHED_KIND_LABEL[schedKind(sc)]; }
+function schedOffBadge(sc){ var k = schedKind(sc); return '<span class="badge '+(k==='sakit'||k==='izin' ? 'badge-leave' : 'badge-off')+'">'+SCHED_KIND_LABEL[k]+'</span>'; }
+function schedEntryFor(kind, start, end){
+  if(kind==='kerja') return {type:'kerja', start:start, end:end};
+  if(kind==='cuti') return {type:'libur', cuti:true};
+  if(kind==='sakit' || kind==='izin') return {type:'libur', leave:kind};
+  return {type:'libur'};
+}
 function renderTeamCalendarGrid(deptEmployees, ym, clickable){
   var n = daysInMonth(ym);
   var firstWeekday = weekdayOf(ym, 1);
@@ -2357,12 +2376,15 @@ function renderTeamCalendarGrid(deptEmployees, ym, clickable){
     cells += '<div class="cal-day cal-empty"></div>';
   }
   for(var d=1; d<=n; d++){
-    var kerjaChips = [], libur=0, cuti=0, unset=0;
+    var kerjaChips = [], libur=0, cuti=0, unset=0, sakit=0, izin=0;
     deptEmployees.forEach(function(e){
       var sched = (DB.schedules[ym] && DB.schedules[ym][e.id] && DB.schedules[ym][e.id][d]) || null;
-      if(!sched) unset++;
-      else if(sched.cuti) cuti++;
-      else if(sched.type==='kerja') kerjaChips.push({initials:nameInitials(e.name), start:sched.start, name:e.name});
+      var k = schedKind(sched);
+      if(k==='unset') unset++;
+      else if(k==='cuti') cuti++;
+      else if(k==='sakit') sakit++;
+      else if(k==='izin') izin++;
+      else if(k==='kerja') kerjaChips.push({initials:nameInitials(e.name), start:sched.start, name:e.name});
       else libur++;
     });
     var tags = kerjaChips.map(function(c){
@@ -2370,6 +2392,8 @@ function renderTeamCalendarGrid(deptEmployees, ym, clickable){
     }).join('');
     if(libur) tags += '<span class="cal-tag cal-tag-libur">'+libur+' Libur</span>';
     if(cuti) tags += '<span class="cal-tag cal-tag-cuti">'+cuti+' Cuti</span>';
+    if(sakit) tags += '<span class="cal-tag cal-tag-sakit">'+sakit+' Sakit</span>';
+    if(izin) tags += '<span class="cal-tag cal-tag-sakit">'+izin+' Izin</span>';
     if(unset) tags += '<span class="cal-tag cal-tag-unset">'+unset+' -</span>';
     var attrs = clickable ? ' data-action="open-date-schedule-editor" data-day="'+d+'"' : '';
     cells += '<div class="cal-day'+(clickable?' cal-clickable':'')+'"'+attrs+'><div class="cal-daynum">'+d+'</div><div class="cal-tags">'+tags+'</div></div>';
@@ -2391,6 +2415,7 @@ function renderScheduleCalendar(empId, ym){
     if(sched){
       if(sched.type==='kerja'){ cls='cal-kerja'; label=sched.start+'&ndash;'+sched.end; }
       else if(sched.cuti){ cls='cal-cuti'; label='Cuti'; }
+      else if(sched.leave){ cls='cal-sakit'; label=schedOffLabel(sched); }
       else { cls='cal-libur'; label='Libur'; }
     }
     cells += '<div class="cal-day '+cls+'"><div class="cal-daynum">'+d+'</div><div class="cal-info">'+label+'</div></div>';
@@ -2401,6 +2426,7 @@ function renderScheduleCalendar(empId, ym){
       '<span><i class="cal-dot cal-kerja"></i>Kerja</span>'+
       '<span><i class="cal-dot cal-libur"></i>Libur</span>'+
       '<span><i class="cal-dot cal-cuti"></i>Cuti</span>'+
+      '<span><i class="cal-dot cal-sakit"></i>Sakit/Izin</span>'+
       '<span><i class="cal-dot cal-unset"></i>Belum diatur</span>'+
     '</div>';
 }
@@ -2418,6 +2444,9 @@ function getMatchDay(empId, ym, day){
     }
     if(sched.cuti){
       return {status:'cuti', sched:sched, att:att, lateMinutes:0};
+    }
+    if(sched.leave==='sakit' || sched.leave==='izin'){
+      return {status:sched.leave, sched:sched, att:att, lateMinutes:0};
     }
     return {status:'libur', sched:sched, att:att, lateMinutes:0};
   }
@@ -2485,7 +2514,7 @@ function attStatusBadgeHtml(m){
 function getMonthSummary(empId, ym){
   var n = daysInMonth(ym);
   var days = [];
-  var totals = {hadir:0, telat:0, alpha:0, libur:0, lembur:0, unset:0, akan_datang:0, cuti:0, totalLateMinutes:0};
+  var totals = {hadir:0, telat:0, alpha:0, libur:0, lembur:0, unset:0, akan_datang:0, cuti:0, sakit:0, izin:0, totalLateMinutes:0};
   for(var d=1; d<=n; d++){
     var m = getMatchDay(empId, ym, d);
     m.day = d;
@@ -2539,11 +2568,13 @@ var STATUS_META = {
   hadir:{label:'Hadir', cls:'badge-success'},
   telat:{label:'Telat', cls:'badge-warning'},
   alpha:{label:'Alpha', cls:'badge-danger'},
-  libur:{label:'Libur', cls:'badge-neutral'},
+  libur:{label:'Libur', cls:'badge-off'},
+  sakit:{label:'Sakit', cls:'badge-leave'},
+  izin:{label:'Izin', cls:'badge-leave'},
   lembur:{label:'Masuk (Libur)', cls:'badge-info'},
   unset:{label:'Belum Diatur', cls:'badge-neutral'},
   akan_datang:{label:'Akan Datang', cls:'badge-neutral'},
-  cuti:{label:'Cuti', cls:'badge-info'}
+  cuti:{label:'Cuti', cls:'badge-off'}
 };
 
 /* ---------------------------- RENDER: ROOT ---------------------------- */
@@ -3630,12 +3661,12 @@ function renderHodAttendancePage(){
     return true;
   });
 
-  var counts = {hadir:0, telat:0, alpha:0, cuti:0, libur:0, akan_datang:0, lembur:0};
+  var counts = {hadir:0, telat:0, alpha:0, cuti:0, libur:0, sakit:0, izin:0, akan_datang:0, lembur:0};
   var rows = filtered.map(function(e){
     var m = getMatchDay(e.id, t.ym, t.day);
     if(counts[m.status]!==undefined) counts[m.status]++;
     var meta = STATUS_META[m.status];
-    var schedTxt = !m.sched ? '<span class="muted">&mdash;</span>' : (m.sched.type==='kerja' ? m.sched.start+'&ndash;'+m.sched.end : (m.sched.cuti?'Cuti':'Libur'));
+    var schedTxt = !m.sched ? '<span class="muted">&mdash;</span>' : (m.sched.type==='kerja' ? m.sched.start+'&ndash;'+m.sched.end : schedOffLabel(m.sched));
     var propsTxt = (e.properties && e.properties.length) ? e.properties.join(', ') : '<span class="muted">&mdash;</span>';
     var hasProof = m.att && (m.att.checkInHasPhoto || m.att.checkOutHasPhoto || m.att.checkInLoc || m.att.checkOutLoc || m.att.checkOutNote);
     return '<tr>'+
@@ -3663,7 +3694,8 @@ function renderHodAttendancePage(){
       '<div class="stat-card"><div class="label">Hadir</div><div class="value">'+counts.hadir+'</div></div>'+
       '<div class="stat-card"><div class="label">Telat</div><div class="value">'+counts.telat+'</div></div>'+
       '<div class="stat-card"><div class="label">Alpha</div><div class="value">'+counts.alpha+'</div></div>'+
-      '<div class="stat-card"><div class="label">Cuti / Libur</div><div class="value">'+(counts.cuti+counts.libur)+'</div></div>'+
+      '<div class="stat-card"><div class="label">Cuti / Libur</div><div class="value" style="color:#DC2626;">'+(counts.cuti+counts.libur)+'</div></div>'+
+      ((counts.sakit+counts.izin) ? '<div class="stat-card"><div class="label">Sakit / Izin</div><div class="value" style="color:#EA580C;">'+(counts.sakit+counts.izin)+'</div></div>' : '')+
     '</div>'+
   '</div>'+
   '<div class="toolbar"><div class="toolbar-left" style="flex-wrap:wrap;">'+
@@ -3689,7 +3721,7 @@ function renderHodAttendanceMonthlyDetail(team){
   for(var d=1; d<=n; d++){
     var m = getMatchDay(empId, ym, d);
     var meta = STATUS_META[m.status];
-    var schedTxt = !m.sched ? '&mdash;' : (m.sched.type==='kerja' ? (m.sched.start+'&ndash;'+m.sched.end) : (m.sched.cuti ? 'Cuti' : 'Libur'));
+    var schedTxt = !m.sched ? '&mdash;' : (m.sched.type==='kerja' ? (m.sched.start+'&ndash;'+m.sched.end) : schedOffLabel(m.sched));
     var hasProof = m.att && (m.att.checkInHasPhoto || m.att.checkOutHasPhoto || m.att.checkOutNote);
     dayRows += '<tr>'+
       '<td>'+d+' <span class="muted">('+DAY_SHORT_ID[m.weekday]+')</span></td>'+
@@ -3939,9 +3971,10 @@ function otherDeptScheduleHtml(myDepts){
     var cells = '';
     for(var d=1; d<=n; d++){
       var sc = DB.schedules[ym] && DB.schedules[ym][e.id] ? DB.schedules[ym][e.id][d] : null;
-      var cls = !sc ? 'osd-unset' : (sc.type==='kerja' ? 'osd-kerja' : (sc.cuti ? 'osd-cuti' : 'osd-libur'));
-      var txt = !sc ? '&middot;' : (sc.type==='kerja' ? escapeHtml(String(sc.start||'').replace(/:00$/,'')) : (sc.cuti ? 'C' : 'L'));
-      var tip = !sc ? 'Belum diatur' : (sc.type==='kerja' ? sc.start+'–'+sc.end+(sc.shift?' ('+sc.shift+')':'') : (sc.cuti ? 'Cuti' : 'Libur'));
+      var sk = schedKind(sc);
+      var cls = 'osd-'+(sk==='izin' ? 'sakit' : sk);
+      var txt = sk==='unset' ? '&middot;' : (sk==='kerja' ? escapeHtml(String(sc.start||'').replace(/:00$/,'')) : SCHED_KIND_SHORT[sk]);
+      var tip = sk==='kerja' ? sc.start+'–'+sc.end+(sc.shift?' ('+sc.shift+')':'') : SCHED_KIND_LABEL[sk];
       cells += '<td class="'+cls+(d===t.day?' osd-today':'')+'" title="'+escapeHtml(e.name+' · '+d+' · '+tip)+'">'+txt+'</td>';
     }
     return '<tr><td class="osd-name"><b>'+escapeHtml(e.name)+'</b><span>'+escapeHtml(e.position||'')+'</span></td>'+cells+'</tr>';
@@ -3954,7 +3987,7 @@ function otherDeptScheduleHtml(myDepts){
       '<select id="otherSchedDept" class="sop-dept-sel">'+others.map(function(d){ return '<option value="'+escapeHtml(d)+'"'+(d===od?' selected':'')+'>'+escapeHtml(d)+'</option>'; }).join('')+'</select></div>'+
     '<div class="card-sub">Hanya bisa dilihat (tidak bisa diubah) &middot; bulan berjalan. Hari ini <b>'+on.length+'</b> dari '+emps.length+' orang '+escapeHtml(od)+' masuk'+(on.length ? ': '+on.map(function(x){ return escapeHtml(x.e.name.split(' ')[0])+' '+escapeHtml(x.sc.start); }).join(', ') : '')+'.</div>'+
     '<div class="osd-wrap" id="osdWrap"><table class="osd-table"><thead><tr>'+head+'</tr></thead><tbody>'+(rows || '<tr><td class="empty-state">Belum ada karyawan.</td></tr>')+'</tbody></table></div>'+
-    '<div class="osd-legend"><span><i class="osd-kerja"></i>Jam masuk</span><span><i class="osd-libur"></i>L = Libur</span><span><i class="osd-cuti"></i>C = Cuti</span><span><i class="osd-unset"></i>Belum diatur</span></div>'+
+    '<div class="osd-legend"><span><i class="osd-kerja"></i>Jam masuk</span><span><i class="osd-libur"></i>L = Libur</span><span><i class="osd-cuti"></i>C = Cuti</span><span><i class="osd-sakit"></i>S = Sakit &middot; I = Izin</span><span><i class="osd-unset"></i>Belum diatur</span></div>'+
   '</div>';
 }
 
@@ -3966,12 +3999,12 @@ function shiftLabelForTime(start, end){
 function dateScheduleEditorModalHtml(day, ym, deptEmployees){
   var currentRows = deptEmployees.map(function(e){
     var sched = (DB.schedules[ym] && DB.schedules[ym][e.id] && DB.schedules[ym][e.id][day]) || null;
-    var label = !sched ? '<span class="muted">Belum diatur</span>' : (sched.type==='kerja' ? shiftLabelForTime(sched.start, sched.end) : (sched.cuti ? '<span class="badge badge-info">Cuti</span>' : '<span class="badge badge-neutral">Libur</span>'));
+    var label = !sched ? '<span class="muted">Belum diatur</span>' : (sched.type==='kerja' ? shiftLabelForTime(sched.start, sched.end) : schedOffBadge(sched));
     return '<tr><td>'+escapeHtml(e.name)+'</td><td>'+label+'</td></tr>';
   }).join('');
   var empRows = deptEmployees.map(function(e){
     var sched = (DB.schedules[ym] && DB.schedules[ym][e.id] && DB.schedules[ym][e.id][day]) || null;
-    var current = !sched ? 'belum diatur' : (sched.type==='kerja' ? (sched.start+'&ndash;'+sched.end) : (sched.cuti?'Cuti':'Libur'));
+    var current = !sched ? 'belum diatur' : (sched.type==='kerja' ? (sched.start+'&ndash;'+sched.end) : schedOffLabel(sched));
     return '<div class="checkbox-row"><input type="checkbox" id="dse_emp_'+e.id+'" data-role="dse-emp" checked><label for="dse_emp_'+e.id+'">'+escapeHtml(e.name)+'</label> <span class="muted" style="font-size:11px;">('+current+')</span></div>';
   }).join('');
   return ''+
@@ -3984,7 +4017,7 @@ function dateScheduleEditorModalHtml(day, ym, deptEmployees){
       '<div class="form-row">'+
         '<div class="form-group"><label>Sampai Tanggal (opsional, untuk rentang)</label><input type="date" id="dse_endDate"></div>'+
         '<div class="form-group"><label>Tipe</label><select id="dse_type" data-role="dse-type">'+
-          '<option value="kerja">Kerja</option><option value="libur">Libur</option>'+
+          '<option value="kerja">Kerja</option><option value="libur">Libur</option><option value="cuti">Cuti</option><option value="sakit">Sakit</option><option value="izin">Izin</option>'+
         '</select></div>'+
       '</div>'+
       '<div class="form-group" id="dse_shiftrow"><label>Preset Shift</label><select id="dse_shift" data-role="dse-shift">'+shiftPresetOptionsHtml('')+'</select></div>'+
@@ -4040,7 +4073,7 @@ function renderAttendancePage(){
   for(var d=1; d<=n; d++){
     var m = getMatchDay(empId, ym, d);
     var meta = STATUS_META[m.status];
-    var schedTxt = !m.sched ? '&mdash;' : (m.sched.type==='kerja' ? (m.sched.start+'&ndash;'+m.sched.end) : (m.sched.cuti ? 'Cuti' : 'Libur'));
+    var schedTxt = !m.sched ? '&mdash;' : (m.sched.type==='kerja' ? (m.sched.start+'&ndash;'+m.sched.end) : schedOffLabel(m.sched));
     var hasProof = m.att && (m.att.checkInHasPhoto || m.att.checkOutHasPhoto);
     dayRows += '<tr>'+
       '<td>'+d+' <span class="muted">('+DAY_SHORT_ID[m.weekday]+')</span></td>'+
@@ -4259,7 +4292,7 @@ function renderHodDashboard(){
   for(var d=1; d<=n; d++){
     var m = getMatchDay(empId, ym, d);
     var meta = STATUS_META[m.status];
-    var schedTxt = !m.sched ? '&mdash;' : (m.sched.type==='kerja' ? (m.sched.start+'&ndash;'+m.sched.end) : (m.sched.cuti ? 'Cuti' : 'Libur'));
+    var schedTxt = !m.sched ? '&mdash;' : (m.sched.type==='kerja' ? (m.sched.start+'&ndash;'+m.sched.end) : schedOffLabel(m.sched));
     dayRows += '<tr>'+
       '<td>'+d+' <span class="muted">('+DAY_SHORT_ID[m.weekday]+')</span></td>'+
       '<td class="muted">'+schedTxt+'</td>'+
@@ -4721,7 +4754,7 @@ function renderTodayCheckinCard(empId){
   var t = todayParts();
   var m = getMatchDay(empId, t.ym, t.day);
   var isWorkDay = m.sched && m.sched.type==='kerja';
-  var schedTxt = !m.sched ? 'Belum diatur' : (isWorkDay ? m.sched.start+'&ndash;'+m.sched.end : (m.sched.cuti ? 'Cuti' : 'Libur'));
+  var schedTxt = !m.sched ? 'Belum diatur' : (isWorkDay ? m.sched.start+'&ndash;'+m.sched.end : schedOffLabel(m.sched));
   var hasIn = m.att && m.att.checkIn;
   var hasOut = m.att && m.att.checkOut;
   var actionHtml;
@@ -4772,7 +4805,7 @@ function renderStaffSchedule(){
   for(var d=1; d<=n; d++){
     var sched = (DB.schedules[ym] && DB.schedules[ym][empId] && DB.schedules[ym][empId][d]) || null;
     var wd = weekdayOf(ym, d);
-    var txt = !sched ? '<span class="muted">Belum diatur</span>' : (sched.type==='kerja' ? sched.start+'&ndash;'+sched.end : (sched.cuti ? '<span class="badge badge-info">Cuti</span>' : '<span class="badge badge-neutral">Libur</span>'));
+    var txt = !sched ? '<span class="muted">Belum diatur</span>' : (sched.type==='kerja' ? sched.start+'&ndash;'+sched.end : schedOffBadge(sched));
     rows += '<tr><td>'+d+' ('+DAY_SHORT_ID[wd]+')</td><td>'+txt+'</td></tr>';
   }
   return ''+
@@ -5618,8 +5651,9 @@ function downloadTeamSchedulePDF(){
       var x2 = margin+nameColW+(dd-1)*dayColW;
       var fill, label;
       if(!m.sched){ fill=[255,255,255]; label='-'; }
-      else if(m.sched.cuti){ fill=[204,224,247]; label='C'; }
-      else if(m.sched.type==='libur'){ fill=[228,228,222]; label='L'; }
+      else if(m.sched.cuti){ fill=[253,215,215]; label='C'; }
+      else if(m.sched.leave){ fill=[254,226,196]; label=m.sched.leave==='sakit'?'S':'I'; }
+      else if(m.sched.type==='libur'){ fill=[253,226,226]; label='L'; }
       else { fill=[219,238,229]; label=(m.sched.start||'').slice(0,2); }
       doc.setFillColor(fill[0],fill[1],fill[2]);
       doc.setDrawColor(220);
@@ -7063,8 +7097,8 @@ function renderNotifSettingsPage(){
 function nsDayInfo(empId, dt){
   var ym = dt.getFullYear()+'-'+pad2(dt.getMonth()+1), d = dt.getDate(), iso = ym+'-'+pad2(d);
   var sc = DB.schedules && DB.schedules[ym] && DB.schedules[ym][empId] ? DB.schedules[ym][empId][d] : null;
-  var kind = !sc ? 'unset' : (sc.type==='kerja' ? 'kerja' : (sc.cuti ? 'cuti' : 'libur'));
-  return {iso:iso, ym:ym, day:d, wd:dt.getDay(), sched:sc, kind:kind, txt: kind==='kerja' ? sc.start+'–'+sc.end : (kind==='cuti' ? 'Cuti' : (kind==='libur' ? 'Libur' : 'Belum diatur'))};
+  var kind = schedKind(sc);
+  return {iso:iso, ym:ym, day:d, wd:dt.getDay(), sched:sc, kind:kind, txt: kind==='kerja' ? sc.start+'–'+sc.end : SCHED_KIND_LABEL[kind]};
 }
 /* Mode kartu jadwal:
    - 00:00 s.d. jam mulai shift hari ini  -> "Jadwal Hari Ini"
@@ -9312,6 +9346,7 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Warna jadwal: Libur & Cuti merah, Sakit & Izin oranye (kalender, jadwal tim, dashboard, PDF); HOD bisa set Cuti/Sakit/Izin di pengaturan jadwal tim; cuti Sakit/Izin yang disetujui tercatat sesuai jenisnya',
     'HOD: lihat jadwal departemen lain di bulan berjalan (hanya baca, ringkasan siapa masuk hari ini)',
     'SOP Departemen: HOD bisa menambah & memperbarui SOP departemennya (versi + riwayat + catatan perubahan); staf dapat notifikasi & tanda Baru/Diperbarui, tombol "Saya sudah membaca"; HR/HOD memantau status baca per departemen + tombol Ingatkan',
     'Chat: lampirkan tugas Selaras Board (tombol 📋 di kolom chat atau ikon chat di kartu Board); tugas yang ditugaskan/dialihkan otomatis masuk chat sebagai kartu dengan status terbaru + tombol Buka di Board',
@@ -12081,11 +12116,7 @@ document.addEventListener('click', function(e){
       adSelectedIds.forEach(function(id){
         DB.schedules[ymD] = DB.schedules[ymD] || {};
         DB.schedules[ymD][id] = DB.schedules[ymD][id] || {};
-        if(adType==='kerja'){
-          DB.schedules[ymD][id][d] = {type:'kerja', start:adStart, end:adEnd};
-        } else {
-          DB.schedules[ymD][id][d] = {type:'libur'};
-        }
+        DB.schedules[ymD][id][d] = schedEntryFor(adType, adStart, adEnd);
       });
     });
     var adDateTxt = adStartDateStr===adEndDateFinal ? formatDateID(adStartDateStr) : formatDateID(adStartDateStr)+' - '+formatDateID(adEndDateFinal);
@@ -12443,7 +12474,7 @@ document.addEventListener('click', function(e){
     if(confirm('Tarik pengajuan yang sudah disetujui ini? Hari yang sudah ditandai Cuti di jadwal akan dikembalikan menjadi belum diatur, dan HOD perlu menjadwalkan ulang.')){
       eachDateInRange(wdReq.startDate, wdReq.endDate, function(y,m,d){
         var ymW = y+'-'+pad2(m);
-        if(DB.schedules[ymW] && DB.schedules[ymW][wdReq.empId] && DB.schedules[ymW][wdReq.empId][d] && DB.schedules[ymW][wdReq.empId][d].cuti){
+        if(DB.schedules[ymW] && DB.schedules[ymW][wdReq.empId] && DB.schedules[ymW][wdReq.empId][d] && (DB.schedules[ymW][wdReq.empId][d].cuti || DB.schedules[ymW][wdReq.empId][d].leave)){
           delete DB.schedules[ymW][wdReq.empId][d];
         }
       });
@@ -12481,7 +12512,7 @@ document.addEventListener('click', function(e){
           var ym = y+'-'+pad2(m);
           DB.schedules[ym] = DB.schedules[ym] || {};
           DB.schedules[ym][apReq.empId] = DB.schedules[ym][apReq.empId] || {};
-          DB.schedules[ym][apReq.empId][d] = {type:'libur', cuti:true};
+          DB.schedules[ym][apReq.empId][d] = /sakit/i.test(apReq.type||'') ? {type:'libur', leave:'sakit'} : (/izin/i.test(apReq.type||'') ? {type:'libur', leave:'izin'} : {type:'libur', cuti:true});
         });
         logActivity('Menyetujui final (tahap HR) '+apReq.type+' milik "'+apEmpName+'" ('+apDateTxt+').');
         addNotification({type:'emp', empId:apReq.empId}, 'Pengajuan '+apReq.type+' Anda ('+apDateTxt+') disetujui.', 'leave-request');
