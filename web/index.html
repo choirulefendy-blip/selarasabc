@@ -186,6 +186,10 @@
   .osd-unset{color:var(--text-muted);}
   .osd-sun{color:var(--danger);}
   .osd-table .osd-today{box-shadow:inset 0 0 0 2px var(--primary);}
+  .gsi-wrap{margin:0 0 16px;}
+  .gsi-btn{display:flex;justify-content:center;min-height:44px;}
+  .gsi-or{display:flex;align-items:center;gap:10px;margin:14px 0 2px;color:var(--text-muted);font-size:12px;}
+  .gsi-or::before,.gsi-or::after{content:'';flex:1;height:1px;background:var(--border);}
   .osd-click{cursor:pointer;}
   .osd-table td.osd-click:hover{outline:2px solid var(--primary);outline-offset:-2px;}
   .osd-table th.osd-click:hover{color:var(--primary);}
@@ -2634,6 +2638,7 @@ function afterRender(){
     if(sbEl && STATE.sbScroll) sbEl.scrollTop = STATE.sbScroll;
   }catch(e){}
   navTrack();
+  try{ if(!SESSION.role) gsiMount(); }catch(e){}
   try{ todoPurgeOld(false); }catch(e){}
   ['osdWrap','teamRosterWrap'].forEach(function(wid){ try{ var ow = document.getElementById(wid), ot = ow && ow.querySelector('th.osd-today'); if(ow && ot && !ow.getAttribute('data-scrolled')){ var nm = ow.querySelector('th.osd-name'); if(ot.offsetLeft + ot.offsetWidth > ow.clientWidth) ow.scrollLeft = Math.max(0, ot.offsetLeft - (nm ? nm.offsetWidth : 0) - 60); ow.setAttribute('data-scrolled','1'); } }catch(e){} });
   try{ workReminderSync(); tomorrowReminderSync(); shiftReminderSync(); nativeNotifAutoAsk(); assetServiceReminders(); assetHydratePhoto(); }catch(e){}
@@ -2667,6 +2672,67 @@ function afterRender(){
   } else if(CHECKIN_CAMERA_STATUS==='idle'){
     startCameraStream();
   }
+}
+
+/* ---------------------------- LOGIN DENGAN GOOGLE ----------------------------
+   Akun dicocokkan lewat alamat email: email karyawan (data Karyawan), email Akun HR utama/tambahan.
+   APK Android memakai WebView yang diblokir Google -> tombol hanya tampil di web & iPhone (PWA). */
+var GOOGLE_LOGIN_CLIENT_ID = '349641928964-6kk4k5l7pm95lcug5rc26rr7nucud9tt.apps.googleusercontent.com';
+var GSI = {loading:false, ready:false};
+function gsiAvailable(){ return !!GOOGLE_LOGIN_CLIENT_ID && !isNativeApp() && /^https?:/.test(location.protocol); }
+function gsiDecode(jwt){
+  try{
+    var p = String(jwt).split('.')[1].replace(/-/g,'+').replace(/_/g,'/'); while(p.length%4) p += '=';
+    var raw = atob(p), bytes = new Uint8Array(raw.length); for(var i=0;i<raw.length;i++) bytes[i] = raw.charCodeAt(i);
+    return JSON.parse(typeof TextDecoder!=='undefined' ? new TextDecoder().decode(bytes) : decodeURIComponent(escape(raw)));
+  }catch(e){ return null; }
+}
+function gsiLoginWithEmail(email){
+  var em = String(email||'').trim().toLowerCase();
+  if(!em) return false;
+  var same = function(x){ return String(x||'').trim().toLowerCase()===em; };
+  var emp = (DB.employees||[]).filter(function(e){ return e.active && same(e.email); })[0];
+  if(emp){ SESSION = empHasHrAccess(emp) ? hrModeSession(emp) : empModeSession(emp); }
+  else if(same(DB.hr && DB.hr.email)){ SESSION = {role:'hr', empId:null, hrAccountId:null}; }
+  else {
+    var acct = (DB.hrAccounts||[]).filter(function(a){ return same(a.email); })[0];
+    if(!acct) return false;
+    SESSION = {role:'hr', empId:null, hrAccountId:acct.id};
+  }
+  STATE.view = 'dashboard'; STATE.loginError = '';
+  saveSessionToStorage();
+  try{ logActivity('Login dengan Google ('+em+').'); saveDB(true); }catch(e){}
+  return true;
+}
+function gsiOnCredential(resp){
+  var c = gsiDecode(resp && resp.credential);
+  var now = Math.floor(Date.now()/1000);
+  if(!c || c.aud!==GOOGLE_LOGIN_CLIENT_ID || !/accounts\.google\.com$/.test(String(c.iss||'')) || (c.exp && c.exp < now-60)){ STATE.loginError = 'Login Google gagal. Coba lagi.'; render(); return; }
+  if(c.email_verified===false){ STATE.loginError = 'Email Google belum terverifikasi.'; render(); return; }
+  if(!gsiLoginWithEmail(c.email)){
+    STATE.loginError = 'Email '+c.email+' belum terdaftar di ABC Selaras. Minta HR mengisi email ini di data Karyawan (atau Akun HR), lalu coba lagi.';
+    try{ google.accounts.id.disableAutoSelect(); }catch(e){}
+    render(); return;
+  }
+  render();
+}
+function gsiMount(){
+  var box = document.getElementById('gsiBtn');
+  if(!box || !gsiAvailable()) return;
+  var draw = function(){
+    try{
+      if(!GSI.ready){ google.accounts.id.initialize({client_id:GOOGLE_LOGIN_CLIENT_ID, callback:gsiOnCredential, ux_mode:'popup', auto_select:false, cancel_on_tap_outside:true, use_fedcm_for_prompt:true}); GSI.ready = true; }
+      box.innerHTML = '';
+      google.accounts.id.renderButton(box, {type:'standard', theme:document.documentElement.getAttribute('data-theme')==='dark' ? 'filled_black' : 'outline', size:'large', text:'signin_with', shape:'pill', logo_alignment:'center', width:Math.min(360, Math.max(220, box.clientWidth||300)), locale:'id'});
+    }catch(e){ console.error('gsi', e); }
+  };
+  if(window.google && google.accounts && google.accounts.id){ draw(); return; }
+  if(GSI.loading){ GSI.waiters = (GSI.waiters||[]).concat([draw]); return; }
+  GSI.loading = true; GSI.waiters = [draw];
+  var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; sc.defer = true;
+  sc.onload = function(){ var ws = GSI.waiters||[]; GSI.waiters = []; ws.forEach(function(f){ f(); }); var b = document.getElementById('gsiBtn'); if(b && !b.children.length) draw(); };
+  sc.onerror = function(){ GSI.loading = false; var b = document.getElementById('gsiBtn'); if(b) b.innerHTML = '<div class="muted" style="font-size:12px;text-align:center;">Login Google tidak bisa dimuat. Periksa koneksi.</div>'; };
+  document.head.appendChild(sc);
 }
 
 /* ---------------------------- RENDER: LOGIN ---------------------------- */
@@ -2708,8 +2774,9 @@ function renderLogin(){
         '</div>'+
       '</div>'+
       '<div class="login-form-area">'+
-        '<div class="tab-switch">'+tabsHtml+'</div>'+
         (STATE.loginError ? '<div class="login-error">'+escapeHtml(STATE.loginError)+'</div>' : '')+
+        (gsiAvailable() ? '<div class="gsi-wrap"><div id="gsiBtn" class="gsi-btn"></div><div class="gsi-or"><span>atau pakai username</span></div></div>' : '')+
+        '<div class="tab-switch">'+tabsHtml+'</div>'+
         '<div>'+formHtml+'</div>'+
         '<div class="login-hint">'+hint+'</div>'+
       '</div>'+
@@ -9363,6 +9430,7 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Login dengan Google (web & iPhone): akun dicocokkan lewat email di data Karyawan / Akun HR',
     'Jadwal Tim: pilihan tampilan Kalender atau Tabel (ketuk sel untuk atur jadwal satu orang)',
     'Warna jadwal: Libur & Cuti merah, Sakit & Izin oranye (kalender, jadwal tim, dashboard, PDF); HOD bisa set Cuti/Sakit/Izin di pengaturan jadwal tim; cuti Sakit/Izin yang disetujui tercatat sesuai jenisnya',
     'HOD: lihat jadwal departemen lain di bulan berjalan (hanya baca, ringkasan siapa masuk hari ini)',
