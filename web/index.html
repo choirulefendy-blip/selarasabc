@@ -6989,9 +6989,16 @@ function renderMyActivityPage(){
 }
 
 /* ---------------------------- PREFERENSI NOTIFIKASI ---------------------------- */
+/* notifikasi absen staf (HR & HOD). attIn/attOut default MATI (bisa ramai), lainnya default nyala */
+var NOTIF_DEFAULT_OFF = {attIn:1, attOut:1};
+var NOTIF_CATS_ATT = [
+  {k:'attIn', label:'Setiap absen masuk', sub:'Pemberitahuan tiap staf absen masuk (jam, tepat waktu/telat). Bisa ramai, bawaan: mati.', def:false},
+  {k:'attOut', label:'Setiap absen pulang', sub:'Pemberitahuan tiap staf absen pulang beserta lama jam kerja. Bawaan: mati.', def:false},
+  {k:'late', label:'Staf absen telat', sub:'Saat ada yang absen masuk melewati jam jadwal (termasuk info jam fleksibel).'},
+  {k:'attMissing', label:'Staf belum absen', sub:'30 menit setelah jadwal masuk tetapi staf belum absen masuk.'},
+  {k:'outOfRange', label:'Absen di luar jangkauan', sub:'Absen di luar radius lokasi kantor atau tanpa GPS.'}
+];
 var NOTIF_CATS_HR = [
-  {k:'late', label:'Karyawan absen telat', sub:'Pemberitahuan langsung saat ada yang absen masuk melewati jam jadwal.'},
-  {k:'outOfRange', label:'Absen di luar jangkauan', sub:'Saat absen dilakukan di luar radius lokasi kantor atau GPS tidak terdeteksi.'},
   {k:'todo', label:'Aktivitas Selaras Board karyawan', sub:'Tugas baru dibuat atau diselesaikan oleh karyawan.'},
   {k:'chat', label:'Pesan chat', sub:'Pesan baru dari karyawan lain.'},
   {k:'general', label:'Pengajuan & lainnya', sub:'Pengajuan cuti, lembur, form, KPI, dan pemberitahuan sistem lain.'}
@@ -7011,9 +7018,11 @@ function getNotifPrefs(audience){
   if(audience.type==='hr') return np.hr || {};
   return (np.emp && np.emp[audience.empId]) || {};
 }
+function notifPrefOn(p, key){ return NOTIF_DEFAULT_OFF[key] ? p[key]===true : p[key]!==false; }
 function notifAllowed(audience, category){
   var p = getNotifPrefs(audience);
   if(p.enabled===false) return false;
+  if(category && NOTIF_DEFAULT_OFF[category]) return p[category]===true;
   if(category && p[category]===false) return false;
   return true;
 }
@@ -7212,10 +7221,14 @@ function renderNotifSettingsPage(){
   var prefs = getNotifPrefs(aud);
   var master = prefs.enabled!==false;
   var cats = SESSION.role==='hr' ? NOTIF_CATS_HR : NOTIF_CATS_EMP;
-  var catRows = cats.map(function(c){
-    return '<div class="pref-row"><div><div class="pref-label">'+c.label+'</div><div class="pref-sub">'+c.sub+'</div></div>'+
-      switchHtml(c.k, prefs[c.k]!==false, master)+'</div>';
-  }).join('');
+  var rowOf = function(c){ return '<div class="pref-row"><div><div class="pref-label">'+c.label+'</div><div class="pref-sub">'+c.sub+'</div></div>'+switchHtml(c.k, notifPrefOn(prefs, c.k), master)+'</div>'; };
+  var catRows = cats.map(rowOf).join('');
+  var attCard = '';
+  if(SESSION.role==='hr' || (SESSION.role==='hod' && getHodDepartments(SESSION.empId).length)){
+    attCard = '<div class="card"><div class="card-title">Notifikasi Absen Staf</div>'+
+      '<div class="card-sub">'+(SESSION.role==='hr' ? 'Untuk seluruh karyawan (berlaku untuk semua akun HR).' : 'Untuk staf di departemen yang kamu pimpin: '+escapeHtml(getHodDepartments(SESSION.empId).join(', '))+'.')+'</div>'+
+      NOTIF_CATS_ATT.map(rowOf).join('')+'</div>';
+  }
 
   var deviceStatus, deviceBtn = '';
   if(iosNeedsInstall()){
@@ -7234,7 +7247,7 @@ function renderNotifSettingsPage(){
     '<div class="card-sub">'+(SESSION.role==='hr' ? 'Pengaturan ini berlaku untuk semua akun HR.' : 'Pengaturan ini hanya untuk akunmu.')+' Notifikasi yang dimatikan tidak akan dikirim sama sekali.</div>'+
     '<div class="pref-row"><div><div class="pref-label">Aktifkan semua notifikasi</div><div class="pref-sub">Saklar utama. Matikan untuk berhenti menerima semua pemberitahuan.</div></div>'+switchHtml('enabled', master)+'</div>'+
     catRows+
-  '</div>'+
+  '</div>'+attCard+
   (SESSION.empId ? (function(){ var me = getEmployee(SESSION.empId);
     return '<div class="card"><div class="card-title">Notifikasi Email</div><div class="pref-row"><div><div class="pref-label">'+(me && me.email ? escapeHtml(me.email) : 'Email belum diisi')+(empEmailVerified(me) ? ' <span class="eg-check" style="width:16px;height:16px;">'+iconSvg('checkAll',11)+'</span>' : '')+'</div>'+
       '<div class="pref-sub">'+(empEmailNotifOn(me) ? 'Aktif — salinan notifikasi juga dikirim ke email.' : (empEmailVerified(me) ? 'Nonaktif.' : 'Verifikasi email di Profil untuk mengaktifkan.'))+'</div></div>'+
@@ -7554,29 +7567,38 @@ function renderNotifSchedulesHtml(){
 function raiseAttendanceAlerts(empId, ym, day, type, time, loc, geo){
   var emp = getEmployee(empId);
   if(!emp) return;
-  var hr = {type:'hr'};
   var who = emp.name+(emp.department ? ' ('+emp.department+')' : '');
   var label = type==='in' ? 'absen masuk' : 'absen pulang';
+  /* penerima: HR + HOD departemen staf (bukan dirinya sendiri); tiap penerima memakai pengaturannya sendiri */
+  var auds = [{type:'hr'}].concat((emp.department ? getDepartmentHods(emp.department) : []).filter(function(h){ return h!==empId; }).map(function(h){ return {type:'emp', empId:h}; }));
+  var send = function(msg, cat){ auds.forEach(function(a){ addNotification(a, msg, a.type==='hr' ? 'attendance' : 'hod-attendance', cat); }); };
+  var m = getMatchDay(empId, ym, day);
   if(type==='in'){
-    var m = getMatchDay(empId, ym, day);
-    if(m.lateMinutes>0 && m.flex){
-      addNotification(hr, who+' '+label+' pukul '+time+' (lewat '+m.lateMinutes+' menit dari jadwal '+(m.sched && m.sched.start ? m.sched.start : '')+'). Jam fleksibel: tidak dihitung telat bila pulang ≥ '+m.flex.needOut+' (8 jam).', 'attendance', 'late');
-    } else if(m.lateMinutes>0){
-      addNotification(hr, who+' '+label+' TELAT '+m.lateMinutes+' menit (pukul '+time+(m.sched && m.sched.start ? ', jadwal '+m.sched.start : '')+').', 'attendance', 'late');
-    }
+    var lateMsg = m.lateMinutes>0 ? (m.flex
+      ? who+' '+label+' pukul '+time+' (lewat '+m.lateMinutes+' menit dari jadwal '+(m.sched && m.sched.start ? m.sched.start : '')+'). Jam fleksibel: tidak dihitung telat bila pulang ≥ '+m.flex.needOut+' (8 jam).'
+      : who+' '+label+' TELAT '+m.lateMinutes+' menit (pukul '+time+(m.sched && m.sched.start ? ', jadwal '+m.sched.start : '')+').') : '';
+    var stt = !m.sched ? 'tanpa jadwal' : (m.sched.type!=='kerja' ? 'di hari libur' : (m.lateMinutes>0 ? 'telat '+m.lateMinutes+' menit (jadwal '+m.sched.start+')' : 'tepat waktu (jadwal '+m.sched.start+')'));
+    var inMsg = '✅ '+who+' absen masuk pukul '+time+' · '+stt+'.';
+    /* per penerima: kalau notifikasi telat aktif -> pesan telat; selain itu bila "setiap absen masuk" aktif -> pesan absen masuk */
+    auds.forEach(function(a){
+      var lk = a.type==='hr' ? 'attendance' : 'hod-attendance';
+      if(lateMsg && notifAllowed(a, 'late')) addNotification(a, lateMsg, lk, 'late');
+      else addNotification(a, inMsg, lk, 'attIn');
+    });
   } else {
-    var mo = getMatchDay(empId, ym, day);
-    if(mo.flex && mo.status==='telat'){
-      addNotification(hr, who+' '+label+' pukul '+time+': jam kerja '+fmtMinHM(mo.flex.workedMin)+' (kurang dari 8 jam) → dihitung TELAT '+mo.lateMinutes+' menit.', 'attendance', 'late');
-    } else if(mo.flex && mo.flexLateRaw){
-      addNotification(hr, who+' '+label+' pukul '+time+': masuk +'+mo.flexLateRaw+' menit tapi sudah bekerja '+fmtMinHM(mo.flex.workedMin)+' → tidak dihitung telat'+(mo.flex.extraMin>=FLEX_OT_MIN_SHOW ? ' (lebih '+fmtMinHM(mo.flex.extraMin)+')' : '')+'.', 'attendance', 'late');
+    if(m.flex && m.status==='telat'){
+      send(who+' '+label+' pukul '+time+': jam kerja '+fmtMinHM(m.flex.workedMin)+' (kurang dari 8 jam) → dihitung TELAT '+m.lateMinutes+' menit.', 'late');
+    } else if(m.flex && m.flexLateRaw){
+      send(who+' '+label+' pukul '+time+': masuk +'+m.flexLateRaw+' menit tapi sudah bekerja '+fmtMinHM(m.flex.workedMin)+' → tidak dihitung telat'+(m.flex.extraMin>=FLEX_OT_MIN_SHOW ? ' (lebih '+fmtMinHM(m.flex.extraMin)+')' : '')+'.', 'late');
     }
+    var wm = m.att && m.att.checkIn ? Math.round(workedHours(m.att, false)*60) : 0;
+    send('🏁 '+who+' absen pulang pukul '+time+(m.att && m.att.checkIn ? ' · masuk '+m.att.checkIn+', kerja '+fmtMinHM(wm) : '')+'.', 'attOut');
   }
   if((DB.officeLocations||[]).length){
     if(!loc){
-      addNotification(hr, who+' '+label+' pukul '+time+' tanpa data lokasi (GPS tidak terdeteksi).', 'attendance', 'outOfRange');
+      send(who+' '+label+' pukul '+time+' tanpa data lokasi (GPS tidak terdeteksi).', 'outOfRange');
     } else if(geo && !geo.withinRange){
-      addNotification(hr, who+' '+label+' pukul '+time+' di LUAR JANGKAUAN kantor (terdekat: '+geo.name+', '+geo.distance+' m).', 'attendance', 'outOfRange');
+      send(who+' '+label+' pukul '+time+' di LUAR JANGKAUAN kantor (terdekat: '+geo.name+', '+geo.distance+' m).', 'outOfRange');
     }
   }
 }
@@ -9705,6 +9727,7 @@ var APP_PUBLIC_URL = 'https://abcselaras.my.id/web/';
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Notifikasi Absen Staf untuk HR & HOD: setiap absen masuk/pulang, telat, belum absen (30 menit setelah jadwal), di luar jangkauan — bisa diatur di Pengaturan Notifikasi',
     'Editor teks seperti Word di SOP & Pengumuman: tebal, miring, garis bawah, ukuran huruf, warna, daftar, Tab/indentasi, rata, tautan, sisip gambar',
     'SOP: keterangan penerbit (HR Admin / HOD departemen) + opsi HOD minta persetujuan HR sebelum terbit (HR bisa setujui/tolak, revisi juga)',
     'Profil: Akun Google & Email — centang hijau bila tersambung, verifikasi lewat Google atau kode ke email, notifikasi lewat email (bisa dinyalakan/dimatikan)',
@@ -9898,7 +9921,7 @@ function mergeLiveData(remote){
       Object.keys(r).forEach(function(eid){ if(!l[eid] || String(r[eid]).localeCompare(String(l[eid]), undefined, {numeric:true})>0) l[eid] = r[eid]; }); }); }
   if(remote.boardCols){ DB.boardCols = DB.boardCols || {}; DB.boardColsAt = DB.boardColsAt || {};
     Object.keys(remote.boardCols).forEach(function(k){ var ra = (remote.boardColsAt||{})[k]||''; if(ra > (DB.boardColsAt[k]||'')){ DB.boardCols[k] = remote.boardCols[k]; DB.boardColsAt[k] = ra; } }); }
-  ['shiftRemNative','shiftRemSent'].forEach(function(k){
+  ['shiftRemNative','shiftRemSent','attMissSent'].forEach(function(k){
     if(!remote[k]) return; DB[k] = DB[k] || {};
     Object.keys(remote[k]).forEach(function(id){ if(String(remote[k][id]||'') > String(DB[k][id]||'')) DB[k][id] = remote[k][id]; });
   });
@@ -11811,7 +11834,7 @@ document.addEventListener('click', function(e){
   } else if(action==='toggle-notif-pref'){
     var npKey = el.getAttribute('data-key');
     var npAud = notifAudienceForSelf();
-    var npOn = getNotifPrefs(npAud)[npKey] !== false;
+    var npOn = notifPrefOn(getNotifPrefs(npAud), npKey);
     setNotifPref(npAud, npKey, !npOn);
     saveDB().then(function(){ render(); });
   } else if(action==='choose-photo'){

@@ -122,6 +122,49 @@ export function runShiftReminders(db, nowMs) {
   return out;
 }
 
+// ---- Staf belum absen 30 menit setelah jadwal masuk -> HR, HOD departemen, dan staf ybs ----
+export const ATT_MISS_MIN = 30;
+function prefsOf(db, aud) { const np = db.notifPrefs || {}; return aud === 'hr' ? (np.hr || {}) : ((np.emp || {})[aud] || {}); }
+function allowCat(db, aud, cat) { const p = prefsOf(db, aud); return p.enabled !== false && p[cat] !== false; }
+export function runAttMissing(db, nowMs) {
+  const out = [];
+  const w = nsWib(nowMs), ym = w.y + '-' + pad2(w.m + 1);
+  db.attMissSent = db.attMissSent || {};
+  const hodsOf = (dept) => ((db.departmentHods || {})[dept] || []);
+  const groups = {};   // penerima -> [teks]
+  for (const e of (db.employees || []).filter((x) => x.active)) {
+    const sc = (((db.schedules || {})[ym] || {})[e.id] || {})[w.d];
+    if (!sc || sc.type !== 'kerja' || !sc.start) continue;
+    const startMs = nsOccMs(w.y, w.m, w.d, sc.start);
+    let endMs = nsOccMs(w.y, w.m, w.d, sc.end || '23:59'); if (endMs <= startMs) endMs += 86400000;
+    if (nowMs < startMs + ATT_MISS_MIN * 60000 || nowMs >= endMs) continue;
+    if (db.attMissSent[e.id] === w.iso) continue;
+    const att = (((db.attendance || {})[ym] || {})[e.id] || {})[w.d];
+    if (att && att.checkIn) continue;
+    db.attMissSent[e.id] = w.iso;
+    const who = e.name + (e.department ? ' (' + e.department + ')' : '');
+    const late = Math.round((nowMs - startMs) / 60000);
+    const line = who + ' — jadwal ' + sc.start + ', lewat ' + late + ' menit';
+    if (allowCat(db, 'hr', 'attMissing')) (groups.hr = groups.hr || []).push(line);
+    for (const h of hodsOf(e.department)) { if (h !== e.id && allowCat(db, h, 'attMissing')) (groups[h] = groups[h] || []).push(line); }
+    if (allowCat(db, e.id, 'shift')) {
+      out.push({ to: e.id, text: '⚠️ Kamu belum absen masuk hari ini (jadwal ' + sc.start + '). Segera absen ya!', link: 'checkin', cat: 'shift', title: 'Belum absen masuk' });
+    }
+  }
+  for (const k of Object.keys(groups)) {
+    const list = groups[k];
+    const text = '⚠️ Belum absen masuk: ' + (list.length === 1 ? list[0] : list.length + ' staf — ' + list.join('; ')) + '.';
+    out.push({ to: k, text, link: k === 'hr' ? 'attendance' : 'hod-attendance', cat: 'attMissing', title: 'Staf belum absen' });
+  }
+  const now = new Date(nowMs).toISOString();
+  db.notifications = db.notifications || [];
+  for (const x of out) {
+    db.notifications.unshift({ id: uid('N'), audience: x.to === 'hr' ? { type: 'hr' } : { type: 'emp', empId: x.to }, message: x.text, link: x.link, category: x.cat, createdAt: now, read: false });
+  }
+  db.notifications = db.notifications.slice(0, 200);
+  return out.map((x) => ({ empId: x.to, text: x.text, link: x.link, title: x.title }));
+}
+
 async function main() {
   if (!SUPABASE_URL || !ANON) { console.log('Supabase belum diatur; lewati.'); return; }
   const h = { apikey: ANON, Authorization: 'Bearer ' + ANON };
@@ -135,6 +178,9 @@ async function main() {
   const shifts = runShiftReminders(db, nowMs);
   if (shifts.length) console.log('Pengingat shift: ' + shifts.length + ' orang');
   sent.push(...shifts);
+  const miss = runAttMissing(db, nowMs);
+  if (miss.length) console.log('Belum absen: ' + miss.length + ' notifikasi');
+  sent.push(...miss);
   if (!sent.length) { console.log('Tidak ada jadwal yang jatuh tempo.'); return; }
   if (DRY) { console.log('[dry] ' + sent.length + ' notifikasi'); return; }
   const w = await fetch(SUPABASE_URL + '/rest/v1/kv_store', {

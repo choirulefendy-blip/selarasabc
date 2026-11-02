@@ -197,7 +197,7 @@ function login(w, who){
   /* ---------------- PREFERENSI NOTIFIKASI ---------------- */
   console.log('\n[Preferensi notifikasi]');
   await login(w, 'hr'); await nav(w, 'notif-settings');
-  ok(text(w).indexOf('Karyawan absen telat')!==-1 && text(w).indexOf('Absen di luar jangkauan')!==-1, 'HR: halaman Notifikasi menampilkan kategori HR');
+  ok(text(w).indexOf('Staf absen telat')!==-1 && text(w).indexOf('Absen di luar jangkauan')!==-1, 'HR: halaman Notifikasi menampilkan kategori HR');
   await click(w, 'toggle-notif-pref', {key:'late'});
   ok(w.DB.notifPrefs.hr.late===false, 'HR: matikan notifikasi telat');
   var beforeLate = w.DB.notifications.length;
