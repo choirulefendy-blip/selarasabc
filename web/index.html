@@ -3864,7 +3864,7 @@ function dateScheduleEditorModalHtml(day, ym, deptEmployees){
   return ''+
   '<div class="modal-overlay" data-action="overlay-close">'+
     '<div class="modal" data-stop="1">'+
-      '<h3>Jadwal &mdash; '+formatDateID(ym+'-'+pad2(day))+'</h3>'+
+      '<h3>Jadwal '+DAY_NAME_ID_FULL(weekdayOf(ym, day))+', '+formatDateID(ym+'-'+pad2(day))+'</h3>'+
       '<div class="card-sub" style="margin-bottom:6px;font-weight:700;color:var(--text);">Jadwal Saat Ini</div>'+
       '<div class="table-wrap" style="max-height:180px;overflow-y:auto;margin-bottom:18px;border:1px solid var(--border);border-radius:16px;"><table><thead><tr><th>Nama</th><th>Shift / Status</th></tr></thead><tbody>'+(currentRows||'<tr><td colspan="2" class="empty-state">Tidak ada staf.</td></tr>')+'</tbody></table></div>'+
       '<div class="card-sub" style="margin-bottom:6px;font-weight:700;color:var(--text);">Atur / Edit Jadwal</div>'+
