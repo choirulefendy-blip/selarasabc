@@ -159,6 +159,7 @@
   .ckrk-row .form-group{margin-bottom:10px;}
   .ckrk-del{position:absolute;top:8px;right:10px;border:0;background:transparent;color:var(--text-muted);font-size:12px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;padding:4px 6px;border-radius:8px;}
   .ckrk-del:hover{color:var(--danger);background:var(--danger-bg);}
+  .mode-switch{margin-bottom:8px;display:inline-flex;align-items:center;justify-content:center;gap:6px;}
   .app-ver{font-size:11px;color:rgba(255,255,255,.5);text-align:center;margin-top:8px;letter-spacing:.3px;}
   .chip-btn{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:6px 14px;font-size:12.5px;font-weight:600;cursor:pointer;}
   .chip-btn.on{background:var(--primary-container);color:var(--on-primary-container);border-color:transparent;}
@@ -1060,7 +1061,12 @@ function restoreSessionFromStorage(){
   var saved;
   try{ saved = JSON.parse(localStorage.getItem('abcSelarasSession')||'null'); }catch(e){ saved = null; }
   if(!saved || !saved.role) return;
-  if(saved.role==='hr'){
+  if(saved.role==='hr' && saved.asEmpId){
+    var se = getEmployee(saved.asEmpId);
+    if(empHasHrAccess(se)) SESSION = hrModeSession(se);
+    else if(se && se.active) SESSION = empModeSession(se);
+    else clearSessionFromStorage();
+  } else if(saved.role==='hr'){
     if(!saved.hrAccountId){
       SESSION = {role:'hr', empId:null, hrAccountId:null};
     } else {
@@ -1343,12 +1349,24 @@ function unreadNotifCount(){
 
 /* ---------------------------- ACTIVITY LOG ---------------------------- */
 function currentHrAccount(){
+  if(SESSION.asEmpId){
+    var ae = getEmployee(SESSION.asEmpId);
+    if(ae) return {id:'emp:'+ae.id, empId:ae.id, username:ae.username, email:ae.email||'', name:ae.name, photoKey:ae.photoKey||null, photoUrl:ae.photoUrl||null};
+  }
   if(SESSION.hrAccountId){
     var acct = (DB.hrAccounts||[]).find(function(a){ return a.id===SESSION.hrAccountId; });
     if(acct) return acct;
   }
   return {id:null, username:DB.hr.username, email:DB.hr.email, name:DB.hr.name || 'HR Admin'};
 }
+/* nama orang yang sedang memakai akun HR, mis. "Ilin (HR)"; akun HR utama tanpa nama -> "HR" */
+function hrActorLabel(){
+  var a = currentHrAccount(), n = String(a.name||'').trim();
+  return (!n || /^HR( Admin)?$/i.test(n)) ? 'HR' : n+' (HR)';
+}
+function empHasHrAccess(e){ return !!(e && e.active && e.hrAccess); }
+function hrModeSession(emp){ return {role:'hr', empId:null, hrAccountId:null, asEmpId:emp.id}; }
+function empModeSession(emp){ return {role: isHOD(emp.id) ? 'hod' : 'staff', empId:emp.id}; }
 function allHrEmails(){
   var emails = [];
   if(DB.hr.email) emails.push(DB.hr.email);
@@ -2883,7 +2901,7 @@ function renderShell(){
 
   var who, whoSub;
   if(role==='hr'){
-    who = currentHrAccount().name || currentHrAccount().username; whoSub = 'HR';
+    who = currentHrAccount().name || currentHrAccount().username; whoSub = SESSION.asEmpId ? 'Mode HR' : 'HR';
   } else {
     var stEmp = getEmployee(SESSION.empId);
     who = stEmp ? stEmp.name : '';
@@ -2985,7 +3003,8 @@ function renderShell(){
       '</div>'+
       navHtml+
       '<div class="sidebar-foot">'+
-        '<div class="sidebar-user" style="display:flex;gap:10px;align-items:center;">'+avatarHtml(role==='hr' ? null : getEmployee(SESSION.empId), 38)+'<div style="min-width:0;"><strong>'+escapeHtml(who||'')+'</strong>'+escapeHtml(whoSub||'')+'</div></div>'+
+        '<div class="sidebar-user" style="display:flex;gap:10px;align-items:center;">'+avatarHtml(role==='hr' ? (SESSION.asEmpId ? getEmployee(SESSION.asEmpId) : null) : getEmployee(SESSION.empId), 38)+'<div style="min-width:0;"><strong>'+escapeHtml(who||'')+'</strong>'+escapeHtml(whoSub||'')+'</div></div>'+
+        modeSwitchBtnHtml()+
         '<button class="btn btn-secondary btn-block btn-sm" data-action="logout">Keluar</button>'+
         '<div class="app-ver">ABC Selaras '+escapeHtml(appVersionLabel())+'</div>'+
       '</div>'+
@@ -4394,6 +4413,18 @@ function renderSettingsPage(){
       '<div class="form-group"><label>Email (opsional)</label><input type="email" id="newHrEmail"></div>'+
     '</div>'+
     '<button class="btn btn-primary" data-action="add-hr-account">Tambah Akun HR</button>'+
+  '</div>'+
+  '<div class="card">'+
+    '<div class="card-title">Karyawan dengan Akses HR</div>'+
+    '<div class="card-sub">Beri hak akses HR ke karyawan yang sudah ada. Mereka login pakai username/password karyawannya sendiri, nama &amp; fotonya tetap, dan bisa berpindah antara <b>Mode HR</b> dan <b>Mode Karyawan</b> (untuk absen, slip gaji, dll) lewat tombol di menu samping.</div>'+
+    '<div class="table-wrap" style="margin-bottom:16px;"><table><thead><tr><th>Nama</th><th>Departemen</th><th>Username</th><th></th></tr></thead><tbody>'+
+      (activeEmployees().filter(function(e){ return e.hrAccess; }).map(function(e){
+        return '<tr><td>'+escapeHtml(e.name)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+escapeHtml(e.username||'-')+'</td><td>'+
+          (SESSION.asEmpId===e.id ? '<span class="muted" style="font-size:12px;">(kamu)</span>' : '<button class="btn btn-ghost btn-sm" data-action="hr-access-del" data-id="'+e.id+'" style="color:var(--danger);">Cabut</button>')+'</td></tr>';
+      }).join('') || '<tr><td colspan="4" class="empty-state">Belum ada karyawan dengan akses HR.</td></tr>')+'</tbody></table></div>'+
+    '<div class="form-row"><div class="form-group" style="flex:2;"><label>Pilih karyawan</label><select id="hrAccessEmp"><option value="">Pilih karyawan...</option>'+
+      activeEmployees().filter(function(e){ return !e.hrAccess; }).sort(function(x,y){ return x.name.localeCompare(y.name); }).map(function(e){ return '<option value="'+e.id+'">'+escapeHtml(e.name)+' &middot; '+escapeHtml(e.department||'')+'</option>'; }).join('')+'</select></div></div>'+
+    '<button class="btn btn-primary" data-action="hr-access-add">Beri Akses HR</button>'+
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">HOD per Departemen</div>'+
@@ -6208,7 +6239,7 @@ function todoEditModalHtml(t){
 }
 function todoApplyEdit(t, f){
   var changes = [], now = new Date().toISOString(), selfKey = todoSelfKey();
-  var meName = SESSION.role==='hr' ? 'HR' : ((getEmployee(SESSION.empId)||{}).name||'');
+  var meName = SESSION.role==='hr' ? hrActorLabel() : ((getEmployee(SESSION.empId)||{}).name||'');
   if(f.title && f.title!==t.title){ changes.push('judul'); t.title = f.title; }
   if((f.note||'')!==(t.note||'')){ changes.push('catatan'); t.note = f.note||''; }
   if((f.priority||'normal')!==(t.priority||'normal')){ changes.push('prioritas'); t.priority = f.priority; }
@@ -6217,7 +6248,7 @@ function todoApplyEdit(t, f){
   var oldOwner = t.ownerId;
   if(f.ownerId && f.ownerId!==t.ownerId && todoCanReassign(t)){
     t.ownerId = f.ownerId; changes.push('penerima');
-    addNotification({type:'emp', empId:f.ownerId}, (SESSION.role==='hr' ? 'HR' : meName)+' memberi tugas: '+t.title+(t.due ? ' (tenggat '+formatDateID(t.due)+')' : '')+'.', 'todo', 'todo');
+    addNotification({type:'emp', empId:f.ownerId}, meName+' memberi tugas: '+t.title+(t.due ? ' (tenggat '+formatDateID(t.due)+')' : '')+'.', 'todo', 'todo');
     if(oldOwner!=='hr' && oldOwner!==selfKey) addNotification({type:'emp', empId:oldOwner}, 'Tugas "'+t.title+'" dialihkan ke '+todoOwnerName(f.ownerId)+'.', 'todo', 'todo');
   }
   if(f.status && f.status!==t.status){ setTodoStatus(t, f.status); changes.push('status'); }
@@ -7482,7 +7513,7 @@ function boardImportConfirm(){
   DB.todos = DB.todos || []; DB.projects = DB.projects || [];
   var now = new Date().toISOString(), self = todoSelfKey();
   var selfEmp = SESSION.role==='hr' ? null : getEmployee(SESSION.empId);
-  var label = 'oleh '+(SESSION.role==='hr' ? 'HR' : (selfEmp?selfEmp.name:''))+' (impor)';
+  var label = 'oleh '+(SESSION.role==='hr' ? hrActorLabel() : (selfEmp?selfEmp.name:''))+' (impor)';
   var added = 0, skipped = 0, newProj = 0, noOwner = 0;
   var existing = {};
   DB.todos.forEach(function(t){ if(!t.deleted) existing[t.ownerId+'|'+String(t.title||'').toLowerCase()+'|'+(t.due||'')] = true; });
@@ -8783,13 +8814,39 @@ function orgDownloadPng(){
   }).catch(function(){ document.body.classList.remove('org-capture'); toast('Gagal membuat gambar (perlu koneksi internet).'); });
 }
 
+/* ---------------------------- KARYAWAN DENGAN AKSES HR: GANTI MODE ---------------------------- */
+function modeSwitchBtnHtml(){
+  if(SESSION.role==='hr' && SESSION.asEmpId) return '<button class="btn btn-primary btn-block btn-sm mode-switch" data-action="switch-mode">'+iconSvg('users',15)+' Mode Karyawan</button>';
+  if(SESSION.empId && empHasHrAccess(getEmployee(SESSION.empId))) return '<button class="btn btn-primary btn-block btn-sm mode-switch" data-action="switch-mode">'+iconSvg('settings',15)+' Mode HR</button>';
+  return '';
+}
+function switchMode(){
+  var e = getEmployee(SESSION.role==='hr' ? SESSION.asEmpId : SESSION.empId);
+  if(!e) return;
+  if(SESSION.role==='hr') SESSION = empModeSession(e);
+  else if(empHasHrAccess(e)) SESSION = hrModeSession(e);
+  else return;
+  try{ chatReset(); }catch(x){}
+  STATE.view = 'dashboard'; STATE.sidebarOpen = false;
+  saveSessionToStorage(); render();
+  toast(SESSION.role==='hr' ? 'Mode HR aktif.' : 'Mode Karyawan aktif.');
+}
+
 /* ---------------------------- PROFIL HR ---------------------------- */
 function hrProfileTarget(){
+  if(SESSION.asEmpId){ var pe = getEmployee(SESSION.asEmpId); if(pe) return pe; }
   if(SESSION.hrAccountId){ var a = (DB.hrAccounts||[]).filter(function(x){ return x.id===SESSION.hrAccountId; })[0]; if(a) return a; }
   return DB.hr;
 }
 function hrAvatarEmpLike(){ var t = hrProfileTarget(); return {name:t.name||'HR Admin', photoKey:t.photoKey||null, photoUrl:t.photoUrl||null}; }
 function renderHrProfilePage(){
+  if(SESSION.asEmpId){
+    var he = getEmployee(SESSION.asEmpId);
+    if(he) return '<div class="card" style="text-align:center;"><div style="display:flex;justify-content:center;margin:6px 0 14px;">'+avatarHtml(he, 120)+'</div>'+
+      '<div class="card-title" style="margin-bottom:2px;">'+escapeHtml(he.name)+'</div><div class="card-sub">'+escapeHtml(he.position||'')+(he.department?' &middot; '+escapeHtml(he.department):'')+' &middot; <b>Akses HR</b></div>'+
+      '<div class="card-sub">Kamu memakai akun karyawanmu dengan hak akses HR. Nama, foto, dan password diatur dari profil karyawan.</div>'+
+      '<button class="btn btn-primary" data-action="switch-mode">Beralih ke Mode Karyawan</button></div>';
+  }
   var t = hrProfileTarget(), av = hrAvatarEmpLike(), hasPhoto = !!(t.photoKey || t.photoUrl);
   return '<div class="card" style="text-align:center;"><div style="display:flex;justify-content:center;margin:6px 0 14px;"><span class="avatar" style="width:120px;height:120px;font-size:46px;"'+avatarKeyAttr(av)+'>'+avatarInner(av)+'</span></div>'+
     '<div class="card-title" style="margin-bottom:2px;">'+escapeHtml(t.name||'HR Admin')+'</div><div class="card-sub">Akun HR'+(SESSION.hrAccountId?'':' utama')+' &middot; @'+escapeHtml(t.username||'')+'</div>'+
@@ -9076,6 +9133,7 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Akses HR untuk karyawan: login pakai akun sendiri, nama & foto tetap, bisa pindah Mode HR / Mode Karyawan. Semua akun HR kini tampil dengan nama orangnya (tugas, notifikasi, chat, log)',
     'Impor Paket Dokumen (HR): SOP, Job Description, Flowchart, Template & Struktur Organisasi sekaligus; kategori dokumen baru, flowchart bergambar langkah, isi panjang bisa diringkas',
     'Jam fleksibel (Marketing, Sales, Finance, Accounting, Purchasing): masuk telat tidak dihitung telat bila bekerja 8 jam; lebihnya tercatat lembur. Departemen bisa diatur HR di Pengaturan',
     'Selaras Board: satu board bersama per departemen (filter Semua anggota / Tugas saya / per orang)',
@@ -9393,7 +9451,7 @@ function createTodo(f){
   var now = new Date().toISOString();
   var selfKey = todoSelfKey();
   var selfEmp = SESSION.role==='hr' ? null : getEmployee(SESSION.empId);
-  var selfName = SESSION.role==='hr' ? 'HR' : (selfEmp ? selfEmp.name : '');
+  var selfName = SESSION.role==='hr' ? hrActorLabel() : (selfEmp ? selfEmp.name : '');
   var t = {
     id: uid('TD'), ownerId: f.ownerId, title: f.title, note: f.note||'', due: f.due||'',
     priority: f.priority||'normal', status: f.ownerId==='hr' ? boardFirstCol('') : boardFirstCol((getEmployee(f.ownerId)||{}).department||''),
@@ -9406,7 +9464,7 @@ function createTodo(f){
   var ownerName = todoOwnerName(f.ownerId);
   var dueTxt = t.due ? ' (tenggat '+formatDateID(t.due)+')' : '';
   if(f.ownerId!==selfKey){
-    addNotification({type:'emp', empId:f.ownerId}, (SESSION.role==='hr' ? 'HR' : 'HOD '+selfName)+' memberi tugas baru: '+t.title+dueTxt+'.', 'todo', 'todo');
+    addNotification({type:'emp', empId:f.ownerId}, (SESSION.role==='hr' ? selfName : 'HOD '+selfName)+' memberi tugas baru: '+t.title+dueTxt+'.', 'todo', 'todo');
     if(SESSION.role==='hod') addNotification({type:'hr'}, 'HOD '+selfName+' menugaskan '+ownerName+': '+t.title+dueTxt+'.', 'todo', 'todo');
   } else if(SESSION.role!=='hr'){
     addNotification({type:'hr'}, ownerName+' menambahkan tugas: '+t.title+dueTxt+'.', 'todo', 'todo');
@@ -9702,6 +9760,7 @@ function chatFetch(me, afterId){
   return Promise.resolve(chatLocalAll().filter(function(m){ return m.id>afterId && (m.sender===me || m.recipient===me || gids.indexOf(String(m.recipient).replace(/^g:/,''))!==-1 && chatIsGroup(m.recipient)); }));
 }
 function chatSendStore(me, to, body, extra){
+  if(me==='hr' && SESSION.role==='hr'){ var hn = hrActorLabel(); if(hn!=='HR') body = String(body||'') + '⁣HRN:'+hn.replace(/ \(HR\)$/,'').replace(/⁣/g,'').slice(0,60)+'⁣'; }
   if(chatRemote()) return chatSendRemote(me, to, body, extra);
   var all = chatLocalAll();
   var nextId = all.reduce(function(mx, m){ return Math.max(mx, m.id); }, 0) + 1;
@@ -9897,7 +9956,7 @@ function chatLastMsgWith(conv){
 }
 
 function chatPreview(m){
-  var firstLine = String(chatIsFwd(m) ? String(m.body).slice(CHAT_FWD.length) : (m.body||'')).split('\n')[0];
+  var firstLine = chatBodyText(m).split('\n')[0];
   if(m.kind==='task') return CHAT_ICON_TASK+' '+firstLine;
   if(m.kind==='sys') return firstLine;
   if(m.file_key || m.file_url) return CHAT_ICON_FILE+' '+(m.file_name || 'Berkas')+(firstLine ? ' · '+firstLine : '');
@@ -10023,7 +10082,8 @@ function chatMessagesHtml(){
     var mine = m.sender===me;
     var hasImg = !!(m.image_key || m.image_url), hasFile = !!(m.file_key || m.file_url);
     var txt = chatBodyText(m);
-    var inner = (isGrp && !mine ? '<div class="chat-sender" data-action="person-open" data-id="'+escapeHtml(m.sender)+'">'+escapeHtml(chatPeerName(m.sender))+'</div>' : '')+
+    var hrn = m.sender==='hr' ? chatHrName(m) : '';
+    var inner = (isGrp && !mine ? '<div class="chat-sender" data-action="person-open" data-id="'+escapeHtml(m.sender)+'">'+escapeHtml(hrn ? hrn+' · HR' : chatPeerName(m.sender))+'</div>' : (hrn ? '<div class="chat-sender">'+escapeHtml(mine ? 'Dikirim oleh '+hrn : hrn+' · HR')+'</div>' : ''))+
       (chatIsFwd(m) ? '<div class="chat-fwd">↪ Diteruskan</div>' : '')+
       (m.kind==='msg' && m.ref_id ? chatQuoteHtml(m) : '')+
       (m.kind==='task' ? '<div class="chat-task-tag">'+CHAT_ICON_TASK+' Tugas baru</div>' : '')+
@@ -10350,8 +10410,10 @@ function chatPostSystem(to, body, extra){
 
 /* ---- Chat: menu tahan / klik kanan, balas, teruskan, bintang, simpan media, profil ---- */
 var CHAT_FWD = '⁣FWD⁣';
+var CHAT_HRN_RE = /⁣HRN:([^⁣]{0,80})⁣$/;
 function chatIsFwd(m){ return String(m.body||'').indexOf(CHAT_FWD)===0; }
-function chatBodyText(m){ return chatIsFwd(m) ? String(m.body).slice(CHAT_FWD.length) : String(m.body||''); }
+function chatHrName(m){ var x = CHAT_HRN_RE.exec(String(m.body||'')); return x ? x[1] : ''; }
+function chatBodyText(m){ var b = String(m.body||'').replace(CHAT_HRN_RE, ''); return b.indexOf(CHAT_FWD)===0 ? b.slice(CHAT_FWD.length) : b; }
 function chatMsgById(id){ return CHAT.msgs.filter(function(x){ return x.id===id; })[0] || null; }
 function chatIsStarred(id){ return (CHAT.prefs.starred||[]).indexOf(id)!==-1; }
 function chatIsHidden(id){ return (CHAT.prefs.hidden||[]).indexOf(id)!==-1; }
@@ -11297,6 +11359,25 @@ document.addEventListener('click', function(e){
   } else if(action==='toggle-notifications'){
     STATE.notifPanelOpen = !STATE.notifPanelOpen;
     render();
+  } else if(action==='switch-mode'){
+    switchMode();
+  } else if(action==='hr-access-add'){
+    if(SESSION.role!=='hr') return;
+    var haE = getEmployee((document.getElementById('hrAccessEmp')||{}).value);
+    if(!haE){ toast('Pilih karyawan.'); return; }
+    haE.hrAccess = true; haE.updatedAt = new Date().toISOString();
+    addNotification({type:'emp', empId:haE.id}, 'Kamu diberi akses HR oleh '+hrActorLabel()+'. Ketuk "Mode HR" di menu samping untuk beralih.', 'dashboard', 'general');
+    logActivity('Memberi akses HR ke '+haE.name+'.');
+    saveDB().then(function(){ toast(haE.name+' sekarang punya akses HR.'); render(); });
+  } else if(action==='hr-access-del'){
+    if(SESSION.role!=='hr') return;
+    var hdE = getEmployee(el.getAttribute('data-id'));
+    if(!hdE) return;
+    if(SESSION.asEmpId===hdE.id){ toast('Tidak bisa mencabut akses HR milik sendiri.'); return; }
+    if(!confirm('Cabut akses HR dari '+hdE.name+'?')) return;
+    hdE.hrAccess = false; hdE.updatedAt = new Date().toISOString();
+    logActivity('Mencabut akses HR dari '+hdE.name+'.');
+    saveDB().then(function(){ toast('Akses HR '+hdE.name+' dicabut.'); render(); });
   } else if(action==='pkg-apply'){
     el.disabled = true; el.textContent = 'Menerapkan...';
     pkgApply().then(function(r){ closeModal(); if(r) toast(r.added+' dokumen baru, '+r.updated+' diperbarui'+(r.org ? ', '+r.org+' struktur organisasi ('+r.orgN+' jabatan)' : '')+'.'); render(); })
@@ -12958,6 +13039,12 @@ function doHrLogin(){
       render();
       return;
     }
+    var hrEmp = DB.employees.find(function(e){ return empHasHrAccess(e) && String(e.username||'').trim().toLowerCase()===u.toLowerCase() && e.password===p; });
+    if(hrEmp){
+      SESSION = hrModeSession(hrEmp);
+      STATE.view = 'dashboard'; STATE.loginError='';
+      saveSessionToStorage(); render(); return;
+    }
     var extraAcct = (DB.hrAccounts||[]).find(function(a){ return a.username===u && a.password===p; });
     if(extraAcct){
       SESSION = {role:'hr', empId:null, hrAccountId:extraAcct.id};
@@ -12983,8 +13070,7 @@ function doStaffLogin(){
     var pass = passEl.value;
     var emp = DB.employees.find(function(e){ return e.active && e.username.trim().toLowerCase()===uname; });
     if(emp && emp.password===pass){
-      var role = isHOD(emp.id) ? 'hod' : 'staff';
-      SESSION = {role:role, empId:emp.id};
+      SESSION = empHasHrAccess(emp) ? hrModeSession(emp) : empModeSession(emp);
       STATE.view = 'dashboard'; STATE.loginError='';
       saveSessionToStorage();
       render();
