@@ -173,6 +173,15 @@
   .sop-meta{font-size:12px;color:var(--text-muted);margin-top:4px;}
   .sop-desc{margin-top:10px;font-size:13.5px;color:var(--text-muted);line-height:1.6;}
   .sop-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .sop-unread{border-left:4px solid #F59E0B;}
+  .chip-btn.chip-new{border-color:#F59E0B;color:#B45309;}
+  .chip-btn.chip-new.on{background:#FEF3C7;color:#92400E;}
+  .sop-dept-sel{padding:9px 14px;border-radius:999px;border:1px solid var(--outline);background:var(--surface);color:var(--text);font:inherit;font-size:13.5px;max-width:240px;}
+  .sop-hist{margin-top:10px;font-size:12.5px;}
+  .sop-hist summary{cursor:pointer;color:var(--primary);font-weight:600;}
+  .sop-hist-row{padding:6px 0;border-bottom:1px dashed var(--border);color:var(--text-muted);}
+  .sop-hist-row b{color:var(--text);}
+  .sop-reads{margin-top:6px;}
   .sop-clamp{max-height:9.6em;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(#000 60%,transparent);mask-image:linear-gradient(#000 60%,transparent);}
   .sop-clamp.open{max-height:none;-webkit-mask-image:none;mask-image:none;}
   .sop-more{margin-top:4px;padding-left:0;}
@@ -8472,41 +8481,110 @@ function sopFileIcon(d){
   return d.fileKey || d.fileUrl ? ['FILE','#64748b'] : ['TEKS','#64748b'];
 }
 function fmtBytes(b){ b = +b||0; return b>=1048576 ? (b/1048576).toFixed(1).replace('.',',')+' MB' : Math.max(1,Math.round(b/1024))+' KB'; }
+/* ---- SOP per departemen: HOD bisa menambah/memperbarui, ada versi & riwayat, status dibaca ---- */
+function sopHodDepts(){ return SESSION.role==='hod' ? getHodDepartments(SESSION.empId) : []; }
+function sopCanCreate(){ return SESSION.role==='hr' || sopHodDepts().length>0; }
+function sopCanManage(d){ return SESSION.role==='hr' || (!!d.dept && sopHodDepts().indexOf(d.dept)!==-1); }
+function sopVer(d){ return d.version || '1.0'; }
+function sopNextVer(v){ var p = String(v||'1.0').split('.'); var a = +p[0]||1, b = (+p[1]||0)+1; return a+'.'+b; }
+function sopAudience(d){ return activeEmployees().filter(function(e){ return !d.dept || e.department===d.dept; }); }
+function sopReadsOf(d){ return (DB.sopReads && DB.sopReads[d.id]) || {}; }
+function sopIsRead(d, empId){ return sopReadsOf(d)[empId]===sopVer(d); }
+function sopReadStats(d){ var hods = d.dept ? getDepartmentHods(d.dept) : []; var aud = sopAudience(d).filter(function(e){ return hods.indexOf(e.id)===-1; }), r = aud.filter(function(e){ return sopIsRead(d, e.id); }); return {read:r.length, total:aud.length, unread:aud.filter(function(e){ return !sopIsRead(d, e.id); })}; }
+function sopNotify(d, msg){
+  sopAudience(d).forEach(function(e){ if(e.id!==SESSION.empId) addNotification({type:'emp', empId:e.id}, msg, 'sop', 'announcement'); });
+  if(SESSION.role!=='hr') addNotification({type:'hr'}, msg+' (oleh '+currentActorLabel()+')', 'sop', 'announcement');
+}
+function sopDeptOptions(sel, allowAll){
+  var list = SESSION.role==='hr' ? getDepartments() : sopHodDepts();
+  return (allowAll && SESSION.role==='hr' ? '<option value="">Semua departemen</option>' : '')+
+    list.map(function(d){ return '<option value="'+escapeHtml(d)+'"'+(d===sel?' selected':'')+'>'+escapeHtml(d)+'</option>'; }).join('');
+}
 function renderSopPage(){
-  var list = sopList(), cat = STATE.sopCat || '';
+  var all = sopList(), cat = STATE.sopCat || '', dep = STATE.sopDept || '';
+  var me = SESSION.empId, isStaffView = SESSION.role!=='hr';
+  var list = dep ? all.filter(function(d){ return dep==='__all' ? !d.dept : d.dept===dep; }) : all;
   var shown = cat ? list.filter(function(d){ return d.category===cat; }) : list;
+  if(STATE.sopUnread && me) shown = shown.filter(function(d){ return !sopIsRead(d, me); });
+  var unreadN = me ? all.filter(function(d){ return !sopIsRead(d, me); }).length : 0;
   var chips = '<div class="sop-chips no-print"><button class="chip-btn'+(!cat?' on':'')+'" data-action="sop-cat" data-cat="">Semua ('+list.length+')</button>'+
-    SOP_CATS.map(function(c){ var n = list.filter(function(d){ return d.category===c; }).length; return n ? '<button class="chip-btn'+(cat===c?' on':'')+'" data-action="sop-cat" data-cat="'+escapeHtml(c)+'">'+escapeHtml(c)+' ('+n+')</button>' : ''; }).join('')+'</div>';
-  var form = SESSION.role==='hr' ? '<details class="card bd-add no-print"'+(list.length?'':' open')+'><summary>+ Tambah SOP / Peraturan</summary>'+
-    '<div class="card-sub" style="margin:8px 0;">Unggah file (PDF, gambar, Word, Excel, PowerPoint, maks. 10 MB) atau tulis isinya langsung. Karyawan akan mendapat notifikasi.</div>'+
+    SOP_CATS.map(function(c){ var n = list.filter(function(d){ return d.category===c; }).length; return n ? '<button class="chip-btn'+(cat===c?' on':'')+'" data-action="sop-cat" data-cat="'+escapeHtml(c)+'">'+escapeHtml(c)+' ('+n+')</button>' : ''; }).join('')+
+    (unreadN ? '<button class="chip-btn'+(STATE.sopUnread?' on':'')+' chip-new" data-action="sop-unread">Belum dibaca ('+unreadN+')</button>' : '')+'</div>';
+  /* filter departemen (HR & HOD multi-departemen) */
+  var deptsAvail = SESSION.role==='hr' ? getDepartments() : null;
+  var deptSel = deptsAvail ? '<select id="sopDeptSel" class="sop-dept-sel"><option value="">Semua departemen</option><option value="__all"'+(dep==='__all'?' selected':'')+'>Umum (semua departemen)</option>'+
+    deptsAvail.map(function(d){ return '<option value="'+escapeHtml(d)+'"'+(d===dep?' selected':'')+'>'+escapeHtml(d)+'</option>'; }).join('')+'</select>' : '';
+  /* ringkasan pantauan (HR: semua dept, HOD: dept-nya) */
+  var monitor = '';
+  var monDepts = SESSION.role==='hr' ? getDepartments() : sopHodDepts();
+  if(monDepts.length){
+    var rows = monDepts.map(function(dn){
+      var docs = all.filter(function(d){ return d.dept===dn; });
+      var last = docs.slice().sort(function(a,b){ return (b.updatedAt||'').localeCompare(a.updatedAt||''); })[0];
+      var tot = 0, rd = 0; docs.forEach(function(d){ var s = sopReadStats(d); tot += s.total; rd += s.read; });
+      var pct = tot ? Math.round(rd/tot*100) : null;
+      return '<tr data-action="sop-dept-pick" data-dept="'+escapeHtml(dn)+'" style="cursor:pointer;"><td>'+escapeHtml(dn)+'</td><td class="num">'+docs.length+'</td>'+
+        '<td style="font-size:12px;">'+(last ? escapeHtml(last.title.slice(0,40))+'<div class="muted">'+escapeHtml(timeAgoID(last.updatedAt||last.createdAt))+(last.updatedBy?' &middot; '+escapeHtml(last.updatedBy):'')+'</div>' : '<span class="muted">Belum ada</span>')+'</td>'+
+        '<td style="min-width:90px;">'+(pct===null ? '<span class="muted">&mdash;</span>' : '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:var(--success);"></div></div><div class="muted" style="font-size:11px;">'+pct+'% dibaca</div>')+'</td></tr>';
+    }).join('');
+    monitor = '<details class="card bd-add no-print"'+(SESSION.role==='hr' && !STATE.sopMonClosed ? ' open' : '')+'><summary>Pantauan SOP per Departemen</summary>'+
+      '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Departemen</th><th class="num">SOP</th><th>Terakhir diperbarui</th><th>Dibaca staf</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
+  }
+  var form = sopCanCreate() ? '<details class="card bd-add no-print"'+(all.length?'':' open')+'><summary>+ Tambah SOP '+(SESSION.role==='hr' ? '/ Peraturan' : 'Departemen')+'</summary>'+
+    '<div class="card-sub" style="margin:8px 0;">'+(SESSION.role==='hr' ? 'Unggah file atau tulis isinya langsung.' : 'SOP ini berlaku untuk departemenmu. Staf departemen dan HR otomatis mendapat notifikasi.')+' File: PDF, gambar, Word, Excel, PowerPoint (maks. 10 MB).</div>'+
     '<div class="form-group"><label>Judul</label><input type="text" id="sop_title" placeholder="Contoh: SOP Check-in Tamu"></div>'+
     '<div class="form-row"><div class="form-group"><label>Kategori</label><select id="sop_cat">'+SOP_CATS.map(function(c){ return '<option>'+escapeHtml(c)+'</option>'; }).join('')+'</select></div>'+
-    '<div class="form-group"><label>Berlaku untuk</label><select id="sop_dept"><option value="">Semua departemen</option>'+getDepartments().map(function(d){ return '<option value="'+escapeHtml(d)+'">'+escapeHtml(d)+'</option>'; }).join('')+'</select></div></div>'+
-    '<div class="form-group"><label>Ringkasan / Isi (opsional)</label><textarea id="sop_desc" rows="3"></textarea></div>'+
+    '<div class="form-group"><label>Berlaku untuk</label><select id="sop_dept">'+sopDeptOptions(SESSION.role==='hr' ? '' : sopHodDepts()[0], true)+'</select></div></div>'+
+    '<div class="form-row"><div class="form-group"><label>Kode dokumen (opsional)</label><input type="text" id="sop_code" placeholder="mis. PHM-FO-SOP-001"></div>'+
+    '<div class="form-group"><label>Versi awal</label><input type="text" id="sop_ver" value="1.0"></div></div>'+
+    '<div class="form-group"><label>Ringkasan / Isi (opsional)</label><textarea id="sop_desc" rows="4" placeholder="Tujuan, langkah kerja, standar hasil..."></textarea></div>'+
     '<div class="form-group"><label>File (opsional)</label><input type="file" id="sop_file" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx"></div>'+
     '<button class="btn btn-primary" data-action="sop-add">Simpan & Bagikan</button></details>' : '';
   var items = shown.map(function(d){
-    var ic = sopFileIcon(d), hasFile = !!(d.fileKey || d.fileUrl);
-    return '<div class="card sop-item" data-q="'+escapeHtml((d.title+' '+(d.desc||'')+' '+d.category+' '+(d.dept||'')).toLowerCase())+'">'+
+    var ic = sopFileIcon(d), hasFile = !!(d.fileKey || d.fileUrl), canM = sopCanManage(d);
+    var unread = me && !sopIsRead(d, me), isUpd = (d.history||[]).length>1;
+    var stats = (canM && d.dept) || SESSION.role==='hr' ? sopReadStats(d) : null;
+    var hist = (d.history||[]).slice().reverse();
+    return '<div class="card sop-item'+(unread?' sop-unread':'')+'" data-q="'+escapeHtml((d.title+' '+(d.desc||'')+' '+d.category+' '+(d.dept||'')+' '+(d.code||'')).toLowerCase())+'">'+
       '<div class="sop-head"><span class="sop-ic" style="background:'+ic[1]+'1f;color:'+ic[1]+'">'+ic[0]+'</span>'+
-      '<div style="min-width:0;flex:1;"><div class="sop-title">'+escapeHtml(d.title)+'</div>'+
-      '<div class="sop-meta">'+(d.code ? '<span class="sop-code">'+escapeHtml(d.code)+'</span> ' : '')+'<span class="badge badge-info">'+escapeHtml(d.category)+'</span> '+escapeHtml(d.dept ? 'Dept. '+d.dept : 'Semua departemen')+' &middot; '+escapeHtml(formatDateID(String(d.updatedAt||d.createdAt).slice(0,10)))+(d.fileSize?' &middot; '+fmtBytes(d.fileSize):'')+'</div></div></div>'+
+      '<div style="min-width:0;flex:1;"><div class="sop-title">'+escapeHtml(d.title)+(unread ? ' <span class="badge badge-warning">'+(isUpd?'Diperbarui':'Baru')+'</span>' : '')+'</div>'+
+      '<div class="sop-meta">'+(d.code ? '<span class="sop-code">'+escapeHtml(d.code)+'</span> ' : '')+'<span class="badge badge-info">'+escapeHtml(d.category)+'</span> <span class="badge badge-neutral">v'+escapeHtml(sopVer(d))+'</span> '+escapeHtml(d.dept ? 'Dept. '+d.dept : 'Semua departemen')+' &middot; '+escapeHtml(formatDateID(String(d.updatedAt||d.createdAt).slice(0,10)))+(d.fileSize?' &middot; '+fmtBytes(d.fileSize):'')+
+        (d.updatedBy || d.by ? '<div>oleh '+escapeHtml(d.updatedBy || d.by)+'</div>' : '')+'</div></div></div>'+
       sopDescHtml(d)+
+      (hist.length>1 ? '<details class="sop-hist"><summary>Riwayat versi ('+hist.length+')</summary>'+hist.map(function(h){ return '<div class="sop-hist-row"><b>v'+escapeHtml(h.v)+'</b> &middot; '+escapeHtml(formatDateID(String(h.at).slice(0,10)))+' &middot; '+escapeHtml(h.by||'')+(h.note ? '<div>'+escapeHtml(h.note)+'</div>' : '')+'</div>'; }).join('')+'</details>' : '')+
+      (stats && stats.total ? '<div class="sop-reads no-print"><button type="button" class="btn btn-ghost btn-sm" data-action="sop-reads" data-id="'+d.id+'">'+iconSvg('checkAll',14)+' Dibaca '+stats.read+'/'+stats.total+' staf (v'+escapeHtml(sopVer(d))+')</button></div>' : '')+
       '<div class="sop-actions no-print">'+(hasFile ? '<button class="btn btn-primary btn-sm" data-action="sop-open" data-id="'+d.id+'">Buka File</button>' : '')+
-      (SESSION.role==='hr' ? '<button class="btn btn-secondary btn-sm" data-action="sop-edit" data-id="'+d.id+'">Edit</button><button class="btn btn-ghost btn-sm" style="color:var(--danger);" data-action="sop-del" data-id="'+d.id+'">Hapus</button>' : '')+'</div></div>';
+      (unread ? '<button class="btn btn-secondary btn-sm" data-action="sop-read" data-id="'+d.id+'">'+iconSvg('check',14)+' Saya sudah membaca</button>' : '')+
+      (canM ? '<button class="btn btn-secondary btn-sm" data-action="sop-edit" data-id="'+d.id+'">Perbarui</button><button class="btn btn-ghost btn-sm" style="color:var(--danger);" data-action="sop-del" data-id="'+d.id+'">Hapus</button>' : '')+'</div></div>';
   }).join('');
-  return '<div class="toolbar no-print" style="flex-wrap:wrap;gap:8px;"><input type="search" id="sopSearch" class="sop-search" placeholder="Cari SOP / peraturan...">'+
+  return '<div class="toolbar no-print" style="flex-wrap:wrap;gap:8px;"><input type="search" id="sopSearch" class="sop-search" placeholder="Cari SOP / peraturan...">'+deptSel+
     (SESSION.role==='hr' ? '<label class="btn btn-secondary btn-sm" style="cursor:pointer;">'+iconSvg('download',14)+' Impor Paket Dokumen<input type="file" id="pkgFile" accept=".json,application/json" style="display:none;"></label>' : '')+'</div>'+
-    chips + form + (items || '<div class="card"><div class="empty-state">'+(list.length ? 'Tidak ada dokumen di kategori ini.' : 'Belum ada SOP atau peraturan.'+(SESSION.role==='hr'?' Tambahkan lewat form di atas.':''))+'</div></div>');
+    monitor + chips + form + (items || '<div class="card"><div class="empty-state">'+(list.length ? (STATE.sopUnread ? 'Semua dokumen sudah kamu baca.' : 'Tidak ada dokumen di kategori ini.') : 'Belum ada SOP atau peraturan.'+(sopCanCreate()?' Tambahkan lewat form di atas.':''))+'</div></div>');
 }
 function sopEditModalHtml(d){
-  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:540px;"><h3>Edit Dokumen</h3>'+
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:540px;"><h3>Perbarui Dokumen <span class="badge badge-neutral">v'+escapeHtml(sopVer(d))+' &rarr; v'+escapeHtml(sopNextVer(sopVer(d)))+'</span></h3>'+
     '<div class="form-group"><label>Judul</label><input type="text" id="sope_title" value="'+escapeHtml(d.title)+'"></div>'+
     '<div class="form-row"><div class="form-group"><label>Kategori</label><select id="sope_cat">'+SOP_CATS.map(function(c){ return '<option'+(c===d.category?' selected':'')+'>'+escapeHtml(c)+'</option>'; }).join('')+'</select></div>'+
-    '<div class="form-group"><label>Berlaku untuk</label><select id="sope_dept"><option value="">Semua departemen</option>'+getDepartments().map(function(x){ return '<option value="'+escapeHtml(x)+'"'+(x===d.dept?' selected':'')+'>'+escapeHtml(x)+'</option>'; }).join('')+'</select></div></div>'+
-    '<div class="form-group"><label>Ringkasan / Isi</label><textarea id="sope_desc" rows="4">'+escapeHtml(d.desc||'')+'</textarea></div>'+
+    '<div class="form-group"><label>Berlaku untuk</label><select id="sope_dept">'+sopDeptOptions(d.dept||'', true)+'</select></div></div>'+
+    '<div class="form-row"><div class="form-group"><label>Kode dokumen</label><input type="text" id="sope_code" value="'+escapeHtml(d.code||'')+'"></div>'+
+    '<div class="form-group"><label>Versi baru</label><input type="text" id="sope_ver" value="'+escapeHtml(sopNextVer(sopVer(d)))+'"></div></div>'+
+    '<div class="form-group"><label>Ringkasan / Isi</label><textarea id="sope_desc" rows="5">'+escapeHtml(d.desc||'')+'</textarea></div>'+
+    '<div class="form-group"><label>Catatan perubahan</label><input type="text" id="sope_note" maxlength="200" placeholder="mis. Menambah langkah verifikasi deposit"></div>'+
     '<div class="form-group"><label>Ganti file (opsional)</label><input type="file" id="sope_file" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx"></div>'+
-    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="sop-save" data-id="'+d.id+'">Simpan</button></div></div></div>';
+    '<label class="pj-member" style="display:flex;gap:8px;"><input type="checkbox" id="sope_notify" checked> Beri tahu staf (wajib baca ulang)</label>'+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="sop-save" data-id="'+d.id+'">Simpan Versi Baru</button></div></div></div>';
+}
+function sopReadsModalHtml(d){
+  var s = sopReadStats(d), hods = d.dept ? getDepartmentHods(d.dept) : [], aud = sopAudience(d).filter(function(e){ return hods.indexOf(e.id)===-1; });
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:460px;"><h3>Status Baca &middot; v'+escapeHtml(sopVer(d))+'</h3>'+
+    '<div class="card-sub">'+escapeHtml(d.title)+' &middot; '+s.read+' dari '+s.total+' staf sudah membaca versi terbaru.</div>'+
+    '<div class="cg-list">'+aud.sort(function(a,b){ return (sopIsRead(d,a.id)?1:0)-(sopIsRead(d,b.id)?1:0) || a.name.localeCompare(b.name); }).map(function(e){
+      var r = sopIsRead(d, e.id), old = sopReadsOf(d)[e.id];
+      return '<div class="cg-item">'+avatarHtml(e, 30)+'<span style="flex:1;min-width:0;"><b>'+escapeHtml(e.name)+'</b><em>'+escapeHtml(e.department||'')+'</em></span>'+
+        (r ? '<span class="badge badge-success">Sudah</span>' : '<span class="badge badge-warning">'+(old ? 'Baru v'+escapeHtml(old) : 'Belum')+'</span>')+'</div>';
+    }).join('')+'</div>'+
+    (s.unread.length ? '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Tutup</button><button class="btn btn-primary" data-action="sop-remind" data-id="'+d.id+'">Ingatkan '+s.unread.length+' staf</button></div>' : '<div class="modal-actions"><button class="btn btn-primary" data-action="close-modal">Tutup</button></div>')+
+  '</div></div>';
 }
 function readFileDataUrl(file){
   return new Promise(function(res, rej){ var r = new FileReader(); r.onload = function(){ res(r.result); }; r.onerror = rej; r.readAsDataURL(file); });
@@ -8532,6 +8610,13 @@ function sopOpen(d){
     }
     try{ window.open(src, '_blank'); }catch(e){ window.location.href = src; }
   }).catch(function(){ toast('Gagal membuka file.'); });
+}
+
+function sopMarkRead(d){
+  if(!SESSION.empId) return;
+  DB.sopReads = DB.sopReads || {}; DB.sopReads[d.id] = DB.sopReads[d.id] || {};
+  DB.sopReads[d.id][SESSION.empId] = sopVer(d);
+  try{ saveDB(true); }catch(e){}
 }
 
 /* ---------------------------- STRUKTUR ORGANISASI ---------------------------- */
@@ -9176,6 +9261,7 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'SOP Departemen: HOD bisa menambah & memperbarui SOP departemennya (versi + riwayat + catatan perubahan); staf dapat notifikasi & tanda Baru/Diperbarui, tombol "Saya sudah membaca"; HR/HOD memantau status baca per departemen + tombol Ingatkan',
     'Chat: lampirkan tugas Selaras Board (tombol 📋 di kolom chat atau ikon chat di kartu Board); tugas yang ditugaskan/dialihkan otomatis masuk chat sebagai kartu dengan status terbaru + tombol Buka di Board',
     'Kamera absen: panduan siluet wajah & bahu, label Absen Masuk/Pulang + jam berjalan, "Posisikan tubuh tegap dan wajah menghadap ke kamera"',
     'Akses HR untuk karyawan: login pakai akun sendiri, nama & foto tetap, bisa pindah Mode HR / Mode Karyawan. Semua akun HR kini tampil dengan nama orangnya (tugas, notifikasi, chat, log)',
@@ -9356,6 +9442,9 @@ function mergeLiveData(remote){
     .sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); }).slice(0,600);
   if(SESSION.role!=='hr' && remote.banners) DB.banners = remote.banners;
   if(remote.privileges && (remote.privUpdatedAt||'') > (DB.privUpdatedAt||'')){ DB.privileges = remote.privileges; DB.privUpdatedAt = remote.privUpdatedAt; }
+  if(remote.sopReads){ DB.sopReads = DB.sopReads || {};
+    Object.keys(remote.sopReads).forEach(function(sid){ var r = remote.sopReads[sid]||{}, l = DB.sopReads[sid] = DB.sopReads[sid] || {};
+      Object.keys(r).forEach(function(eid){ if(!l[eid] || String(r[eid]).localeCompare(String(l[eid]), undefined, {numeric:true})>0) l[eid] = r[eid]; }); }); }
   if(remote.boardCols){ DB.boardCols = DB.boardCols || {}; DB.boardColsAt = DB.boardColsAt || {};
     Object.keys(remote.boardCols).forEach(function(k){ var ra = (remote.boardColsAt||{})[k]||''; if(ra > (DB.boardColsAt[k]||'')){ DB.boardCols[k] = remote.boardCols[k]; DB.boardColsAt[k] = ra; } }); }
   ['shiftRemNative','shiftRemSent'].forEach(function(k){
@@ -11525,43 +11614,76 @@ document.addEventListener('click', function(e){
   } else if(action==='sop-cat'){
     STATE.sopCat = el.getAttribute('data-cat') || ''; render();
   } else if(action==='sop-add'){
-    if(SESSION.role!=='hr') return;
+    if(!sopCanCreate()) return;
     var spTitle = document.getElementById('sop_title').value.trim(), spFile = (document.getElementById('sop_file').files||[])[0], spDesc = document.getElementById('sop_desc').value.trim();
     if(!spTitle){ toast('Isi judul dokumen.'); return; }
     if(!spFile && !spDesc){ toast('Unggah file atau tulis isinya.'); return; }
     var spCat = document.getElementById('sop_cat').value, spDept = document.getElementById('sop_dept').value;
+    if(SESSION.role!=='hr' && sopHodDepts().indexOf(spDept)===-1){ toast('Pilih departemenmu.'); return; }
+    var spVer = (document.getElementById('sop_ver').value||'1.0').trim().replace(/^v/i,'') || '1.0', spCode = (document.getElementById('sop_code').value||'').trim().slice(0,40);
     el.disabled = true;
     sopUploadFile(spFile).then(function(f){
-      var now = new Date().toISOString(), d = {id:uid('SOP'), title:spTitle.slice(0,160), category:spCat, dept:spDept, desc:spDesc.slice(0,4000), createdAt:now, updatedAt:now, by:currentActorLabel()};
+      var now = new Date().toISOString(), by = currentActorLabel();
+      var d = {id:uid('SOP'), title:spTitle.slice(0,160), category:spCat, dept:spDept, desc:spDesc.slice(0,4000), code:spCode, version:spVer, createdAt:now, updatedAt:now, by:by, updatedBy:by,
+        history:[{v:spVer, at:now, by:by, note:'Dokumen dibuat'}]};
       if(f){ for(var k in f) d[k] = f[k]; }
       DB.sops = DB.sops || []; DB.sops.unshift(d);
-      activeEmployees().filter(function(e){ return !spDept || e.department===spDept; }).forEach(function(e){ addNotification({type:'emp', empId:e.id}, spCat+' baru: '+d.title, 'sop', 'announcement'); });
-      logActivity(spCat+' ditambahkan: '+d.title+'.');
+      if(SESSION.empId){ DB.sopReads = DB.sopReads || {}; DB.sopReads[d.id] = {}; DB.sopReads[d.id][SESSION.empId] = spVer; }
+      sopNotify(d, spCat+' baru'+(spDept?' ('+spDept+')':'')+': '+d.title+' v'+spVer+'. Mohon dibaca.');
+      logActivity(spCat+' ditambahkan: '+d.title+' v'+spVer+(spDept?' ('+spDept+')':'')+'.');
       return saveDB().then(function(){ toast('Dokumen disimpan & dibagikan.'); STATE.sopCat = ''; render(); });
     }).catch(function(err){ el.disabled = false; if(!err || err.message!=='size') toast('Gagal mengunggah file.'); });
   } else if(action==='sop-open'){
     var soD = (DB.sops||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
-    if(soD) sopOpen(soD);
+    if(soD){ sopOpen(soD); if(SESSION.empId && !sopIsRead(soD, SESSION.empId)) sopMarkRead(soD); }
+  } else if(action==='sop-read'){
+    var srD = (DB.sops||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
+    if(srD && SESSION.empId){ sopMarkRead(srD); toast('Ditandai sudah dibaca.'); render(); }
+  } else if(action==='sop-unread'){
+    STATE.sopUnread = !STATE.sopUnread; render();
+  } else if(action==='sop-dept-pick'){
+    STATE.sopDept = el.getAttribute('data-dept'); STATE.sopCat = ''; render();
+  } else if(action==='sop-reads'){
+    var sdR = (DB.sops||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
+    if(sdR) openModal(sopReadsModalHtml(sdR));
+  } else if(action==='sop-remind'){
+    var smD = (DB.sops||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
+    if(!smD || !(sopCanManage(smD) || SESSION.role==='hr')) return;
+    var smU = sopReadStats(smD).unread;
+    smU.forEach(function(e){ addNotification({type:'emp', empId:e.id}, 'Pengingat: mohon baca '+smD.category+' "'+smD.title+'" v'+sopVer(smD)+'.', 'sop', 'announcement'); });
+    closeModal(); saveDB(); toast(smU.length+' staf diingatkan.');
   } else if(action==='sop-edit'){
     var seD = (DB.sops||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
-    if(seD && SESSION.role==='hr') openModal(sopEditModalHtml(seD));
+    if(seD && sopCanManage(seD)) openModal(sopEditModalHtml(seD));
   } else if(action==='sop-save'){
     var ssD = (DB.sops||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
-    if(!ssD || SESSION.role!=='hr') return;
+    if(!ssD || !sopCanManage(ssD)) return;
     var ssTitle = document.getElementById('sope_title').value.trim();
     if(!ssTitle){ toast('Isi judul dokumen.'); return; }
+    var ssDept = document.getElementById('sope_dept').value;
+    if(SESSION.role!=='hr' && sopHodDepts().indexOf(ssDept)===-1){ toast('Pilih departemenmu.'); return; }
+    var ssVer = (document.getElementById('sope_ver').value||'').trim().replace(/^v/i,'') || sopNextVer(sopVer(ssD));
+    var ssNote = (document.getElementById('sope_note').value||'').trim().slice(0,200), ssNotify = document.getElementById('sope_notify').checked;
     sopUploadFile((document.getElementById('sope_file').files||[])[0]).then(function(f){
-      ssD.title = ssTitle.slice(0,160); ssD.category = document.getElementById('sope_cat').value; ssD.dept = document.getElementById('sope_dept').value;
-      ssD.desc = document.getElementById('sope_desc').value.trim().slice(0,4000); ssD.updatedAt = new Date().toISOString();
+      var now = new Date().toISOString(), by = currentActorLabel();
+      ssD.title = ssTitle.slice(0,160); ssD.category = document.getElementById('sope_cat').value; ssD.dept = ssDept;
+      ssD.code = (document.getElementById('sope_code').value||'').trim().slice(0,40);
+      ssD.desc = document.getElementById('sope_desc').value.trim().slice(0,4000); ssD.updatedAt = now; ssD.updatedBy = by;
+      if(!ssD.history || !ssD.history.length) ssD.history = [{v:sopVer(ssD), at:ssD.createdAt||now, by:ssD.by||'', note:'Versi awal'}];
+      ssD.version = ssVer; ssD.history.push({v:ssVer, at:now, by:by, note:ssNote || (f ? 'File diperbarui' : 'Isi diperbarui')});
+      if(ssD.history.length>30) ssD.history = ssD.history.slice(-30);
       if(f){ for(var k in f) ssD[k] = f[k]; }
-      logActivity('Dokumen diperbarui: '+ssD.title+'.');
-      closeModal(); return saveDB().then(function(){ toast('Dokumen diperbarui.'); render(); });
+      if(SESSION.empId){ DB.sopReads = DB.sopReads || {}; DB.sopReads[ssD.id] = DB.sopReads[ssD.id] || {}; DB.sopReads[ssD.id][SESSION.empId] = ssVer; }
+      if(ssNotify) sopNotify(ssD, ssD.category+' diperbarui (v'+ssVer+'): '+ssD.title+(ssNote ? ' — '+ssNote : '')+'. Mohon dibaca ulang.');
+      logActivity('Dokumen diperbarui ke v'+ssVer+': '+ssD.title+'.');
+      closeModal(); return saveDB().then(function(){ toast('Versi '+ssVer+' disimpan.'); render(); });
     }).catch(function(err){ if(!err || err.message!=='size') toast('Gagal mengunggah file.'); });
   } else if(action==='sop-del'){
     var sdD = (DB.sops||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
-    if(!sdD || SESSION.role!=='hr') return;
+    if(!sdD || !sopCanManage(sdD)) return;
     if(!/jsdom/i.test(navigator.userAgent||'') && !confirm('Hapus "'+sdD.title+'"?')) return;
     sdD.deleted = true; sdD.updatedAt = new Date().toISOString(); logActivity('Dokumen dihapus: '+sdD.title+'.');
+    if(SESSION.role!=='hr') addNotification({type:'hr'}, 'Dokumen "'+sdD.title+'" ('+(sdD.dept||'umum')+') dihapus oleh '+currentActorLabel()+'.', 'sop', 'announcement');
     saveDB(); toast('Dokumen dihapus.'); render();
   } else if(action==='org-tab'){
     STATE.orgTab = el.getAttribute('data-tab'); render();
@@ -13133,6 +13255,7 @@ document.addEventListener('change', function(e){
     document.querySelectorAll('[data-role="dse-emp"]').forEach(function(cb){ cb.checked = wantChecked2; });
     return;
   }
+  if(t.id==='sopDeptSel'){ STATE.sopDept = t.value; STATE.sopCat = ''; render(); return; }
   if(t.id==='pkgFile'){
     var pkF = t.files && t.files[0]; t.value = '';
     if(!pkF || SESSION.role!=='hr') return;
