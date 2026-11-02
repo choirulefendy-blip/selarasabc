@@ -23,7 +23,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
   console.log('\n[SOP & Peraturan]');
   as('hr',null,'sop'); ok(!!d.getElementById('sop_title'), 'HR: form tambah SOP');
-  setv('sop_title','SOP Check-in Tamu'); setv('sop_desc','1. Sapa tamu\n2. Cek reservasi'); setv('sop_dept','Marketing');
+  setv('sop_title','SOP Check-in Tamu'); d.getElementById('sop_rte').innerHTML='1. Sapa tamu<br>2. Cek reservasi'; setv('sop_dept','Marketing');
   await click('[data-action="sop-add"]'); await sleep(100);
   ok((w.DB.sops||[]).length===1 && w.DB.sops[0].dept==='Marketing', 'SOP tersimpan');
   ok(w.DB.notifications.some(function(n){ return n.audience.empId==='S1' && /SOP baru/.test(n.message); }) && !w.DB.notifications.some(function(n){ return n.audience.empId==='F1' && /SOP baru/.test(n.message); }), 'notifikasi hanya ke departemen terkait');

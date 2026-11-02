@@ -20,7 +20,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   ok(!!d.getElementById('sop_title') && !d.getElementById('pkgFile'), 'HOD punya form tambah SOP (tanpa impor paket)');
   var opts=Array.prototype.map.call(d.querySelectorAll('#sop_dept option'),function(o){ return o.value; });
   ok(opts.join()==='Front Office', 'HOD hanya bisa memilih departemennya');
-  d.getElementById('sop_title').value='SOP Check-in Tamu'; d.getElementById('sop_desc').value='1. Sapa tamu\n2. Cek reservasi'; d.getElementById('sop_code').value='PHM-FO-SOP-001';
+  d.getElementById('sop_title').value='SOP Check-in Tamu'; d.getElementById('sop_rte').innerHTML='1. Sapa tamu<br>2. Cek reservasi'; d.getElementById('sop_code').value='PHM-FO-SOP-001';
   await click('[data-action="sop-add"]'); await sleep(150);
   var s=w.DB.sops[0];
   ok(s && s.dept==='Front Office' && s.version==='1.0' && s.history.length===1 && s.code==='PHM-FO-SOP-001', 'SOP tersimpan: dept Front Office, v1.0, kode');
@@ -39,7 +39,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   ok(/Dibaca 1\/2/.test(app()), 'HOD melihat status baca 1/2');
   await click('[data-action="sop-edit"]');
   ok(d.getElementById('sope_ver').value==='1.1', 'versi baru otomatis 1.1');
-  d.getElementById('sope_desc').value='1. Sapa tamu\n2. Cek reservasi\n3. Verifikasi deposit'; d.getElementById('sope_note').value='Tambah verifikasi deposit';
+  d.getElementById('sope_rte').innerHTML='1. Sapa tamu<br>2. Cek reservasi<br>3. Verifikasi deposit'; d.getElementById('sope_note').value='Tambah verifikasi deposit';
   w.DB.notifications=[];
   await click('[data-action="sop-save"]'); await sleep(150);
   ok(s.version==='1.1' && s.history.length===2 && s.history[1].note==='Tambah verifikasi deposit', 'versi 1.1 + riwayat + catatan perubahan');
