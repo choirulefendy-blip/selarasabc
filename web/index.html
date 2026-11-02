@@ -187,6 +187,11 @@
   .osd-sun{color:var(--danger);}
   .osd-table .osd-today{box-shadow:inset 0 0 0 2px var(--primary);}
   .gsi-wrap{margin:0 0 16px;}
+  .eg-row{display:flex;gap:12px;align-items:flex-start;}
+  .eg-mail{font-weight:700;font-size:15px;margin-top:2px;word-break:break-all;display:flex;align-items:center;gap:6px;}
+  .eg-check{display:inline-flex;width:20px;height:20px;border-radius:50%;background:#16A34A;color:#fff;align-items:center;justify-content:center;}
+  .eg-ok{display:inline-flex;align-items:center;gap:5px;background:rgba(22,163,74,.12);color:#16A34A;font-weight:700;font-size:12px;padding:4px 10px;border-radius:999px;white-space:nowrap;}
+  .eg-box{margin-top:12px;padding:12px;border:1px dashed var(--border);border-radius:14px;}
   .gsi-btn{display:flex;justify-content:center;min-height:44px;}
   .gsi-or{display:flex;align-items:center;gap:10px;margin:14px 0 2px;color:var(--text-muted);font-size:12px;}
   .gsi-or::before,.gsi-or::after{content:'';flex:1;height:1px;background:var(--border);}
@@ -1554,11 +1559,24 @@ function resolveEmailsForAudience(audience){
   if(audience.type==='hr') return allHrEmails();
   if(audience.type==='emp'){
     var e = getEmployee(audience.empId);
-    return (e && e.email) ? [e.email] : [];
+    return empEmailNotifOn(e) ? [e.email] : [];
   }
   return [];
 }
 
+/* email karyawan dianggap terverifikasi bila: tersambung Google, atau lolos kode verifikasi, untuk alamat yang sama */
+function empEmailVerified(e){ return !!(e && e.email && e.emailVerifiedFor && String(e.emailVerifiedFor).toLowerCase()===String(e.email).toLowerCase()); }
+function empGoogleLinked(e){ return !!(e && e.googleLinkedAt && empEmailVerified(e)); }
+function empEmailNotifOn(e){ return empEmailVerified(e) && e.emailNotif===true; }
+/* kirim email lewat Edge Function send-email; hasil: Promise<{ok, error}> */
+function sendEmailApi(to, subject, body, link, extra){
+  if(!emailConfigured()) return Promise.resolve({ok:false, error:'not-configured'});
+  var payload = {to:to, subject:subject, body:body, url:(typeof APP_PUBLIC_URL!=='undefined' ? APP_PUBLIC_URL : '')+(link ? '#'+link : '')};
+  if(extra){ for(var k in extra) payload[k] = extra[k]; }
+  return fetch(EMAIL_FUNCTION_URL, {method:'POST', headers:supabaseHeaders({'Content-Type':'application/json'}), body:JSON.stringify(payload)})
+    .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok && j.ok!==false, error:j.error || (r.ok ? '' : 'HTTP '+r.status)}; }); })
+    .catch(function(err){ return {ok:false, error:String(err && err.message || err)}; });
+}
 function triggerEmail(audience, message, link){
   if(!emailConfigured()) return;
   var toEmails = resolveEmailsForAudience(audience);
@@ -1566,7 +1584,7 @@ function triggerEmail(audience, message, link){
     fetch(EMAIL_FUNCTION_URL, {
       method:'POST',
       headers: supabaseHeaders({'Content-Type':'application/json'}),
-      body: JSON.stringify({to:toEmail, subject:'ABC Selaras \u2014 Notifikasi Baru', body:message, url: link ? ('#'+link) : '#'})
+      body: JSON.stringify({to:toEmail, subject:'ABC Selaras \u2014 '+String(message).replace(/<[^>]+>/g,'').replace(/&mdash;/g,'—').slice(0,70), body:String(message).replace(/<[^>]+>/g,'').replace(/&mdash;/g,'—'), url:(typeof APP_PUBLIC_URL!=='undefined' ? APP_PUBLIC_URL : '')+(link ? '#'+link : '')})
     }).catch(function(err){ console.error('triggerEmail error', err); });
   });
 }
@@ -1687,7 +1705,7 @@ var PUSH_FUNCTION_URL = 'https://dxwrvrdvjjvmujrnawen.supabase.co/functions/v1/s
    EMAIL_FUNCTION_URL diisi setelah men-deploy Edge Function "send-email"
    (lihat README bagian "Notifikasi Email"). Kosongkan untuk menonaktifkan
    fitur ini sepenuhnya. */
-var EMAIL_FUNCTION_URL = '';   /* contoh: https://xxxxxxxx.supabase.co/functions/v1/send-email */
+var EMAIL_FUNCTION_URL = 'https://dxwrvrdvjjvmujrnawen.supabase.co/functions/v1/send-email';   /* contoh: https://xxxxxxxx.supabase.co/functions/v1/send-email */
 
 /* --- Konfigurasi Google Apps Script (dipakai kalau BACKEND==='appsscript') --- */
 var REMOTE_API_URL = '';
@@ -2638,7 +2656,7 @@ function afterRender(){
     if(sbEl && STATE.sbScroll) sbEl.scrollTop = STATE.sbScroll;
   }catch(e){}
   navTrack();
-  try{ if(!SESSION.role) gsiMount(); }catch(e){}
+  try{ if(!SESSION.role || document.getElementById('gsiLinkBtn')) gsiMount(); }catch(e){}
   try{ todoPurgeOld(false); }catch(e){}
   ['osdWrap','teamRosterWrap'].forEach(function(wid){ try{ var ow = document.getElementById(wid), ot = ow && ow.querySelector('th.osd-today'); if(ow && ot && !ow.getAttribute('data-scrolled')){ var nm = ow.querySelector('th.osd-name'); if(ot.offsetLeft + ot.offsetWidth > ow.clientWidth) ow.scrollLeft = Math.max(0, ot.offsetLeft - (nm ? nm.offsetWidth : 0) - 60); ow.setAttribute('data-scrolled','1'); } }catch(e){} });
   try{ workReminderSync(); tomorrowReminderSync(); shiftReminderSync(); nativeNotifAutoAsk(); assetServiceReminders(); assetHydratePhoto(); }catch(e){}
@@ -2692,7 +2710,10 @@ function gsiLoginWithEmail(email){
   if(!em) return false;
   var same = function(x){ return String(x||'').trim().toLowerCase()===em; };
   var emp = (DB.employees||[]).filter(function(e){ return e.active && same(e.email); })[0];
-  if(emp){ SESSION = empHasHrAccess(emp) ? hrModeSession(emp) : empModeSession(emp); }
+  if(emp){
+    SESSION = empHasHrAccess(emp) ? hrModeSession(emp) : empModeSession(emp);
+    if(!empGoogleLinked(emp)){ emp.googleLinkedAt = new Date().toISOString(); emp.emailVerifiedFor = emp.email; emp.emailVerifiedAt = emp.emailVerifiedAt || emp.googleLinkedAt; emp.updatedAt = emp.googleLinkedAt; }
+  }
   else if(same(DB.hr && DB.hr.email)){ SESSION = {role:'hr', empId:null, hrAccountId:null}; }
   else {
     var acct = (DB.hrAccounts||[]).filter(function(a){ return same(a.email); })[0];
@@ -2703,6 +2724,22 @@ function gsiLoginWithEmail(email){
   saveSessionToStorage();
   try{ logActivity('Login dengan Google ('+em+').'); saveDB(true); }catch(e){}
   return true;
+}
+function gsiDispatch(resp){ if(GSI.mode==='link') gsiOnLink(resp); else gsiOnCredential(resp); }
+/* hubungkan akun Google dari halaman Profil (membuktikan pemilik email) */
+function gsiOnLink(resp){
+  var c = gsiDecode(resp && resp.credential), e = getEmployee(SESSION.empId || SESSION.asEmpId), now = Math.floor(Date.now()/1000);
+  if(!e) return;
+  if(!c || c.aud!==GOOGLE_LOGIN_CLIENT_ID || (c.exp && c.exp < now-60) || c.email_verified===false){ toast('Gagal menghubungkan Google. Coba lagi.'); return; }
+  var ge = String(c.email||'').toLowerCase();
+  if(e.email && String(e.email).toLowerCase()!==ge){
+    if(!confirm('Email Google ('+c.email+') berbeda dengan email di profilmu ('+e.email+'). Ganti email profil ke '+c.email+'?')) return;
+  }
+  if((DB.employees||[]).some(function(x){ return x.id!==e.id && x.active && String(x.email||'').toLowerCase()===ge; })){ toast('Email '+c.email+' sudah dipakai karyawan lain.'); return; }
+  var t = new Date().toISOString();
+  e.email = c.email; e.googleLinkedAt = t; e.emailVerifiedFor = c.email; e.emailVerifiedAt = t; e.updatedAt = t;
+  logActivity('Menghubungkan akun Google ('+c.email+').');
+  saveDB().then(function(){ toast('Akun Google tersambung ✓'); render(); });
 }
 function gsiOnCredential(resp){
   var c = gsiDecode(resp && resp.credential);
@@ -2717,13 +2754,14 @@ function gsiOnCredential(resp){
   render();
 }
 function gsiMount(){
-  var box = document.getElementById('gsiBtn');
+  var box = document.getElementById('gsiBtn') || document.getElementById('gsiLinkBtn');
   if(!box || !gsiAvailable()) return;
+  GSI.mode = box.id==='gsiLinkBtn' ? 'link' : 'login';
   var draw = function(){
     try{
-      if(!GSI.ready){ google.accounts.id.initialize({client_id:GOOGLE_LOGIN_CLIENT_ID, callback:gsiOnCredential, ux_mode:'popup', auto_select:false, cancel_on_tap_outside:true, use_fedcm_for_prompt:true}); GSI.ready = true; }
+      if(!GSI.ready){ google.accounts.id.initialize({client_id:GOOGLE_LOGIN_CLIENT_ID, callback:gsiDispatch, ux_mode:'popup', auto_select:false, cancel_on_tap_outside:true, use_fedcm_for_prompt:true}); GSI.ready = true; }
       box.innerHTML = '';
-      google.accounts.id.renderButton(box, {type:'standard', theme:document.documentElement.getAttribute('data-theme')==='dark' ? 'filled_black' : 'outline', size:'large', text:'signin_with', shape:'pill', logo_alignment:'center', width:Math.min(360, Math.max(220, box.clientWidth||300)), locale:'id'});
+      google.accounts.id.renderButton(box, {type:'standard', theme:document.documentElement.getAttribute('data-theme')==='dark' ? 'filled_black' : 'outline', size:'large', text:GSI.mode==='link' ? 'continue_with' : 'signin_with', shape:'pill', logo_alignment:'center', width:Math.min(360, Math.max(220, box.clientWidth||300)), locale:'id'});
     }catch(e){ console.error('gsi', e); }
   };
   if(window.google && google.accounts && google.accounts.id){ draw(); return; }
@@ -7170,6 +7208,11 @@ function renderNotifSettingsPage(){
     '<div class="pref-row"><div><div class="pref-label">Aktifkan semua notifikasi</div><div class="pref-sub">Saklar utama. Matikan untuk berhenti menerima semua pemberitahuan.</div></div>'+switchHtml('enabled', master)+'</div>'+
     catRows+
   '</div>'+
+  (SESSION.empId ? (function(){ var me = getEmployee(SESSION.empId);
+    return '<div class="card"><div class="card-title">Notifikasi Email</div><div class="pref-row"><div><div class="pref-label">'+(me && me.email ? escapeHtml(me.email) : 'Email belum diisi')+(empEmailVerified(me) ? ' <span class="eg-check" style="width:16px;height:16px;">'+iconSvg('checkAll',11)+'</span>' : '')+'</div>'+
+      '<div class="pref-sub">'+(empEmailNotifOn(me) ? 'Aktif — salinan notifikasi juga dikirim ke email.' : (empEmailVerified(me) ? 'Nonaktif.' : 'Verifikasi email di Profil untuk mengaktifkan.'))+'</div></div>'+
+      (empEmailVerified(me) ? '<button type="button" class="m3-switch'+(empEmailNotifOn(me)?' on':'')+'" data-action="eg-notif" role="switch"><span class="m3-switch-knob"></span></button>' : '<button class="btn btn-secondary btn-sm" data-action="nav" data-view="my-profile">Buka Profil</button>')+'</div></div>';
+  })() : '')+
   '<div class="card">'+
     '<div class="card-title">Notifikasi Perangkat</div>'+
     '<div class="card-sub">'+deviceStatus+'</div>'+
@@ -9427,9 +9470,11 @@ function assetPushHistory(a, type, text, cost){
 }
 
 /* ---------------------------- INFO APLIKASI, UNDUH APK & CATATAN PEMBARUAN ---------------------------- */
+var APP_PUBLIC_URL = 'https://abcselaras.my.id/web/';
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Profil: Akun Google & Email — centang hijau bila tersambung, verifikasi lewat Google atau kode ke email, notifikasi lewat email (bisa dinyalakan/dimatikan)',
     'Login dengan Google (web & iPhone): akun dicocokkan lewat email di data Karyawan / Akun HR',
     'Jadwal Tim: pilihan tampilan Kalender atau Tabel (ketuk sel untuk atur jadwal satu orang)',
     'Warna jadwal: Libur & Cuti merah, Sakit & Izin oranye (kalender, jadwal tim, dashboard, PDF); HOD bisa set Cuti/Sakit/Izin di pengaturan jadwal tim; cuti Sakit/Izin yang disetujui tercatat sesuai jenisnya',
@@ -9928,7 +9973,43 @@ function renderMyProfilePage(){
       '<tr><td class="muted">Username</td><td>@'+escapeHtml(emp.username||'')+'</td></tr>'+
       '<tr><td class="muted">Bergabung</td><td>'+(emp.joinDate ? formatDateID(emp.joinDate) : '&mdash;')+'</td></tr>'+
     '</tbody></table></div>'+
-  '</div>'+renderAppInfoCard();
+  '</div>'+renderEmailGoogleCard(emp)+renderAppInfoCard();
+}
+/* kartu Profil: email Google, status tersambung/verifikasi, kirim kode, notifikasi email */
+function renderEmailGoogleCard(emp){
+  var linked = empGoogleLinked(emp), verified = empEmailVerified(emp), pend = STATE.emailCode && STATE.emailCode.empId===emp.id ? STATE.emailCode : null;
+  var status = linked ? '<span class="eg-ok">'+iconSvg('checkAll',15)+' Tersambung Google</span>'
+    : (verified ? '<span class="eg-ok">'+iconSvg('checkAll',15)+' Email terverifikasi</span>' : (emp.email ? '<span class="badge badge-warning">Belum terverifikasi</span>' : '<span class="badge badge-neutral">Belum diisi</span>'));
+  var editing = STATE.emailEdit || !emp.email;
+  var html = '<div class="card eg-card"><div class="card-title" style="display:flex;align-items:center;gap:8px;">'+gsiLogoSvg()+' Akun Google &amp; Email</div>'+
+    '<div class="eg-row"><div style="min-width:0;flex:1;"><div class="muted" style="font-size:12px;">Email Google</div>'+
+      (editing ? '<div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap;"><input type="email" id="eg_email" value="'+escapeHtml(emp.email||'')+'" placeholder="nama@gmail.com" style="flex:1;min-width:180px;"><button class="btn btn-primary btn-sm" data-action="eg-save">Simpan</button>'+(emp.email ? '<button class="btn btn-ghost btn-sm" data-action="eg-edit-cancel">Batal</button>' : '')+'</div>'
+        : '<div class="eg-mail">'+escapeHtml(emp.email)+' '+(verified ? '<span class="eg-check" title="Terverifikasi">'+iconSvg('checkAll',14)+'</span>' : '')+'</div>')+
+    '</div>'+(editing ? '' : '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">'+status+'<button class="btn btn-ghost btn-sm" data-action="eg-edit">Ubah</button></div>')+'</div>';
+  if(emp.email && !editing && !verified){
+    html += '<div class="eg-box"><div class="muted" style="font-size:12.5px;margin-bottom:8px;">Verifikasi bahwa email ini milikmu:</div>';
+    if(gsiAvailable()) html += '<div id="gsiLinkBtn" class="gsi-btn" style="justify-content:flex-start;"></div><div class="gsi-or" style="margin:10px 0;"><span>atau</span></div>';
+    html += pend
+      ? '<div class="muted" style="font-size:12.5px;">Kode 6 digit dikirim ke <b>'+escapeHtml(emp.email)+'</b> (cek juga folder Spam). Berlaku 15 menit.</div>'+
+        '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"><input id="eg_code" inputmode="numeric" maxlength="6" placeholder="123456" style="width:140px;letter-spacing:4px;font-weight:700;text-align:center;"><button class="btn btn-primary btn-sm" data-action="eg-verify">Verifikasi</button><button class="btn btn-ghost btn-sm" data-action="eg-send">Kirim ulang</button></div>'
+      : '<button class="btn btn-secondary btn-sm" data-action="eg-send">'+iconSvg('send',14)+' Kirim kode verifikasi ke email</button>';
+    html += '</div>';
+  } else if(verified && !linked && gsiAvailable()){
+    html += '<div class="eg-box"><div class="muted" style="font-size:12.5px;margin-bottom:8px;">Sambungkan ke Google agar bisa login tanpa password:</div><div id="gsiLinkBtn" class="gsi-btn" style="justify-content:flex-start;"></div></div>';
+  }
+  html += '<div class="pref-row" style="margin-top:12px;"><div><div class="pref-label">Notifikasi lewat email</div><div class="pref-sub">'+(verified ? 'Salinan notifikasi (tugas, jadwal, pengajuan, SOP, pengumuman) dikirim ke '+escapeHtml(emp.email)+'.' : 'Verifikasi email dulu untuk mengaktifkan.')+'</div></div>'+
+    '<button type="button" class="m3-switch'+(empEmailNotifOn(emp)?' on':'')+'" data-action="eg-notif" '+(verified?'':'disabled')+' role="switch" aria-checked="'+(empEmailNotifOn(emp)?'true':'false')+'"><span class="m3-switch-knob"></span></button></div>'+
+    (linked ? '<div class="muted" style="font-size:12px;margin-top:8px;">Kamu bisa login dengan tombol <b>Masuk dengan Google</b> di halaman login (web &amp; iPhone).</div>' : '')+
+  '</div>';
+  return html;
+}
+function gsiLogoSvg(){ return '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.8 6C12.4 13.7 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.8-6z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.8 6C6.6 42.6 14.6 48 24 48z"/></svg>'; }
+function egHash(code, empId){
+  var str = 'abc-selaras|'+empId+'|'+code;
+  if(window.crypto && crypto.subtle && window.TextEncoder){
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function(b){ return Array.prototype.map.call(new Uint8Array(b), function(x){ return ('0'+x.toString(16)).slice(-2); }).join(''); });
+  }
+  var h = 5381; for(var i=0;i<str.length;i++){ h = ((h<<5)+h+str.charCodeAt(i))|0; } return Promise.resolve('d'+(h>>>0).toString(16));
 }
 
 /* ---------------------------- SIDEBAR BISA DISEMBUNYIKAN ---------------------------- */
@@ -11758,6 +11839,45 @@ document.addEventListener('click', function(e){
   } else if(action==='toggle-notifications'){
     STATE.notifPanelOpen = !STATE.notifPanelOpen;
     render();
+  } else if(action==='eg-edit'){ STATE.emailEdit = true; render();
+  } else if(action==='eg-edit-cancel'){ STATE.emailEdit = false; render();
+  } else if(action==='eg-save'){
+    var egE = getEmployee(SESSION.empId || SESSION.asEmpId); if(!egE) return;
+    var egV = (document.getElementById('eg_email').value||'').trim();
+    if(egV && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(egV)){ toast('Format email tidak valid.'); return; }
+    if(egV && DB.employees.some(function(x){ return x.id!==egE.id && x.active && String(x.email||'').toLowerCase()===egV.toLowerCase(); })){ toast('Email itu sudah dipakai karyawan lain.'); return; }
+    if(String(egE.email||'').toLowerCase()!==egV.toLowerCase()){ egE.email = egV; egE.googleLinkedAt = null; egE.emailVerifiedFor = null; egE.emailNotif = false; egE.updatedAt = new Date().toISOString(); STATE.emailCode = null; }
+    STATE.emailEdit = false; saveDB().then(function(){ toast('Email disimpan. Silakan verifikasi.'); render(); });
+  } else if(action==='eg-send'){
+    var esE = getEmployee(SESSION.empId || SESSION.asEmpId); if(!esE || !esE.email) return;
+    if(STATE.emailCode && STATE.emailCode.sentAt && Date.now()-STATE.emailCode.sentAt < 45000){ toast('Tunggu sebentar sebelum kirim ulang.'); return; }
+    var esCode = String(Math.floor(100000 + Math.random()*900000));
+    el.disabled = true;
+    egHash(esCode, esE.id).then(function(h){
+      return sendEmailApi(esE.email, 'Kode verifikasi ABC Selaras: '+esCode, 'Halo '+esE.name+', kode verifikasi email ABC Selaras kamu adalah '+esCode+'. Kode berlaku 15 menit. Abaikan email ini jika kamu tidak memintanya.', 'my-profile', {kind:'code', code:esCode}).then(function(r){
+        el.disabled = false;
+        if(!r.ok){ toast(r.error==='not-configured' || /404|not.?found/i.test(r.error) ? 'Layanan email belum aktif. Minta admin mengaktifkan email (Resend).' : 'Gagal mengirim email: '+r.error); return; }
+        STATE.emailCode = {empId:esE.id, hash:h, exp:Date.now()+15*60000, sentAt:Date.now(), tries:0};
+        toast('Kode dikirim ke '+esE.email+'.'); render();
+      });
+    });
+  } else if(action==='eg-verify'){
+    var evE = getEmployee(SESSION.empId || SESSION.asEmpId), evP = STATE.emailCode;
+    if(!evE || !evP || evP.empId!==evE.id) return;
+    var evC = (document.getElementById('eg_code').value||'').replace(/\D/g,'');
+    if(Date.now() > evP.exp){ STATE.emailCode = null; toast('Kode kedaluwarsa. Kirim ulang.'); render(); return; }
+    if(++evP.tries > 5){ STATE.emailCode = null; toast('Terlalu banyak percobaan. Kirim kode baru.'); render(); return; }
+    egHash(evC, evE.id).then(function(h){
+      if(h!==evP.hash){ toast('Kode salah.'); return; }
+      var t = new Date().toISOString();
+      evE.emailVerifiedFor = evE.email; evE.emailVerifiedAt = t; evE.emailNotif = true; evE.updatedAt = t; STATE.emailCode = null;
+      logActivity('Memverifikasi email '+evE.email+'.');
+      saveDB().then(function(){ toast('Email terverifikasi ✓ Notifikasi email aktif.'); render(); });
+    });
+  } else if(action==='eg-notif'){
+    var enE = getEmployee(SESSION.empId || SESSION.asEmpId); if(!enE || !empEmailVerified(enE)) return;
+    enE.emailNotif = !enE.emailNotif; enE.updatedAt = new Date().toISOString();
+    saveDB().then(function(){ toast(enE.emailNotif ? 'Notifikasi email aktif.' : 'Notifikasi email dimatikan.'); render(); });
   } else if(action==='sched-view'){
     STATE.schedView = el.getAttribute('data-v')==='list' ? 'list' : 'cal';
     try{ localStorage.setItem('abcSchedView', STATE.schedView); }catch(x){}
