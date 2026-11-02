@@ -170,6 +170,17 @@
   .sop-meta{font-size:12px;color:var(--text-muted);margin-top:4px;}
   .sop-desc{margin-top:10px;font-size:13.5px;color:var(--text-muted);line-height:1.6;}
   .sop-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .sop-clamp{max-height:9.6em;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(#000 60%,transparent);mask-image:linear-gradient(#000 60%,transparent);}
+  .sop-clamp.open{max-height:none;-webkit-mask-image:none;mask-image:none;}
+  .sop-more{margin-top:4px;padding-left:0;}
+  .sop-src{font-size:11px;color:var(--text-muted);margin-top:8px;font-style:italic;}
+  .sop-code{font-size:11px;font-weight:700;letter-spacing:.3px;color:var(--primary);margin-right:4px;}
+  .sop-flow{display:flex;flex-direction:column;align-items:stretch;margin-top:12px;max-width:560px;}
+  .sop-flow-step{display:flex;gap:10px;align-items:flex-start;background:var(--primary-container);color:var(--on-primary-container);border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.45;}
+  .sop-flow-step span{flex:0 0 22px;height:22px;border-radius:50%;background:var(--primary);color:#fff;font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+  .sop-flow-arrow{text-align:center;color:var(--primary);font-size:16px;line-height:1.3;}
+  .pkg-sec{border:1px solid var(--border);border-radius:14px;padding:12px;margin-top:12px;background:var(--surface);}
+  .pkg-cats{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
   .org-card{padding:12px;}
   .org-wrap{overflow:auto;-webkit-overflow-scrolling:touch;padding:8px 4px 16px;}
   .org-tree{display:inline-block;min-width:100%;text-align:center;}
@@ -8354,7 +8365,20 @@ function rekapDownload(){
 }
 
 /* ---------------------------- SOP & PERATURAN ---------------------------- */
-var SOP_CATS = ['SOP','Peraturan Perusahaan','Kebijakan','Panduan Kerja','Lainnya'];
+var SOP_CATS = ['SOP','Job Description','Struktur & Kewenangan','Flowchart','Peraturan Perusahaan','Kebijakan','Panduan Kerja','Template','Lainnya'];
+/* isi dokumen: Flowchart -> kotak langkah berpanah; teks panjang -> dipotong + "Selengkapnya" */
+function sopDescHtml(d){
+  if(!d.desc) return '';
+  var parts = String(d.desc).split(/\n\nSumber: /), body = parts[0], src = parts[1] ? 'Sumber: '+parts[1] : '';
+  var srcHtml = src ? '<div class="sop-src">'+escapeHtml(src)+'</div>' : '';
+  if(d.category==='Flowchart'){
+    var steps = body.split(/\n+/).map(function(x){ return x.trim(); }).filter(Boolean);
+    return '<div class="sop-flow">'+steps.map(function(x, i){ return (i ? '<div class="sop-flow-arrow" aria-hidden="true">&darr;</div>' : '')+'<div class="sop-flow-step"><span>'+(i+1)+'</span>'+escapeHtml(x)+'</div>'; }).join('')+'</div>'+srcHtml;
+  }
+  var html = escapeHtml(body).replace(/\n/g,'<br>');
+  if(body.length > 420) return '<div class="sop-desc sop-clamp" data-sop-desc="'+d.id+'">'+html+'</div><button class="btn btn-ghost btn-sm sop-more no-print" data-action="sop-more" data-id="'+d.id+'">Selengkapnya</button>'+srcHtml;
+  return '<div class="sop-desc">'+html+'</div>'+srcHtml;
+}
 function sopVisible(d){
   if(!d || d.deleted) return false;
   if(SESSION.role==='hr') return true;
@@ -8392,12 +8416,13 @@ function renderSopPage(){
     return '<div class="card sop-item" data-q="'+escapeHtml((d.title+' '+(d.desc||'')+' '+d.category+' '+(d.dept||'')).toLowerCase())+'">'+
       '<div class="sop-head"><span class="sop-ic" style="background:'+ic[1]+'1f;color:'+ic[1]+'">'+ic[0]+'</span>'+
       '<div style="min-width:0;flex:1;"><div class="sop-title">'+escapeHtml(d.title)+'</div>'+
-      '<div class="sop-meta"><span class="badge badge-info">'+escapeHtml(d.category)+'</span> '+escapeHtml(d.dept ? 'Dept. '+d.dept : 'Semua departemen')+' &middot; '+escapeHtml(formatDateID(String(d.updatedAt||d.createdAt).slice(0,10)))+(d.fileSize?' &middot; '+fmtBytes(d.fileSize):'')+'</div></div></div>'+
-      (d.desc ? '<div class="sop-desc">'+escapeHtml(d.desc).replace(/\n/g,'<br>')+'</div>' : '')+
+      '<div class="sop-meta">'+(d.code ? '<span class="sop-code">'+escapeHtml(d.code)+'</span> ' : '')+'<span class="badge badge-info">'+escapeHtml(d.category)+'</span> '+escapeHtml(d.dept ? 'Dept. '+d.dept : 'Semua departemen')+' &middot; '+escapeHtml(formatDateID(String(d.updatedAt||d.createdAt).slice(0,10)))+(d.fileSize?' &middot; '+fmtBytes(d.fileSize):'')+'</div></div></div>'+
+      sopDescHtml(d)+
       '<div class="sop-actions no-print">'+(hasFile ? '<button class="btn btn-primary btn-sm" data-action="sop-open" data-id="'+d.id+'">Buka File</button>' : '')+
       (SESSION.role==='hr' ? '<button class="btn btn-secondary btn-sm" data-action="sop-edit" data-id="'+d.id+'">Edit</button><button class="btn btn-ghost btn-sm" style="color:var(--danger);" data-action="sop-del" data-id="'+d.id+'">Hapus</button>' : '')+'</div></div>';
   }).join('');
-  return '<div class="toolbar no-print" style="flex-wrap:wrap;gap:8px;"><input type="search" id="sopSearch" class="sop-search" placeholder="Cari SOP / peraturan..."></div>'+
+  return '<div class="toolbar no-print" style="flex-wrap:wrap;gap:8px;"><input type="search" id="sopSearch" class="sop-search" placeholder="Cari SOP / peraturan...">'+
+    (SESSION.role==='hr' ? '<label class="btn btn-secondary btn-sm" style="cursor:pointer;">'+iconSvg('download',14)+' Impor Paket Dokumen<input type="file" id="pkgFile" accept=".json,application/json" style="display:none;"></label>' : '')+'</div>'+
     chips + form + (items || '<div class="card"><div class="empty-state">'+(list.length ? 'Tidak ada dokumen di kategori ini.' : 'Belum ada SOP atau peraturan.'+(SESSION.role==='hr'?' Tambahkan lewat form di atas.':''))+'</div></div>');
 }
 function sopEditModalHtml(d){
@@ -8477,7 +8502,7 @@ function renderOrgPage(){
   var tabs = '<div class="todo-tabs no-print" style="flex-wrap:wrap;">'+[['group','Organisasi Group']].concat(getProperties().map(function(p){ return [p,p]; })).map(function(t){
     return '<button class="todo-tab'+(key===t[0]?' active':'')+'" data-action="org-tab" data-tab="'+escapeHtml(t[0])+'">'+escapeHtml(t[1])+'</button>'; }).join('')+'</div>';
   var head = '<div class="toolbar no-print" style="flex-wrap:wrap;gap:8px;"><div class="toolbar-left"><b>'+escapeHtml(key==='group' ? 'Struktur Organisasi ABC Hospitality Group' : 'Struktur Organisasi '+key)+'</b></div>'+
-    '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+(orgCanEdit() ? '<button class="btn btn-primary btn-sm" data-action="org-node-new" data-parent="">+ Tambah Jabatan</button>'+(nodes.length?'':'<button class="btn btn-secondary btn-sm" data-action="org-autogen">Susun Otomatis dari Data Karyawan</button>') : '')+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">'+(orgCanEdit() ? '<label class="btn btn-secondary btn-sm" style="cursor:pointer;">Impor Paket Dokumen<input type="file" id="pkgFile" accept=".json,application/json" style="display:none;"></label>' : '')+(orgCanEdit() ? '<button class="btn btn-primary btn-sm" data-action="org-node-new" data-parent="">+ Tambah Jabatan</button>'+(nodes.length?'':'<button class="btn btn-secondary btn-sm" data-action="org-autogen">Susun Otomatis dari Data Karyawan</button>') : '')+
     (nodes.length ? '<button class="btn btn-secondary btn-sm" data-action="org-dl-png">Unduh Gambar</button>' : '')+'</div></div>';
   var body = nodes.length ? '<div class="card org-card"><div class="org-wrap"><div class="org-tree">'+orgTreeHtml(nodes, null)+'</div></div></div>'
     : '<div class="card"><div class="empty-state">Struktur organisasi '+escapeHtml(key==='group'?'group':key)+' belum dibuat.'+(orgCanEdit()?' Klik <b>Susun Otomatis</b> untuk membuat dari data karyawan, lalu rapikan.':' Hubungi HR.')+'</div></div>';
@@ -8513,6 +8538,116 @@ function orgAutogen(key){
     de.filter(function(e){ return hods.indexOf(e.id)===-1; }).forEach(function(e, k){ nodes.push({id:uid('OG'), title:e.position||'Staff', empId:e.id, parentId:head.id, unit:d, order:k+1, updatedAt:now}); });
   });
   return nodes.length;
+}
+
+/* ---------------------------- IMPOR PAKET DOKUMEN (SOP, Job Description, Flowchart, Struktur) ---------------------------- */
+var PKG = null;
+function pkgDeptsResolve(list){
+  var all = getDepartments().slice(); activeEmployees().forEach(function(e){ if(e.department && all.indexOf(e.department)===-1) all.push(e.department); });
+  var out = [];
+  (list||[]).forEach(function(x){
+    var lx = String(x).toLowerCase();
+    all.forEach(function(d){ var ld = d.toLowerCase(); if((ld===lx || ld.indexOf(lx)!==-1) && out.indexOf(d)===-1) out.push(d); });
+  });
+  return out;
+}
+function pkgParse(text){
+  var p = JSON.parse(text);
+  if(!p || p.type!=='abc-selaras-package' || !Array.isArray(p.docs)) throw new Error('format');
+  return p;
+}
+function pkgOrgKeys(p){
+  var keys = [];
+  if(p.org && p.org.group && p.org.group.length) keys.push('group');
+  Object.keys((p.org && p.org.props) || {}).forEach(function(k){ if(getProperties().indexOf(k)!==-1) keys.push(k); });
+  return keys;
+}
+function pkgModalHtml(){
+  var p = PKG; if(!p) return '';
+  var cats = {}; p.docs.forEach(function(d){ cats[d.category] = (cats[d.category]||0)+1; });
+  var existing = (DB.sops||[]).filter(function(x){ return !x.deleted && x.pkgKey; }).map(function(x){ return x.pkgKey; });
+  var upd = p.docs.filter(function(d){ return existing.indexOf(d.key)!==-1; }).length;
+  var okeys = pkgOrgKeys(p);
+  var orgRows = okeys.map(function(k){
+    var have = orgNodes(k).length, n = (k==='group' ? p.org.group : p.org.props[k]).length;
+    return '<label class="pj-member" style="display:flex;gap:8px;align-items:flex-start;"><input type="checkbox" class="pkg-org" value="'+escapeHtml(k)+'"'+(have?'':' checked')+'> <span><b>'+escapeHtml(k==='group'?'Organisasi Group':k)+'</b> &middot; '+n+' jabatan'+(have ? ' <span class="badge badge-warning">menggantikan '+have+' jabatan yang ada</span>' : '')+'</span></label>';
+  }).join('');
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:560px;"><h3>Impor: '+escapeHtml(p.name||'Paket Dokumen')+'</h3>'+
+    '<div class="card-sub">Periksa lalu pilih yang ingin diterapkan ke ABC Selaras.</div>'+
+    '<div class="pkg-sec"><label class="pj-member" style="display:flex;gap:8px;"><input type="checkbox" id="pkg_docs" checked> <b>'+p.docs.length+' dokumen ke halaman SOP & Peraturan</b></label>'+
+      '<div class="pkg-cats">'+Object.keys(cats).map(function(c){ return '<span class="badge badge-info">'+escapeHtml(c)+' &middot; '+cats[c]+'</span>'; }).join(' ')+'</div>'+
+      (upd ? '<div class="muted" style="font-size:12px;margin-top:6px;">'+upd+' dokumen sudah pernah diimpor dan akan diperbarui (tidak dobel).</div>' : '')+
+      '<div class="muted" style="font-size:12px;margin-top:6px;">Job description &amp; dokumen departemen otomatis hanya tampil untuk departemen terkait.</div></div>'+
+    (okeys.length ? '<div class="pkg-sec"><div style="font-weight:700;margin-bottom:6px;">Struktur Organisasi</div>'+orgRows+
+      '<label class="pj-member" style="display:flex;gap:8px;margin-top:8px;"><input type="checkbox" id="pkg_fill" checked> Isi otomatis jabatan dengan HOD departemen terkait (bisa diubah nanti)</label></div>' : '')+
+    '<label class="pj-member" style="display:flex;gap:8px;margin-top:10px;"><input type="checkbox" id="pkg_notify" checked> Beri tahu karyawan (1 notifikasi per orang)</label>'+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="pkg-apply">Terapkan</button></div></div></div>';
+}
+function pkgApplyOrg(key, src, fill){
+  var nodes = orgNodes(key), now = new Date().toISOString(), map = {}, used = {};
+  nodes.length = 0;
+  src.forEach(function(n){ map[n.key] = uid('OG'); });
+  src.forEach(function(n){
+    var empId = null;
+    if(fill && n.dept){
+      var cands = pkgDeptsResolve([n.dept]).reduce(function(a, d){ return a.concat(getDepartmentHods(d)); }, []);
+      cands = cands.filter(function(id){ var e = getEmployee(id); return e && e.active!==false && !used[id] && (key==='group' || !(e.properties||[]).length || (e.properties||[]).indexOf(key)!==-1); });
+      if(cands.length){ empId = cands[0]; used[empId] = true; }
+    }
+    nodes.push({id:map[n.key], title:n.title, empId:empId, parentId:n.parentKey ? (map[n.parentKey]||null) : null, unit:n.unit||'', order:n.order||0, updatedAt:now});
+  });
+  return nodes.length;
+}
+function pkgApply(){
+  var p = PKG; if(!p || SESSION.role!=='hr') return Promise.resolve();
+  var doDocs = document.getElementById('pkg_docs') && document.getElementById('pkg_docs').checked;
+  var fill = !document.getElementById('pkg_fill') || document.getElementById('pkg_fill').checked;
+  var notify = document.getElementById('pkg_notify') && document.getElementById('pkg_notify').checked;
+  var orgKeys = Array.prototype.filter.call(document.querySelectorAll('.pkg-org'), function(x){ return x.checked; }).map(function(x){ return x.value; });
+  var now = new Date().toISOString(), added = 0, updated = 0, by = currentActorLabel(), touchedDepts = {};
+  DB.sops = DB.sops || [];
+  var chain = Promise.resolve();
+  if(doDocs){
+    p.docs.forEach(function(src){
+      chain = chain.then(function(){
+        var fileP = Promise.resolve(null);
+        if(src.file && src.file.data){
+          var prev = DB.sops.filter(function(x){ return !x.deleted && x.pkgKey===src.key && x.fileKey; })[0];
+          fileP = prev ? Promise.resolve({fileKey:prev.fileKey, fileUrl:prev.fileUrl, fileName:prev.fileName, fileType:prev.fileType, fileSize:prev.fileSize})
+            : uploadAttachment('sop_'+Date.now()+'_'+String(src.file.name).replace(/[^A-Za-z0-9._-]+/g,'_').slice(-60), 'data:'+src.file.type+';base64,'+src.file.data, src.file.type)
+              .then(function(r){ return {fileKey:r.key, fileUrl:r.url||null, fileName:src.file.name, fileType:src.file.type, fileSize:Math.round(src.file.data.length*3/4)}; })
+              .catch(function(){ return null; });
+        }
+        return fileP.then(function(f){
+          var depts = (src.depts && src.depts.length) ? pkgDeptsResolve(src.depts) : [''];
+          if(!depts.length) depts = [''];
+          depts.forEach(function(dept){
+            var cur = DB.sops.filter(function(x){ return !x.deleted && x.pkgKey===src.key && (x.dept||'')===dept; })[0];
+            var d = cur || {id:uid('SOP'), createdAt:now, by:by, pkgKey:src.key};
+            d.title = String(src.title).slice(0,160); d.category = SOP_CATS.indexOf(src.category)!==-1 ? src.category : 'Lainnya';
+            d.dept = dept; d.desc = String(src.desc||'').slice(0,4000); d.code = /^[A-Z]{2,4}-/.test(src.key) && src.key.indexOf(' ')===-1 ? src.key : (d.code||''); d.updatedAt = now;
+            if(f){ for(var k in f) d[k] = f[k]; }
+            if(cur) updated++; else { DB.sops.push(d); added++; }
+            touchedDepts[dept||'*'] = true;
+          });
+        });
+      });
+    });
+  }
+  return chain.then(function(){
+    var orgN = 0;
+    orgKeys.forEach(function(k){ var src = k==='group' ? p.org.group : p.org.props[k]; if(src) orgN += pkgApplyOrg(k, src, fill); });
+    if(orgKeys.length) DB.orgUpdatedAt = now;
+    if(notify && (added || updated)){
+      activeEmployees().forEach(function(e){
+        if(!touchedDepts['*'] && !touchedDepts[e.department]) return;
+        addNotification({type:'emp', empId:e.id}, 'HR menambahkan dokumen baru: '+(p.name||'paket dokumen')+'. Buka SOP & Peraturan.', 'sop', 'announcement');
+      });
+    }
+    logActivity('Impor paket "'+(p.name||'dokumen')+'": '+added+' dokumen baru, '+updated+' diperbarui'+(orgKeys.length ? ', struktur '+orgKeys.join(', ') : '')+'.');
+    PKG = null;
+    return saveDB().then(function(){ return {added:added, updated:updated, org:orgKeys.length, orgN:orgN}; });
+  });
 }
 
 /* ---------------------------- e-ID CARD ---------------------------- */
@@ -8941,6 +9076,7 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Impor Paket Dokumen (HR): SOP, Job Description, Flowchart, Template & Struktur Organisasi sekaligus; kategori dokumen baru, flowchart bergambar langkah, isi panjang bisa diringkas',
     'Jam fleksibel (Marketing, Sales, Finance, Accounting, Purchasing): masuk telat tidak dihitung telat bila bekerja 8 jam; lebihnya tercatat lembur. Departemen bisa diatur HR di Pengaturan',
     'Selaras Board: satu board bersama per departemen (filter Semua anggota / Tugas saya / per orang)',
     'Selaras Board: HOD/HR bisa mengatur kategori (nama, warna, urutan, tambah/hapus kolom)',
@@ -11161,6 +11297,13 @@ document.addEventListener('click', function(e){
   } else if(action==='toggle-notifications'){
     STATE.notifPanelOpen = !STATE.notifPanelOpen;
     render();
+  } else if(action==='pkg-apply'){
+    el.disabled = true; el.textContent = 'Menerapkan...';
+    pkgApply().then(function(r){ closeModal(); if(r) toast(r.added+' dokumen baru, '+r.updated+' diperbarui'+(r.org ? ', '+r.org+' struktur organisasi ('+r.orgN+' jabatan)' : '')+'.'); render(); })
+      .catch(function(err){ console.error('pkg', err); el.disabled = false; el.textContent = 'Terapkan'; toast('Gagal menerapkan paket. Coba lagi.'); });
+  } else if(action==='sop-more'){
+    var smEl = document.querySelector('[data-sop-desc="'+el.getAttribute('data-id')+'"]');
+    if(smEl){ var smOpen = smEl.classList.toggle('open'); el.textContent = smOpen ? 'Ringkas' : 'Selengkapnya'; }
   } else if(action==='sop-cat'){
     STATE.sopCat = el.getAttribute('data-cat') || ''; render();
   } else if(action==='sop-add'){
@@ -12770,6 +12913,12 @@ document.addEventListener('change', function(e){
   if(t.id === 'dse_selectAll'){
     var wantChecked2 = t.checked;
     document.querySelectorAll('[data-role="dse-emp"]').forEach(function(cb){ cb.checked = wantChecked2; });
+    return;
+  }
+  if(t.id==='pkgFile'){
+    var pkF = t.files && t.files[0]; t.value = '';
+    if(!pkF || SESSION.role!=='hr') return;
+    pkF.text().then(function(txt){ PKG = pkgParse(txt); openModal(pkgModalHtml()); }).catch(function(){ toast('File bukan paket dokumen ABC Selaras yang valid.'); });
     return;
   }
   if(t.id === 'importFile'){
