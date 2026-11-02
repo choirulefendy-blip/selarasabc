@@ -862,6 +862,16 @@
   .chat-compose{display:flex;gap:10px;padding:12px;border-top:1px solid var(--border);background:var(--surface);align-items:flex-end;}
   /* iPhone men-zoom halaman bila font kolom isian < 16px -> di layar sentuh pakai 16px */
   @media (hover:none) and (pointer:coarse){ input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea{font-size:16px !important;} }
+  .ck-cam{position:relative;width:100%;max-width:300px;margin:0 auto;border-radius:20px;overflow:hidden;background:#000;aspect-ratio:3/4;}
+  .ck-cam video{width:100%;height:100%;object-fit:cover;display:block;transform:scaleX(-1);}
+  .ck-guide{position:absolute;inset:0;pointer-events:none;}
+  .ck-guide svg{position:absolute;inset:0;width:100%;height:100%;}
+  .ck-guide-top{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:6px;z-index:1;}
+  .ck-pill{background:rgba(0,0,0,.55);color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;backdrop-filter:blur(4px);}
+  .ck-pill.ck-in{background:rgba(22,163,74,.9);} .ck-pill.ck-out{background:rgba(57,128,196,.95);}
+  .ck-clock{font-variant-numeric:tabular-nums;font-size:13px;}
+  .ck-guide-bottom{position:absolute;bottom:10px;left:0;right:0;text-align:center;color:#fff;font-size:12px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.6);z-index:1;}
+  .ck-guide-txt{display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;font-size:13.5px;font-weight:600;color:var(--text);margin-top:10px;}
   .chat-compose textarea{flex:1;resize:none;max-height:120px;border-radius:20px;padding:10px 16px;font:inherit;border:1px solid var(--border);background:var(--surface-container-low);color:var(--text);}
   .chat-empty{margin:auto;text-align:center;color:var(--text-muted);display:flex;flex-direction:column;gap:10px;align-items:center;}
   @media(max-width:860px){
@@ -4807,6 +4817,20 @@ function conditionSelectorHtml(){
   return '<div class="form-group"><label>Kondisi Hari Ini</label><div class="condition-row">'+cards+'</div></div>';
 }
 
+/* panduan visual di atas kamera absen: siluet wajah & bahu + jam berjalan */
+function ckGuideOverlayHtml(type, label){
+  var n = new Date(), hm = pad2(n.getHours())+':'+pad2(n.getMinutes());
+  return '<div class="ck-guide" aria-hidden="true">'+
+    '<div class="ck-guide-top"><span class="ck-pill ck-'+(type==='in'?'in':'out')+'">'+escapeHtml(label)+'</span><span class="ck-pill ck-clock" data-live-clock>'+hm+'</span></div>'+
+    '<svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice"><defs><mask id="ckMask"><rect width="300" height="400" fill="#fff"/>'+
+      '<ellipse cx="150" cy="160" rx="72" ry="92" fill="#000"/><path d="M40 400 C44 318 92 288 150 286 C208 288 256 318 260 400 Z" fill="#000"/></mask></defs>'+
+      '<rect width="300" height="400" fill="rgba(0,0,0,.38)" mask="url(#ckMask)"/>'+
+      '<ellipse cx="150" cy="160" rx="72" ry="92" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="10 7"/>'+
+      '<path d="M40 400 C44 318 92 288 150 286 C208 288 256 318 260 400" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="10 7"/>'+
+    '</svg>'+
+    '<div class="ck-guide-bottom">Wajah di dalam garis &middot; bahu sejajar</div>'+
+  '</div>';
+}
 function renderCheckinActionCard(type, label, locText, geoMatchHtml){
   var body;
   if(CHECKIN_DRAFT.photoDataUrl){
@@ -4824,7 +4848,11 @@ function renderCheckinActionCard(type, label, locText, geoMatchHtml){
       '<div style="text-align:center;margin-top:10px;"><button class="btn btn-primary" data-action="retry-checkin-camera">Coba Lagi</button></div>';
   } else {
     body = ''+
-      '<video id="checkinVideo" autoplay playsinline muted style="width:100%;max-width:300px;border-radius:20px;background:#000;display:block;margin:0 auto;"></video>'+
+      '<div class="ck-cam">'+
+        '<video id="checkinVideo" autoplay playsinline muted></video>'+
+        ckGuideOverlayHtml(type, label)+
+      '</div>'+
+      '<div class="ck-guide-txt">'+iconSvg('info',15)+' Posisikan tubuh tegap dan wajah menghadap ke kamera</div>'+
       '<div style="text-align:center;margin-top:14px;">'+
         (CHECKIN_CAMERA_STATUS==='ready'
           ? '<button class="btn btn-primary" data-action="capture-checkin-photo">Ambil Foto</button>'
@@ -9137,6 +9165,7 @@ function assetPushHistory(a, type, text, cost){
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Kamera absen: panduan siluet wajah & bahu, label Absen Masuk/Pulang + jam berjalan, "Posisikan tubuh tegap dan wajah menghadap ke kamera"',
     'Akses HR untuk karyawan: login pakai akun sendiri, nama & foto tetap, bisa pindah Mode HR / Mode Karyawan. Semua akun HR kini tampil dengan nama orangnya (tugas, notifikasi, chat, log)',
     'Impor Paket Dokumen (HR): SOP, Job Description, Flowchart, Template & Struktur Organisasi sekaligus; kategori dokumen baru, flowchart bergambar langkah, isi panjang bisa diringkas',
     'Jam fleksibel (Marketing, Sales, Finance, Accounting, Purchasing): masuk telat tidak dihitung telat bila bekerja 8 jam; lebihnya tercatat lembur. Departemen bisa diatur HR di Pengaturan',
@@ -9423,6 +9452,7 @@ function startLiveSync(){
   window.__liveSyncStarted = true;
   setInterval(function(){ liveTick(false); }, 5000);
   setInterval(tickWorkTimers, 1000);
+  setInterval(function(){ var c = document.querySelectorAll('[data-live-clock]'); if(!c.length) return; var n = new Date(), t = pad2(n.getHours())+':'+pad2(n.getMinutes()); for(var i=0;i<c.length;i++){ if(c[i].textContent!==t) c[i].textContent = t; } }, 5000);
   setInterval(function(){ try{ workReminderSync(); shiftReminderSync(); }catch(e){} }, 60000);
   /* kartu Jadwal Hari Ini/Besok berganti otomatis (mis. pukul 18.00, saat shift mulai) */
   setInterval(function(){
