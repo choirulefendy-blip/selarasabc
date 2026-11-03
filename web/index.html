@@ -187,6 +187,11 @@
   .osd-sun{color:var(--danger);}
   .osd-table .osd-today{box-shadow:inset 0 0 0 2px var(--primary);}
   .gsi-wrap{margin:0 0 16px;}
+  .lv-main{display:flex;gap:14px;align-items:center;}
+  .lv-num{font-size:34px;font-weight:800;color:var(--primary);line-height:1;}
+  .lv-num span{font-size:14px;font-weight:600;color:var(--text-muted);margin-left:2px;}
+  .lv-bar{height:8px;border-radius:999px;background:var(--surface-container-high);margin:12px 0 6px;display:flex;overflow:hidden;}
+  .lv-bar div{background:var(--primary);} .lv-bar .lv-pend{background:#F59E0B;}
   .rte{border:1px solid var(--outline,var(--border));border-radius:16px;background:var(--surface);overflow:hidden;}
   .rte:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px rgba(57,128,196,.15);}
   .rte-bar{display:flex;flex-wrap:wrap;gap:2px;align-items:center;padding:6px;border-bottom:1px solid var(--border);background:var(--surface-container-low);position:sticky;top:0;z-index:1;}
@@ -1048,6 +1053,48 @@ function shiftPresetOptionsHtml(selectedId){
   return opts;
 }
 var LEAVE_TYPES = ['Cuti Tahunan','Sakit','Izin','Lainnya'];
+/* ---- Jatah cuti tahunan: 12 hari per periode kontrak (Juni–Mei), sisa hangus di akhir periode ---- */
+function leaveQuotaDefault(){ var q = DB && DB.settings && DB.settings.leaveQuotaDays; return q==null ? 12 : +q; }
+function leaveResetMonth(){ var m = DB && DB.settings && DB.settings.leaveResetMonth; return m ? +m : 6; }
+function leavePeriodOf(iso){
+  var p = String(iso||todayISO()).split('-'), y = +p[0], m = +p[1], rm = leaveResetMonth();
+  var sy = m >= rm ? y : y-1;
+  var start = sy+'-'+pad2(rm)+'-01';
+  var endD = new Date(sy+1, rm-1, 0);   /* hari terakhir sebelum bulan reset tahun berikutnya */
+  var end = endD.getFullYear()+'-'+pad2(endD.getMonth()+1)+'-'+pad2(endD.getDate());
+  return {start:start, end:end, label:MONTHS_ID[rm-1].slice(0,3)+' '+sy+' – '+MONTHS_ID[endD.getMonth()].slice(0,3)+' '+endD.getFullYear()};
+}
+function isAnnualLeave(r){ return /cuti tahunan/i.test(r.type||''); }
+function leaveDaysIn(r, from, to){
+  var a = r.startDate > from ? r.startDate : from, b = (r.endDate||r.startDate) < to ? (r.endDate||r.startDate) : to;
+  if(a > b) return 0;
+  return Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00'))/86400000) + 1;
+}
+function leaveQuotaOf(emp, period){
+  if(!emp) return 0;
+  if(emp.contractUntil && emp.contractUntil < period.start) return 0;
+  return emp.leaveQuota!=null && emp.leaveQuota!=='' ? +emp.leaveQuota : leaveQuotaDefault();
+}
+function leaveBalance(empId, iso){
+  var emp = getEmployee(empId), per = leavePeriodOf(iso), used = 0, pending = 0;
+  (DB.leaveRequests||[]).forEach(function(r){
+    if(r.empId!==empId || !isAnnualLeave(r)) return;
+    var n = leaveDaysIn(r, per.start, per.end);
+    if(r.status==='approved') used += n; else if(r.status==='pending_hod' || r.status==='pending_hr') pending += n;
+  });
+  var quota = leaveQuotaOf(emp, per);
+  return {quota:quota, used:used, pending:pending, left:Math.max(0, quota-used), period:per, ended:!!(emp && emp.contractUntil && emp.contractUntil < per.start)};
+}
+function leaveBalanceBadge(empId){
+  var b = leaveBalance(empId);
+  return '<span class="badge '+(b.left<=2 ? 'badge-warning' : 'badge-info')+'" title="Periode '+escapeHtml(b.period.label)+'">Sisa cuti '+b.left+'/'+b.quota+'</span>';
+}
+/* cuti/sakit/izin yang sudah disetujui pada tanggal tertentu (cadangan bila jadwal tertimpa) */
+function approvedLeaveOn(empId, iso){
+  var list = DB.leaveRequests || [];
+  for(var i=0;i<list.length;i++){ var r = list[i]; if(r.empId===empId && r.status==='approved' && r.startDate<=iso && (r.endDate||r.startDate)>=iso) return r; }
+  return null;
+}
 var LEAVE_STATUS_META = {
   pending_hod:{label:'Menunggu HOD', cls:'badge-warning'},
   pending_hr:{label:'Menunggu HR', cls:'badge-warning'},
@@ -1639,6 +1686,8 @@ function applyWeeklyPatternToMonth(db, ym, empId, pattern){
   for(var d=1; d<=n; d++){
     var wd = weekdayOf(ym, d);
     var p = pattern[wd];
+    var cur = db.schedules[ym][empId][d];
+    if(cur && cur.type==='libur' && (cur.cuti || cur.leave)) continue;   /* jangan timpa cuti/sakit/izin */
     if(p && p.type==='kerja'){
       db.schedules[ym][empId][d] = {type:'kerja', start:p.start, end:p.end};
     } else {
@@ -2507,6 +2556,8 @@ function getMatchDay(empId, ym, day){
   }
   // kerja
   if(!att || !att.checkIn){
+    var lv = approvedLeaveOn(empId, ym+'-'+pad2(day));
+    if(lv) return {status: /sakit/i.test(lv.type) ? 'sakit' : (/izin/i.test(lv.type) ? 'izin' : 'cuti'), sched:sched, att:att, lateMinutes:0, leaveReq:lv};
     var today = new Date(); today.setHours(0,0,0,0);
     var thisDay = new Date(ymParts(ym).y, ymParts(ym).m-1, day);
     if(thisDay.getTime() > today.getTime()){
@@ -3522,8 +3573,16 @@ function employeeModalHtml(emp){
         '<div class="form-group"><label>Password</label><input id="f_password" value="'+escapeHtml(e.password)+'"></div>'+
       '</div>'+
       '<div class="form-group"><label>Properti (bisa lebih dari satu)</label>'+propCheckboxes+'</div>'+
+      '<div class="form-row">'+
+        '<div class="form-group"><label>No. BPJS Ketenagakerjaan</label><input id="f_bpjsTkNo" inputmode="numeric" value="'+escapeHtml(e.bpjsTkNo||'')+'" placeholder="11 digit"></div>'+
+        '<div class="form-group"><label>No. BPJS Kesehatan</label><input id="f_bpjsKesNo" inputmode="numeric" value="'+escapeHtml(e.bpjsKesNo||'')+'" placeholder="13 digit"></div>'+
+      '</div>'+
       '<div class="checkbox-row"><input type="checkbox" id="f_bpjsKes" '+(e.bpjsKesehatanActive!==false?'checked':'')+'><label for="f_bpjsKes">Ikut BPJS Kesehatan</label></div>'+
       '<div class="checkbox-row"><input type="checkbox" id="f_bpjsTK" '+(e.bpjsKetenagakerjaanActive!==false?'checked':'')+'><label for="f_bpjsTK">Ikut BPJS Ketenagakerjaan</label></div>'+
+      '<div class="form-row">'+
+        '<div class="form-group"><label>Kontrak berlaku s/d (opsional)</label><input type="date" id="f_contractUntil" value="'+escapeHtml(e.contractUntil||'')+'"></div>'+
+        '<div class="form-group"><label>Jatah cuti / periode (hari)</label><input type="number" min="0" id="f_leaveQuota" value="'+(e.leaveQuota!=null && e.leaveQuota!=='' ? e.leaveQuota : '')+'" placeholder="'+leaveQuotaDefault()+' (bawaan)"></div>'+
+      '</div>'+
       '<div class="checkbox-row"><input type="checkbox" id="f_active" '+(e.active!==false?'checked':'')+'><label for="f_active">Status Aktif</label></div>'+
       '<div class="modal-actions">'+
         '<button class="btn btn-secondary" data-action="close-modal">Batal</button>'+
@@ -3619,8 +3678,10 @@ function employeeProfileModalHtml(emp){
         row('Gaji Pokok', rupiah(emp.baseSalary))+
         row('Uang Makan', rupiah(emp.mealAllowance||0))+
         row('Transportasi', rupiah(emp.transportAllowance||0))+
-        row('BPJS Kesehatan', emp.bpjsKesehatanActive!==false ? 'Ikut' : 'Tidak ikut')+
-        row('BPJS Ketenagakerjaan', emp.bpjsKetenagakerjaanActive!==false ? 'Ikut' : 'Tidak ikut')+
+        row('BPJS Kesehatan', (emp.bpjsKesehatanActive!==false ? 'Ikut' : 'Tidak ikut')+(emp.bpjsKesNo ? ' &middot; <span style="font-family:monospace;">'+escapeHtml(emp.bpjsKesNo)+'</span>' : ''))+
+        row('BPJS Ketenagakerjaan', (emp.bpjsKetenagakerjaanActive!==false ? 'Ikut' : 'Tidak ikut')+(emp.bpjsTkNo ? ' &middot; <span style="font-family:monospace;">'+escapeHtml(emp.bpjsTkNo)+'</span>' : ''))+
+        (function(){ var b = leaveBalance(emp.id); return row('Sisa Cuti Tahunan', b.left+' / '+b.quota+' hari <span class="muted">('+escapeHtml(b.period.label)+')</span>'); })()+
+        (emp.contractUntil ? row('Kontrak s/d', formatDateID(emp.contractUntil)) : '')+
         row('Username', '@'+escapeHtml(emp.username))+
       '</div>'+
       '<div class="modal-actions">'+
@@ -4734,6 +4795,8 @@ function renderSettingsPage(){
     '<div class="form-group"><label>Departemen Jam Fleksibel</label>'+
       
       '<div class="pj-members">'+getDepartments().map(function(d){ return '<label class="pj-member"><input type="checkbox" class="s_flex" value="'+escapeHtml(d)+'"'+(isFlexDept(d)?' checked':'')+'> '+escapeHtml(d)+'</label>'; }).join('')+'</div></div>'+
+    '<div class="form-row"><div class="form-group"><label>Jatah Cuti Tahunan (hari / periode)</label><input type="number" min="0" id="s_leaveQuota" value="'+leaveQuotaDefault()+'"></div>'+
+      '<div class="form-group"><label>Periode cuti mulai (bulan perpanjangan kontrak)</label><select id="s_leaveMonth">'+MONTHS_ID.map(function(mn, i){ return '<option value="'+(i+1)+'"'+(leaveResetMonth()===i+1?' selected':'')+'>'+mn+'</option>'; }).join('')+'</select></div></div>'+
     '<button class="btn btn-primary" data-action="save-payroll-settings">Simpan Aturan</button>'+
   '</div>'+
   '<div class="card">'+
@@ -5159,7 +5222,7 @@ function renderLeaveRequestPage(){
       var dateRange = r.startDate===r.endDate ? formatDateID(r.startDate) : formatDateID(r.startDate)+' &ndash; '+formatDateID(r.endDate);
       var fileBtn = (r.fileKey||r.fileUrl) ? ' <button class="btn btn-ghost btn-sm" data-action="view-leave-file" data-id="'+r.id+'">Lampiran</button>' : '';
       return '<tr>'+
-        '<td>'+escapeHtml(emp?emp.name:'(karyawan dihapus)')+'</td>'+
+        '<td>'+escapeHtml(emp?emp.name:'(karyawan dihapus)')+(isAnnualLeave(r) ? '<div>'+leaveBalanceBadge(r.empId)+'</div>' : '')+'</td>'+
         '<td>'+dateRange+'</td>'+
         '<td>'+escapeHtml(r.type)+'</td>'+
         '<td>'+escapeHtml(r.reason||'-')+'</td>'+
@@ -5201,7 +5264,12 @@ function renderLeaveRequestPage(){
     '</div>';
   }
 
-  return teamSection+''+
+  var lb = leaveBalance(empId);
+  var balCard = '<div class="card lv-card"><div class="lv-main"><div class="lv-num">'+lb.left+'<span>/'+lb.quota+' hari</span></div><div><div class="card-title" style="margin:0;">Sisa Cuti Tahunan</div>'+
+    '<div class="muted" style="font-size:12.5px;">Periode '+escapeHtml(lb.period.label)+' &middot; hangus '+escapeHtml(formatDateID(lb.period.end))+'</div></div></div>'+
+    '<div class="lv-bar"><div style="width:'+(lb.quota ? Math.min(100, lb.used/lb.quota*100) : 0)+'%"></div>'+(lb.pending ? '<div class="lv-pend" style="width:'+(lb.quota ? Math.min(100, lb.pending/lb.quota*100) : 0)+'%"></div>' : '')+'</div>'+
+    '<div class="muted" style="font-size:12px;">Terpakai '+lb.used+' hari'+(lb.pending ? ' &middot; diajukan '+lb.pending+' hari' : '')+(lb.ended ? ' &middot; <b style="color:var(--danger);">kontrak berakhir</b>' : '')+'</div></div>';
+  return teamSection+balCard+
   '<div class="card">'+
     '<div class="card-title">Ajukan Cuti / Izin</div>'+
     '<div class="card-sub">'+((SESSION.role==='hod'||!myDepartmentHasHod(empId)) ? 'Pengajuan Anda langsung diteruskan ke HR untuk persetujuan final.' : 'Pengajuan diproses 2 tahap: disetujui HOD dulu, lalu persetujuan final dari HR.')+' Kalau disetujui, hari tersebut otomatis ditandai Cuti di jadwal.</div>'+
@@ -5381,7 +5449,7 @@ function renderLeaveApprovalPage(){
     var meta = LEAVE_STATUS_META[r.status] || LEAVE_STATUS_META.pending_hod;
     var dateRange = r.startDate===r.endDate ? formatDateID(r.startDate) : formatDateID(r.startDate)+' &ndash; '+formatDateID(r.endDate);
     return '<tr>'+
-      '<td>'+escapeHtml(emp?emp.name:'(karyawan dihapus)')+'</td>'+
+      '<td>'+escapeHtml(emp?emp.name:'(karyawan dihapus)')+(isAnnualLeave(r) ? '<div>'+leaveBalanceBadge(r.empId)+'</div>' : '')+'</td>'+
       '<td>'+dateRange+'</td>'+
       '<td>'+escapeHtml(r.type)+'</td>'+
       '<td>'+escapeHtml(r.reason||'-')+'</td>'+
@@ -5642,7 +5710,7 @@ function renderAnnouncementsPage(){
   if(SESSION.role==='hr') return renderAnnouncementComposeCard() + renderAnnouncementHistoryCard();
   var empId = SESSION.empId;
   var list = DB.announcements.filter(function(a){
-    return a.recipients.indexOf('all')!==-1 || a.recipients.indexOf(empId)!==-1;
+    return !a.deleted && (a.recipients.indexOf('all')!==-1 || a.recipients.indexOf(empId)!==-1);
   }).slice().sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); });
 
   if(list.length===0){
@@ -5697,7 +5765,7 @@ function renderAnnouncementComposeCard(){
 }
 
 function renderAnnouncementHistoryCard(){
-  var list = DB.announcements.slice().sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); });
+  var list = DB.announcements.filter(function(a){ return !a.deleted; }).sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); });
   var rows = list.map(function(a){
     var recipientsTxt = a.recipients.indexOf('all')!==-1 ? 'Semua Staff & HOD' : a.recipients.map(function(id){ var e=getEmployee(id); return e?e.name:'-'; }).join(', ');
     return '<tr>'+
@@ -5705,13 +5773,14 @@ function renderAnnouncementHistoryCard(){
       '<td>'+escapeHtml(a.title)+'</td>'+
       '<td style="font-size:12.5px;">'+escapeHtml(recipientsTxt)+'</td>'+
       '<td>'+((a.fileKey||a.fileUrl) ? '<button class="btn btn-ghost btn-sm" data-action="view-announcement-file" data-id="'+a.id+'">'+escapeHtml(a.fileName||'Lihat File')+'</button>' : '<span class="muted">&mdash;</span>')+'</td>'+
+      '<td><button class="btn btn-ghost btn-sm" data-action="delete-announcement" data-id="'+a.id+'" style="color:var(--danger);" title="Hapus pengumuman" aria-label="Hapus pengumuman">'+iconSvg('trash',15)+'</button></td>'+
     '</tr>';
   }).join('');
   return ''+
   '<div class="card">'+
     '<div class="card-title">Riwayat Pengumuman</div>'+
-    '<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Judul</th><th>Penerima</th><th>Lampiran</th></tr></thead>'+
-    '<tbody>'+(rows || '<tr><td colspan="4" class="empty-state">Belum ada pengumuman.</td></tr>')+'</tbody></table></div>'+
+    '<div class="table-wrap"><table><thead><tr><th>Tanggal</th><th>Judul</th><th>Penerima</th><th>Lampiran</th><th></th></tr></thead>'+
+    '<tbody>'+(rows || '<tr><td colspan="5" class="empty-state">Belum ada pengumuman.</td></tr>')+'</tbody></table></div>'+
   '</div>';
 }
 
@@ -9722,6 +9791,9 @@ var APP_PUBLIC_URL = 'https://abcselaras.my.id/web/';
 var APK_DOWNLOAD_URL = 'https://github.com/choirulefendy-blip/selarasabc/releases/download/apk-terbaru/app-debug.apk';
 var APP_CHANGELOG = [
   {date:'2026-11-01', items:[
+    'Jatah cuti tahunan 12 hari per periode kontrak (Juni–Mei), sisa hangus; tampil di halaman Cuti & persetujuan',
+    'Hari cuti/sakit/izin yang disetujui tidak lagi terhitung Alpha di laporan; pola mingguan tidak menimpa cuti',
+    'HR bisa menghapus pengumuman; kolom No. BPJS Ketenagakerjaan & Kesehatan di data karyawan',
     'Notifikasi Absen Staf untuk HR & HOD: setiap absen masuk/pulang, telat, belum absen (30 menit setelah jadwal), di luar jangkauan — bisa diatur di Pengaturan Notifikasi',
     'Editor teks seperti Word di SOP & Pengumuman: tebal, miring, garis bawah, ukuran huruf, warna, daftar, Tab/indentasi, rata, tautan, sisip gambar',
     'SOP: keterangan penerbit (HR Admin / HOD departemen) + opsi HOD minta persetujuan HR sebelum terbit (HR bisa setujui/tolak, revisi juga)',
@@ -12534,6 +12606,10 @@ document.addEventListener('click', function(e){
       password:document.getElementById('f_password').value,
       bpjsKesehatanActive:document.getElementById('f_bpjsKes').checked,
       bpjsKetenagakerjaanActive:document.getElementById('f_bpjsTK').checked,
+      bpjsTkNo:(document.getElementById('f_bpjsTkNo').value||'').replace(/[^0-9]/g,'').slice(0,20),
+      bpjsKesNo:(document.getElementById('f_bpjsKesNo').value||'').replace(/[^0-9]/g,'').slice(0,20),
+      contractUntil:document.getElementById('f_contractUntil').value || '',
+      leaveQuota:document.getElementById('f_leaveQuota').value==='' ? null : Math.max(0, +document.getElementById('f_leaveQuota').value||0),
       active:document.getElementById('f_active').checked
     };
     if(id){
@@ -12915,6 +12991,11 @@ document.addEventListener('click', function(e){
     var lrReason = document.getElementById('lr_reason').value.trim();
     if(!lrStart){ toast('Isi tanggal mulai.'); return; }
     if(lrEnd < lrStart){ toast('Tanggal selesai tidak boleh sebelum tanggal mulai.'); return; }
+    if(/cuti tahunan/i.test(lrType)){
+      var lrBal = leaveBalance(SESSION.empId, lrStart), lrDays = leaveDaysIn({startDate:lrStart, endDate:lrEnd}, lrBal.period.start, lrBal.period.end);
+      if(lrEnd > lrBal.period.end){ toast('Cuti melewati akhir periode ('+formatDateID(lrBal.period.end)+'). Ajukan terpisah per periode.'); return; }
+      if(lrDays > lrBal.left - lrBal.pending){ toast('Sisa cuti tidak cukup: tersisa '+Math.max(0, lrBal.left - lrBal.pending)+' hari (termasuk yang sedang diajukan).'); return; }
+    }
     var lrFileInput = document.getElementById('lr_file');
     var lrFile = lrFileInput && lrFileInput.files[0];
     var lrReqId = uid('L');
@@ -13026,6 +13107,10 @@ document.addEventListener('click', function(e){
         addNotification({type:'emp', empId:apReq.empId}, 'Pengajuan '+apReq.type+' Anda ('+apDateTxt+') disetujui HOD, menunggu persetujuan final HR.', 'leave-request');
         saveDB().then(function(){ toast('Disetujui, diteruskan ke HR untuk persetujuan final.'); render(); });
       } else if(apReq.status==='pending_hr'){
+        if(isAnnualLeave(apReq)){
+          var apBal = leaveBalance(apReq.empId, apReq.startDate), apDays = leaveDaysIn(apReq, apBal.period.start, apBal.period.end);
+          if(apDays > apBal.left && !confirm('Sisa cuti '+apEmpName+' tinggal '+apBal.left+' hari, pengajuan ini '+apDays+' hari. Tetap setujui?')) return;
+        }
         apReq.status = 'approved';
         apReq.hrDecisionAt = new Date().toISOString();
         eachDateInRange(apReq.startDate, apReq.endDate, function(y,m,d){
@@ -13393,6 +13478,13 @@ document.addEventListener('click', function(e){
       if(e.department===deptVal) annDraft3.empIds[e.id] = true;
     });
     render();
+  } else if(action==='delete-announcement'){
+    if(SESSION.role!=='hr') return;
+    var daA = DB.announcements.filter(function(a){ return a.id===el.getAttribute('data-id'); })[0];
+    if(!daA || !confirm('Hapus pengumuman "'+daA.title+'"? Pengumuman hilang dari semua karyawan.')) return;
+    daA.deleted = true; daA.deletedAt = new Date().toISOString();
+    logActivity('Menghapus pengumuman "'+daA.title+'".');
+    saveDB().then(function(){ toast('Pengumuman dihapus.'); render(); });
   } else if(action==='submit-announcement'){
     var annDraft = getAnnouncementDraft();
     var annTitle = document.getElementById('ann_title').value.trim();
@@ -13543,6 +13635,7 @@ document.addEventListener('click', function(e){
     DB.settings.gracePeriodMinutes = Number(document.getElementById('s_grace').value)||0;
     DB.settings.lateRatePerMinute = Number(document.getElementById('s_rate').value)||0;
     DB.settings.lateDeductionCap = Number(document.getElementById('s_cap').value)||0;
+    if(document.getElementById('s_leaveQuota')){ DB.settings.leaveQuotaDays = Math.max(0, Number(document.getElementById('s_leaveQuota').value)||0); DB.settings.leaveResetMonth = Number(document.getElementById('s_leaveMonth').value)||6; }
     var sfEls = document.querySelectorAll('.s_flex');
     if(sfEls.length){ DB.settings.flexDepts = Array.prototype.filter.call(sfEls, function(x){ return x.checked; }).map(function(x){ return x.value; }); }
     logActivity('Mengubah aturan BPJS/potongan telat.');
