@@ -176,7 +176,7 @@ function login(w, who){
   await doCheckin('E1', {lat:-7.9010474, lng:112.5586311, accuracy:10}, 'in');
   var rec1 = w.DB.attendance[info.ym]['E1'][info.day];
   ok(rec1 && rec1.checkIn, 'absen masuk tersimpan');
-  var lateN = w.DB.notifications.filter(function(n){ return n.message.indexOf('Budi Staff')!==-1 && n.message.indexOf('TELAT')!==-1; });
+  var lateN = w.DB.notifications.filter(function(n){ return n.audience.type==='hr' && n.message.indexOf('Budi Staff')!==-1 && n.message.indexOf('TELAT')!==-1; });
   (EARLY_NIGHT ? function(c,n){ ok(true, n+' (dilewati: jam 00.00–01.00)'); } : ok)(lateN.length===1 && lateN[0].audience.type==='hr' && lateN[0].link==='attendance', 'HR dapat notifikasi saat staf absen telat');
   ok(!w.DB.notifications.some(function(n){ return n.message.indexOf('LUAR JANGKAUAN')!==-1 && n.message.indexOf('Budi')!==-1; }), 'tidak ada alarm luar jangkauan saat di kantor');
   var c1 = hrCount();

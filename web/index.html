@@ -3389,7 +3389,7 @@ function renderAdminDashboardBase(){
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Langkah Cepat</div>'+
-    '<div class="card-sub">Alur kerja bulanan: HOD mengatur jadwal, HR mencocokkan absensi dan menerbitkan slip gaji</div>'+
+    
     '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
       '<button class="btn btn-secondary" data-action="nav" data-view="attendance">1. Impor &amp; Cocokkan Absensi</button>'+
       (pendingLeave>0 ? '<button class="btn btn-secondary" data-action="nav" data-view="leave-approval">2. Tinjau Pengajuan Cuti ('+pendingLeave+' menunggu)</button>' : '<button class="btn btn-secondary" data-action="nav" data-view="leave-approval">2. Tinjau Pengajuan Cuti</button>')+
@@ -3543,7 +3543,7 @@ function manageHodModalHtml(emp){
   '<div class="modal-overlay" data-action="overlay-close">'+
     '<div class="modal" data-stop="1">'+
       '<h3>Kelola HOD &mdash; '+escapeHtml(emp.name)+'</h3>'+
-      '<div class="card-sub">Pilih departemen yang dijabat sebagai HOD oleh karyawan ini. Satu departemen boleh punya lebih dari satu HOD, dan satu orang boleh menjabat lebih dari satu departemen.</div>'+
+      
       '<div class="form-group">'+checkboxes+'</div>'+
       '<div class="modal-actions">'+
         '<button class="btn btn-secondary" data-action="close-modal">Batal</button>'+
@@ -4073,7 +4073,6 @@ function renderSchedulePage(){
   return ''+
   deptSelector+
   '<div class="toolbar"><div class="toolbar-left">'+
-    '<span class="muted">Klik salah satu tanggal di kalender untuk atur jadwal tim pada tanggal itu (bisa pilih rentang tanggal &amp; siapa saja yang kena).</span>'+
   '</div>'+
     '<button class="btn btn-secondary" data-action="submit-department-schedule-for-approval" data-dept="'+escapeHtml(dept)+'">Ajukan Jadwal Departemen ke HR</button>'+
     (myDepts.length > 1 ? '<button class="btn btn-secondary" data-action="submit-all-schedules-for-approval">Ajukan Semua Departemen Saya</button>' : '')+
@@ -4086,12 +4085,11 @@ function renderSchedulePage(){
       '<span class="sv-toggle no-print"><button type="button" class="'+(STATE.schedView!=='list'?'on':'')+'" data-action="sched-view" data-v="cal">'+iconSvg('calendar',14)+' Kalender</button><button type="button" class="'+(STATE.schedView==='list'?'on':'')+'" data-action="sched-view" data-v="list">'+iconSvg('listCheck',14)+' Tabel</button></span>'+
       (approvalMeta ? '<span class="badge '+approvalMeta.cls+'">'+approvalMeta.label+'</span>' : '<span class="badge badge-neutral">Belum diajukan</span>')+
     '</div>'+
-    '<div class="card-sub">'+(STATE.schedView==='list' ? 'Ketuk sel untuk mengatur jadwal satu orang di tanggal itu, atau ketuk tanggal di baris atas untuk mengatur seluruh tim. ' : 'Setiap kotak tanggal menampilkan ringkasan berapa staf Kerja/Libur/Cuti/Sakit hari itu. Klik tanggalnya untuk mengatur. ')+(approval && approval.status==='rejected' && approval.hrNote ? '<span style="color:var(--danger);">Catatan HR: '+escapeHtml(approval.hrNote)+'</span>' : '')+'</div>'+
+    '<div class="card-sub">'+(approval && approval.status==='rejected' && approval.hrNote ? '<span style="color:var(--danger);">Catatan HR: '+escapeHtml(approval.hrNote)+'</span>' : '')+'</div>'+
     (STATE.schedView==='list' ? scheduleRosterHtml(deptEmployees.slice().sort(function(a,b){ return a.name.localeCompare(b.name); }), ym, true, 'teamRosterWrap') : renderTeamCalendarGrid(deptEmployees, ym, true))+
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Isi Cepat Pola Mingguan (Seluruh Tim '+escapeHtml(dept)+')</div>'+
-    '<div class="card-sub">Atur pola default lalu terapkan ke seluruh bulan '+monthLabel(ym)+' untuk semua staf di departemen ini sekaligus. Hasilnya tetap bisa disesuaikan lagi lewat kalender di atas.</div>'+
     '<div class="table-wrap"><table><thead><tr><th>Hari</th><th>Tipe</th><th>Preset Shift</th><th>Jam Masuk</th><th>Jam Pulang</th></tr></thead><tbody>'+patternRows+'</tbody></table></div>'+
     '<div style="margin-top:14px;"><button class="btn btn-primary" data-action="apply-weekly-pattern-team" data-dept="'+escapeHtml(dept)+'">Terapkan ke '+monthLabel(ym)+'</button></div>'+
   '</div>'+
@@ -4135,7 +4133,7 @@ function otherDeptScheduleHtml(myDepts){
   return '<div class="card">'+
     '<div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;"><span>Jadwal Departemen Lain &mdash; '+monthLabel(ym)+'</span>'+
       '<select id="otherSchedDept" class="sop-dept-sel">'+others.map(function(d){ return '<option value="'+escapeHtml(d)+'"'+(d===od?' selected':'')+'>'+escapeHtml(d)+'</option>'; }).join('')+'</select></div>'+
-    '<div class="card-sub">Hanya bisa dilihat (tidak bisa diubah) &middot; bulan berjalan. Hari ini <b>'+on.length+'</b> dari '+emps.length+' orang '+escapeHtml(od)+' masuk'+(on.length ? ': '+on.map(function(x){ return escapeHtml(x.e.name.split(' ')[0])+' '+escapeHtml(x.sc.start); }).join(', ') : '')+'.</div>'+
+    '<div class="card-sub">Hari ini <b>'+on.length+'</b> dari '+emps.length+' orang '+escapeHtml(od)+' masuk'+(on.length ? ': '+on.map(function(x){ return escapeHtml(x.e.name.split(' ')[0])+' '+escapeHtml(x.sc.start); }).join(', ') : '')+'.</div>'+
     scheduleRosterHtml(emps, ym, false, 'osdWrap')+
   '</div>';
 }
@@ -4241,7 +4239,7 @@ function renderAttendancePage(){
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Ringkasan Bulan Ini</div>'+
-    '<div class="card-sub">'+monthLabel(ym)+' &middot; hasil pencocokan jadwal vs. absensi seluruh karyawan aktif</div>'+
+    '<div class="card-sub">'+monthLabel(ym)+'</div>'+
     '<div class="table-wrap"><table><thead><tr><th>Nama</th><th class="num">Hadir</th><th class="num">Telat</th><th class="num">Alpha</th><th class="num">Cuti</th><th class="num">Total Telat</th><th class="num">Est. Potongan</th></tr></thead>'+
     '<tbody>'+(summaryRows || '<tr><td colspan="7" class="empty-state">Belum ada karyawan aktif.</td></tr>')+'</tbody></table></div>'+
   '</div>'+
@@ -4252,7 +4250,7 @@ function renderAttendancePage(){
     '</div>'+
     '<button class="btn btn-secondary btn-sm" data-action="open-import-attendance" data-emp="'+empId+'">Impor dari Teks (per orang)</button>'+
     '</div>'+
-    '<div class="card-sub">Isi jam masuk &amp; pulang hasil tarikan mesin absensi, atau biarkan terisi otomatis dari absen mandiri staf (kolom Bukti). Status &amp; menit telat dihitung otomatis dari jadwal yang sudah diatur HOD.</div>'+
+    
     '<div class="table-wrap" style="max-height:440px;overflow-y:auto;"><table><thead><tr><th>Tanggal</th><th>Jadwal</th><th>Jam Masuk</th><th>Jam Pulang</th><th>Status</th><th class="num">Telat</th><th>Bukti</th></tr></thead>'+
     '<tbody id="attendanceDayBody">'+dayRows+'</tbody></table></div>'+
     '<div style="margin-top:14px;"><button class="btn btn-primary" data-action="save-attendance" data-emp="'+empId+'">Simpan Absensi</button></div>'+
@@ -4457,21 +4455,19 @@ function renderHodDashboard(){
   todayCard+
   '<div class="card">'+
     '<div class="card-title">Ringkasan Absensi Tim</div>'+
-    '<div class="card-sub">'+monthLabel(ym)+' &middot; data absensi diinput oleh HR, dicocokkan otomatis dengan jadwal yang Anda atur</div>'+
+    '<div class="card-sub">'+monthLabel(ym)+'</div>'+
     '<div class="table-wrap"><table><thead><tr><th>Nama</th><th class="num">Hadir</th><th class="num">Telat</th><th class="num">Alpha</th><th class="num">Cuti</th><th class="num">Total Telat</th></tr></thead>'+
     '<tbody>'+(summaryRows || '<tr><td colspan="6" class="empty-state">Belum ada karyawan aktif.</td></tr>')+'</tbody></table></div>'+
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Skor KPI Tim</div>'+
-    '<div class="card-sub">'+monthLabel(ym)+' &middot; klik menu "KPI Tim" untuk mengisi/melihat detail</div>'+
+    '<div class="card-sub">'+monthLabel(ym)+'</div>'+
     (kpiScores.length ? renderBarChart(kpiScores) : '<div class="empty-state">Belum ada staf yang mengisi KPI bulan ini.</div>')+
   '</div>'+
   '<div class="card">'+
     '<div class="toolbar" style="margin-bottom:6px;"><div class="toolbar-left">'+
-      '<label class="muted" style="font-size:12.5px;">Lihat detail:</label>'+
       '<select id="hodEmpSelect" style="padding:9px 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface-container-low);font-weight:600;">'+empOptions+'</select>'+
     '</div></div>'+
-    '<div class="card-sub">Tampilan lihat saja &mdash; untuk mengubah jadwal, buka menu Atur Jadwal Tim.</div>'+
     '<div class="table-wrap" style="max-height:440px;overflow-y:auto;"><table><thead><tr><th>Tanggal</th><th>Jadwal</th><th>Jam Masuk&ndash;Pulang</th><th>Status</th><th class="num">Telat</th></tr></thead>'+
     '<tbody>'+dayRows+'</tbody></table></div>'+
   '</div>';
@@ -4658,7 +4654,7 @@ function renderSettingsPage(){
     '</div>'+
     '<div class="card">'+
       '<div class="card-title">Akun HR</div>'+
-      '<div class="card-sub">Login penuh: kelola karyawan, absensi, penggajian, pengaturan.</div>'+
+      
       '<div class="form-group"><label>Username</label><input id="s_hruser" value="'+escapeHtml(hr.username)+'"></div>'+
       '<div class="form-group"><label>Password</label><input id="s_hrpass" value="'+escapeHtml(hr.password)+'"></div>'+
       '<div class="form-group"><label>Email (untuk notifikasi email, opsional)</label><input type="email" id="s_hremail" value="'+escapeHtml(hr.email||'')+'"></div>'+
@@ -4667,7 +4663,7 @@ function renderSettingsPage(){
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Akun HR Tambahan</div>'+
-    '<div class="card-sub">Tambahkan admin/staf HR lain yang bisa login penuh lewat tab HR dengan username/password sendiri (akses dan kewenangannya sama seperti Akun HR utama di atas).</div>'+
+    
     '<div class="table-wrap" style="margin-bottom:16px;"><table><thead><tr><th>Nama</th><th>Username</th><th>Email</th><th></th></tr></thead><tbody>'+(extraHrRows || '<tr><td colspan="4" class="empty-state">Belum ada akun HR tambahan.</td></tr>')+'</tbody></table></div>'+
     '<div class="form-row">'+
       '<div class="form-group"><label>Nama</label><input id="newHrName" placeholder="Nama lengkap"></div>'+
@@ -4681,7 +4677,7 @@ function renderSettingsPage(){
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Karyawan dengan Akses HR</div>'+
-    '<div class="card-sub">Beri hak akses HR ke karyawan yang sudah ada. Mereka login pakai username/password karyawannya sendiri, nama &amp; fotonya tetap, dan bisa berpindah antara <b>Mode HR</b> dan <b>Mode Karyawan</b> (untuk absen, slip gaji, dll) lewat tombol di menu samping.</div>'+
+    
     '<div class="table-wrap" style="margin-bottom:16px;"><table><thead><tr><th>Nama</th><th>Departemen</th><th>Username</th><th></th></tr></thead><tbody>'+
       (activeEmployees().filter(function(e){ return e.hrAccess; }).map(function(e){
         return '<tr><td>'+escapeHtml(e.name)+'</td><td>'+escapeHtml(e.department||'-')+'</td><td>'+escapeHtml(e.username||'-')+'</td><td>'+
@@ -4693,12 +4689,12 @@ function renderSettingsPage(){
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">HOD per Departemen</div>'+
-    '<div class="card-sub">HOD tidak punya akun terpisah &mdash; mereka login lewat tab Staff/HOD pakai username/password milik sendiri, dan otomatis dapat akses HOD kalau ditunjuk di departemennya. Satu departemen boleh lebih dari satu HOD, dan satu orang boleh menjabat lebih dari satu departemen. Atur lewat halaman Karyawan &rarr; tombol "Kelola HOD".</div>'+
+    
     '<div class="table-wrap"><table><thead><tr><th>Departemen</th><th>HOD</th></tr></thead><tbody>'+hodListHtml+'</tbody></table></div>'+
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Lokasi Kantor (Geofencing)</div>'+
-    '<div class="card-sub">Saat karyawan absen masuk/pulang, lokasi HP-nya otomatis dicocokkan dengan titik-titik ini. Kalau berada dalam radius, tercatat "Dalam jangkauan" beserta nama &amp; alamatnya; kalau tidak, tetap bisa absen tapi ditandai "Di luar jangkauan" supaya HOD/HR bisa meninjau.</div>'+
+    
     '<div class="table-wrap"><table><thead><tr><th>Nama Lokasi</th><th>Alamat</th><th class="num">Radius</th><th></th></tr></thead><tbody>'+officeLocationRows+'</tbody></table></div>'+
     '<div class="form-row" style="margin-top:14px;">'+
       '<div class="form-group"><label>Nama Lokasi</label><input id="newLocName" placeholder="Contoh: Kantor Pusat"></div>'+
@@ -4714,7 +4710,7 @@ function renderSettingsPage(){
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Preset Shift</div>'+
-    '<div class="card-sub">Preset ini muncul sebagai pilihan cepat saat HOD mengatur jadwal (isi pola mingguan maupun klik tanggal), supaya tidak perlu ketik jam manual tiap kali.</div>'+
+    
     '<div class="table-wrap"><table><thead><tr><th>Nama Shift</th><th>Jam Masuk</th><th>Jam Pulang</th><th></th></tr></thead><tbody>'+shiftPresetRows+'</tbody></table></div>'+
     '<div class="form-row" style="margin-top:14px;align-items:flex-end;">'+
       '<div class="form-group"><label>Nama Shift Baru</label><input id="newShiftName" placeholder="Contoh: Shift 4"></div>'+
@@ -4725,7 +4721,7 @@ function renderSettingsPage(){
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Aturan BPJS &amp; Potongan Keterlambatan</div>'+
-    '<div class="card-sub">Berlaku sebagai default untuk semua karyawan (BPJS bisa dikecualikan per-karyawan di data Karyawan).</div>'+
+    
     '<div class="form-row">'+
       '<div class="form-group"><label>BPJS Kesehatan (% dari Gaji Pokok)</label><input type="number" step="0.1" id="s_bpjskes" value="'+s.bpjsKesehatanPct+'"></div>'+
       '<div class="form-group"><label>BPJS Ketenagakerjaan (% dari Gaji Pokok)</label><input type="number" step="0.1" id="s_bpjstk" value="'+s.bpjsKetenagakerjaanPct+'"></div>'+
@@ -4736,13 +4732,13 @@ function renderSettingsPage(){
     '</div>'+
     '<div class="form-group"><label>Batas Maksimum Potongan Telat per Bulan (Rp, kosongkan/0 = tanpa batas)</label><input type="number" id="s_cap" value="'+(s.lateDeductionCap||0)+'"></div>'+
     '<div class="form-group"><label>Departemen Jam Fleksibel</label>'+
-      '<div class="card-sub" style="margin:2px 0 8px;">Karyawan di departemen ini tidak dihitung telat bila total jam kerjanya (absen masuk → pulang) mencapai 8 jam. Kelebihan dari 8 jam tercatat sebagai lembur.</div>'+
+      
       '<div class="pj-members">'+getDepartments().map(function(d){ return '<label class="pj-member"><input type="checkbox" class="s_flex" value="'+escapeHtml(d)+'"'+(isFlexDept(d)?' checked':'')+'> '+escapeHtml(d)+'</label>'; }).join('')+'</div></div>'+
     '<button class="btn btn-primary" data-action="save-payroll-settings">Simpan Aturan</button>'+
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Kelola Data</div>'+
-    '<div class="card-sub">Cadangkan data ke file, pulihkan dari file, atau kembalikan ke data contoh.</div>'+
+    
     '<div style="display:flex;gap:10px;flex-wrap:wrap;">'+
       '<button class="btn btn-secondary" data-action="export-data">Ekspor Data (JSON)</button>'+
       '<label class="btn btn-secondary" style="cursor:pointer;">Impor Data<input type="file" id="importFile" accept="application/json" style="display:none;"></label>'+
@@ -5114,7 +5110,6 @@ function renderCheckinActionCard(type, label, locText, geoMatchHtml){
   return ''+
   '<div class="card">'+
     '<div class="card-title">'+label+'</div>'+
-    '<div class="card-sub">Foto diambil langsung dari kamera sebagai bukti kehadiran (bukan unggah dari galeri). Lokasi diambil otomatis dari perangkat Anda.</div>'+
     body+
     '<div class="muted" style="font-size:12.5px;margin-top:14px;text-align:center;">'+locText+'</div>'+
     geoMatchHtml+
@@ -5200,7 +5195,7 @@ function renderLeaveRequestPage(){
     teamSection += ''+
     '<div class="card">'+
       '<div class="card-title">Riwayat Keputusan Saya</div>'+
-      '<div class="card-sub">Pengajuan tim yang sudah pernah Anda putuskan, termasuk yang sudah lanjut ke HR atau sudah final.</div>'+
+      
       '<div class="table-wrap"><table><thead><tr><th>Nama</th><th>Tanggal</th><th>Jenis</th><th>Keputusan Anda</th><th>Status Saat Ini</th></tr></thead>'+
       '<tbody>'+(decidedRows || '<tr><td colspan="5" class="empty-state">Belum ada riwayat.</td></tr>')+'</tbody></table></div>'+
     '</div>';
@@ -5581,7 +5576,7 @@ function renderFormRequestPage(){
   return ''+
   '<div class="card">'+
     '<div class="card-title">Form &amp; Approval</div>'+
-    '<div class="card-sub">Ajukan permohonan apa pun (izin, klaim, permintaan lain) lengkap dengan lampiran dokumen kalau perlu. HR akan meninjau dan menyetujui/menolak.</div>'+
+    
     '<div class="form-group"><label>Deskripsi</label><textarea id="fd_desc" rows="4" placeholder="Jelaskan pengajuan Anda..."></textarea></div>'+
     '<div class="form-group"><label>Lampiran (opsional, maks. 1.5MB &mdash; gambar, PDF, dsb.)</label><input type="file" id="fd_file"></div>'+
     '<button class="btn btn-primary" data-action="submit-form-request">Kirim Pengajuan</button>'+
@@ -5681,7 +5676,7 @@ function renderAnnouncementComposeCard(){
   return ''+
   '<div class="card">'+
     '<div class="card-title">Buat Pengumuman</div>'+
-    '<div class="card-sub">Kirim pengumuman ke staf dan/atau HOD, bisa disertai lampiran dokumen.</div>'+
+    
     '<div class="form-group"><label>Judul</label><input id="ann_title"></div>'+
     '<div class="form-group"><label>Pesan</label>'+rteEditorHtml('ann_rte', '', 'Tulis pengumuman... (bisa tebal, miring, daftar, gambar)', 140)+'</div>'+
     '<div class="form-group"><label>Lampiran (opsional, maks. 1.5MB)</label><input type="file" id="ann_file"></div>'+
@@ -5733,7 +5728,7 @@ function renderActivityLogPage(){
   return ''+
   '<div class="card">'+
     '<div class="card-title">Riwayat Aktivitas</div>'+
-    '<div class="card-sub">Catatan perubahan yang dilakukan HR, HOD, dan Staff di sistem ini (150 aktivitas terbaru).</div>'+
+    
     '<div class="table-wrap" style="max-height:560px;overflow-y:auto;"><table><thead><tr><th>Waktu</th><th>Pelaku</th><th>Aktivitas</th></tr></thead>'+
     '<tbody>'+(rows || '<tr><td colspan="3" class="empty-state">Belum ada aktivitas tercatat.</td></tr>')+'</tbody></table></div>'+
   '</div>';
@@ -6156,7 +6151,7 @@ function renderBannersPage(){
   return ''+
   '<div class="card">'+
     '<div class="card-title">Pratinjau Banner</div>'+
-    '<div class="card-sub">Banner yang berstatus "Tampil" muncul di dashboard semua akun (HR, HOD, dan Staff) dan berganti otomatis tiap beberapa detik.</div>'+
+    
     (renderBannerCarousel() || '<div class="empty-state">Belum ada banner yang ditampilkan.</div>')+
   '</div>'+
   '<div class="card">'+
@@ -6432,11 +6427,11 @@ function renderDeptBoard(){
   } else if(scope.length){
     var selfE = SESSION.role==='hod' ? getEmployee(SESSION.empId) : null;
     form = '<details class="card bd-add"><summary>+ Tambah / Tugaskan Tugas</summary>'+
-      '<div class="card-sub" style="margin-top:10px;">Tugas masuk ke kolom pertama board '+escapeHtml(dept)+'. Anggota yang ditugaskan langsung mendapat notifikasi'+(SESSION.role==='hod'?', HR ikut diberi tahu':'')+'.</div>'+
+      
       todoFormHtml('ta', true, scope, selfE && selfE.department===dept ? selfE : (selfE ? selfE : null))+'<button class="btn btn-primary" data-action="assign-todo">Simpan Tugas</button></details>';
   } else {
     form = '<details class="card bd-add"><summary>+ Tambah Tugas</summary>'+
-      '<div class="card-sub" style="margin-top:10px;">Tugasmu tampil di board tim '+escapeHtml(dept)+' dan bisa dilihat rekan satu departemen.</div>'+
+      
       todoFormHtml('td', false)+'<button class="btn btn-primary" data-action="add-todo">Tambah ke Board</button></details>';
   }
 
@@ -6476,7 +6471,7 @@ function boardColsModalHtml(){
   }).join('');
   return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:560px;">'+
     '<h3>Atur Kategori Board '+escapeHtml(dept||'HR')+'</h3>'+
-    '<div class="card-sub">Ubah nama, warna, dan urutan kolom. Kategori bertanda <b>Selesai</b> dipakai untuk tugas yang sudah beres (tidak bisa dihapus). Tugas di kategori yang dihapus dipindah ke kategori pertama.</div>'+
+    
     '<div class="bc-list">'+rows+'</div>'+
     (cols.length<8 ? '<button class="btn btn-secondary btn-sm" data-action="bc-add" style="margin-top:8px;">+ Tambah Kategori</button>' : '')+
     '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap;">'+
@@ -6915,7 +6910,7 @@ function renderTodayAlertsCard(){
     rows.push('<div class="alert-row"><div><strong>'+escapeHtml(e.name)+'</strong> <span class="muted">&middot; masuk '+m.att.checkIn+'</span></div><div class="alert-flags">'+flags.join('')+'</div></div>');
   });
   return '<div class="card"><div class="card-title">Peringatan Absen Hari Ini</div>'+
-    '<div class="card-sub">Karyawan yang absen telat atau di luar jangkauan lokasi kantor &mdash; '+formatDateID(t.iso)+'.</div>'+
+    '<div class="card-sub">'+formatDateID(t.iso)+'.</div>'+
     (rows.join('') || '<div class="empty-state" style="padding:14px 0;">Tidak ada peringatan hari ini.</div>')+'</div>';
 }
 
@@ -6982,7 +6977,7 @@ function renderMyActivityPage(){
   }).join('');
   return '<div class="card">'+
     '<div class="card-title">Aktivitas Saya</div>'+
-    '<div class="card-sub">Riwayat absen (masuk/pulang, telat, lokasi) dan aktivitas akunmu di sistem &mdash; 3 bulan terakhir.</div>'+
+    
     '<div class="todo-tabs" style="margin-bottom:14px;">'+chips+'</div>'+
     (html || '<div class="empty-state">Belum ada aktivitas tercatat.</div>')+
   '</div>';
@@ -7473,7 +7468,7 @@ function renderNotifBroadcastCard(){
   var depts = getDepartments(), emps = activeEmployees().slice().sort(function(a,b){ return a.name.localeCompare(b.name); });
   var hist = (DB.notifBroadcasts||[]).slice(0,10);
   return '<div class="card"><div class="card-title">Kirim Notifikasi ke Karyawan</div>'+
-    '<div class="card-sub">Pesan masuk ke lonceng notifikasi dan notifikasi perangkat (HP) akun Staff / HOD yang dituju.</div>'+
+    
     '<div class="form-row"><div class="form-group"><label>Kirim ke</label><select id="nb_target">'+
       '<option value="all">Semua karyawan</option><option value="hod">Semua HOD</option><option value="staff">Semua Staff</option>'+
       '<optgroup label="Departemen">'+depts.map(function(d){ return '<option value="dept:'+escapeHtml(d)+'">'+escapeHtml(d)+'</option>'; }).join('')+'</optgroup>'+
@@ -7627,12 +7622,12 @@ function employeesInDepts(list){
 function deptShortcutsHtml(){
   var out = '';
   if(canSales()){
-    out += '<div class="card dept-card"><div><h3>Dashboard Sales</h3><div class="card-sub">Form Rekap Visit, DM Track Lead, dan Business Done.</div></div>'+
+    out += '<div class="card dept-card"><div><h3>Dashboard Sales</h3></div>'+
       '<button class="btn btn-primary" data-action="open-sales-dashboard">Buka Dashboard Sales</button></div>';
   }
   if(canAccDashboard()){
     var fullAcc = canAccounting() || canPurchasing();
-    out += '<div class="card dept-card"><div><h3>'+(fullAcc?'Dashboard Accounting':'Purchase Order')+'</h3><div class="card-sub">'+(fullAcc?'Jurnal, Neraca, Laba Rugi, dan Purchase Order per properti.':'Ajukan Purchase Order ke departemen Purchasing dan pantau statusnya.')+'</div></div>'+
+    out += '<div class="card dept-card"><div><h3>'+(fullAcc?'Dashboard Accounting':'Purchase Order')+'</h3></div>'+
       '<button class="btn btn-primary" data-action="go-accounting">'+(fullAcc?'Buka Dashboard Accounting':'Buat / Lihat PO')+'</button></div>';
   }
   return out ? '<div class="dept-shortcuts no-print">'+out+'</div>' : '';
@@ -8081,7 +8076,7 @@ function renderAccPO(prop){
       '<td class="num">'+rupiah(poTotal(p))+'</td><td><span class="badge '+st[1]+'">'+st[0]+'</span></td><td style="white-space:nowrap;">'+acts.join(' ')+'</td></tr>';
   }).join('') : '<tr><td colspan="6" class="muted" style="text-align:center;padding:18px;">Belum ada PO di '+monthLabel(ym)+'.</td></tr>';
   return form + '<div class="card"><div class="card-title">Purchase Order &middot; '+monthLabel(ym)+'</div>'+
-    '<div class="card-sub">Diajukan oleh HOD ke Purchasing &rarr; Purchasing menyetujui &amp; menandai barang diterima &rarr; Accounting menjurnal (Persediaan &rarr; Hutang Usaha).</div>'+
+    
     '<div class="table-wrap"><table><thead><tr><th>No PO</th><th>Properti / Kategori</th><th>Vendor</th><th class="num">Total</th><th>Status</th><th>Aksi</th></tr></thead><tbody>'+body+'</tbody></table></div></div>';
 }
 
@@ -8423,7 +8418,7 @@ function renderEmpReportCard(){
       '<td class="num"><b>'+(r.finalScore===null?'-':fmtNum(r.finalScore*100,1))+'</b></td><td style="white-space:nowrap;color:#d99a00;" title="'+r.stars+' dari 5">'+starText(r.stars)+'</td></tr>';
   }).join('') || '<tr><td colspan="9" class="muted" style="text-align:center;padding:16px;">Tidak ada karyawan.</td></tr>';
   return '<div class="card no-print" id="empReportCard"><div class="card-title">Report Karyawan</div>'+
-    '<div class="card-sub">Atur periode, lalu unduh. Isi: kehadiran, KPI (yang sudah disetujui HR), tugas Board, jam timesheet, lembur, akumulasi skor, dan bintang.</div>'+
+    
     '<div class="toolbar" style="flex-wrap:wrap;gap:8px;"><div class="toolbar-left" style="flex-wrap:wrap;gap:8px;">'+
       '<label class="muted" style="font-size:12.5px;">Dari</label><input type="month" id="erFrom" class="month-input" value="'+per.from+'">'+
       '<label class="muted" style="font-size:12.5px;">Sampai</label><input type="month" id="erTo" class="month-input" value="'+per.to+'">'+deptSel+empSel+'</div>'+
@@ -8652,7 +8647,7 @@ function rekapCheckoutHtml(){
   var ex = SESSION.empId ? rekapTodayEntries(SESSION.empId) : [];
   var rows = (CHECKIN_DRAFT.rekapRows && CHECKIN_DRAFT.rekapRows.length) ? CHECKIN_DRAFT.rekapRows : [{}];
   return '<div class="card ckrk-card" style="margin-top:14px;text-align:left;"><div class="card-title" style="display:flex;align-items:center;gap:8px;">+ Catat Pekerjaan Hari Ini <span class="badge badge-warning">Wajib</span></div>'+
-    '<div class="card-sub" style="margin:4px 0 10px;">Isi seperti di Selaras Board &rarr; Rekap Kerja. Tanggal otomatis hari ini.</div>'+
+    
     (ex.length ? '<div class="card-sub" style="margin:0 0 10px;">Sudah tercatat hari ini ('+ex.length+'): '+ex.slice(0,4).map(function(t){ return escapeHtml(t.title); }).join('; ')+(ex.length>4?'; ...':'')+'</div>' : '')+
     '<div id="ckrkRows">'+rows.map(ckrkRowHtml).join('')+'</div>'+
     '<button type="button" class="btn btn-secondary btn-sm" data-action="ckrk-add-row">+ Tambah Pekerjaan</button></div>';
@@ -8663,7 +8658,7 @@ function renderRekapTab(){
   var empSel = scope.length ? '<select id="rekapEmp"><option value="">Rekap saya</option><option value="__all"'+(owner==='__all'?' selected':'')+'>Semua tim</option>'+
     scope.map(function(e){ return '<option value="'+e.id+'"'+(e.id===owner?' selected':'')+'>'+escapeHtml(e.name)+'</option>'; }).join('')+'</select>' : '';
   var form = mine ? '<details class="card bd-add no-print"><summary>+ Catat Pekerjaan</summary>'+
-    '<div class="card-sub" style="margin:8px 0;">Catat apa yang kamu kerjakan. Rekap hari ini juga ditulis saat <b>Absen Pulang</b>.</div>'+
+    
     '<div class="form-row"><div class="form-group"><label>Tanggal</label><input type="date" id="rk_date" value="'+todayISO()+'"></div>'+
     '<div class="form-group"><label>Prioritas</label><select id="rk_prio">'+REKAP_PRIO.map(function(p){ return '<option value="'+p[0]+'"'+(p[0]==='normal'?' selected':'')+'>'+p[1]+'</option>'; }).join('')+'</select></div>'+
     '<div class="form-group"><label>Status</label><select id="rk_status">'+REKAP_STATUS.map(function(p){ return '<option value="'+p[0]+'">'+p[1]+'</option>'; }).join('')+'</select></div></div>'+
@@ -8985,7 +8980,7 @@ function renderSopPage(){
       '<div class="table-wrap" style="margin-top:10px;"><table><thead><tr><th>Departemen</th><th class="num">SOP</th><th>Terakhir diperbarui</th><th>Dibaca staf</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>';
   }
   var form = sopCanCreate() ? '<details class="card bd-add no-print"'+(all.length?'':' open')+'><summary>+ Tambah SOP '+(SESSION.role==='hr' ? '/ Peraturan' : 'Departemen')+'</summary>'+
-    '<div class="card-sub" style="margin:8px 0;">'+(SESSION.role==='hr' ? 'Unggah file atau tulis isinya langsung.' : 'SOP ini berlaku untuk departemenmu. Staf departemen dan HR otomatis mendapat notifikasi.')+' File: PDF, gambar, Word, Excel, PowerPoint (maks. 10 MB).</div>'+
+    
     '<div class="form-group"><label>Judul</label><input type="text" id="sop_title" placeholder="Contoh: SOP Check-in Tamu"></div>'+
     '<div class="form-row"><div class="form-group"><label>Kategori</label><select id="sop_cat">'+SOP_CATS.map(function(c){ return '<option>'+escapeHtml(c)+'</option>'; }).join('')+'</select></div>'+
     '<div class="form-group"><label>Berlaku untuk</label><select id="sop_dept">'+sopDeptOptions(SESSION.role==='hr' ? '' : sopHodDepts()[0], true)+'</select></div></div>'+
@@ -8993,7 +8988,7 @@ function renderSopPage(){
     '<div class="form-group"><label>Versi awal</label><input type="text" id="sop_ver" value="1.0"></div></div>'+
     '<div class="form-group"><label>Isi dokumen</label>'+rteEditorHtml('sop_rte', '', 'Tujuan, langkah kerja, standar hasil... (bisa tebal, miring, daftar, gambar)')+'</div>'+
     '<div class="form-group"><label>File (opsional)</label><input type="file" id="sop_file" accept=".pdf,image/*,.doc,.docx,.xls,.xlsx,.ppt,.pptx"></div>'+
-    (SESSION.role!=='hr' ? '<label class="pj-member sop-needhr"><input type="checkbox" id="sop_needhr"> <span><b>Minta persetujuan HR sebelum diterbitkan</b><br><span class="muted" style="font-size:12px;">Staf baru menerima SOP setelah HR menyetujui. Tanpa centang, SOP langsung terbit atas nama HOD '+escapeHtml(sopHodDepts().join(' / '))+'.</span></span></label>' : '')+
+    (SESSION.role!=='hr' ? '<label class="pj-member sop-needhr"><input type="checkbox" id="sop_needhr"> <span><b>Minta persetujuan HR sebelum diterbitkan</b></span></label>' : '')+
     '<div style="margin-top:12px;"><button class="btn btn-primary" data-action="sop-add">'+(SESSION.role==='hr' ? 'Terbitkan & Bagikan' : 'Simpan')+'</button></div></details>' : '';
   var items = shown.map(function(d){
     var ic = sopFileIcon(d), hasFile = !!(d.fileKey || d.fileUrl), canM = sopCanManage(d);
@@ -9373,7 +9368,7 @@ function renderIdCardPage(){
     '<button class="btn btn-secondary btn-sm" data-action="idc-dl" data-side="0">Unduh Depan (PNG)</button>'+
     '<button class="btn btn-secondary btn-sm" data-action="idc-dl" data-side="1">Unduh Belakang (PNG)</button></div></div>'+
     '<div class="idc-grid"><div class="idc-face">'+idcFrontSvg(e)+'<div class="idc-cap">Depan</div></div><div class="idc-face">'+idcBackSvg(e)+'<div class="idc-cap">Belakang</div></div></div>'+
-    '<div class="card-sub" style="text-align:center;margin-top:10px;">Ukuran cetak standar kartu ID (CR80, 54 &times; 85,6 mm). Data diambil dari profil karyawan; '+(SESSION.role==='hr'?'ubah lewat menu Karyawan.':'minta HR jika ada yang perlu diperbaiki.')+'</div>';
+    '';
 }
 function idcPrint(){
   var svgs = document.querySelectorAll('.idc-face svg');
@@ -9437,7 +9432,7 @@ function renderHrProfilePage(){
     var he = getEmployee(SESSION.asEmpId);
     if(he) return '<div class="card" style="text-align:center;"><div style="display:flex;justify-content:center;margin:6px 0 14px;">'+avatarHtml(he, 120)+'</div>'+
       '<div class="card-title" style="margin-bottom:2px;">'+escapeHtml(he.name)+'</div><div class="card-sub">'+escapeHtml(he.position||'')+(he.department?' &middot; '+escapeHtml(he.department):'')+' &middot; <b>Akses HR</b></div>'+
-      '<div class="card-sub">Kamu memakai akun karyawanmu dengan hak akses HR. Nama, foto, dan password diatur dari profil karyawan.</div>'+
+      
       '<button class="btn btn-primary" data-action="switch-mode">Beralih ke Mode Karyawan</button></div>';
   }
   var t = hrProfileTarget(), av = hrAvatarEmpLike(), hasPhoto = !!(t.photoKey || t.photoUrl);
@@ -9804,7 +9799,7 @@ function renderAppInfoCard(){
     (upd ? '<div class="badge badge-warning" style="margin-bottom:10px;">Ada versi baru — perbarui sekarang</div>' : '')+
     '<div style="display:flex;gap:8px;flex-wrap:wrap;"><a class="btn btn-primary" href="'+APK_DOWNLOAD_URL+'" target="_blank" rel="noopener" data-action="app-apk-dl">'+(upd?'Perbarui APK Android':'Unduh APK Android')+'</a>'+
       '<button class="btn btn-secondary" data-action="app-apk-copy">Salin Link</button></div>'+
-    '<div class="card-sub" style="margin-top:8px;">Android: unduh lalu buka file APK &rarr; Pasang/Perbarui. iPhone: buka <b>abcselaras.my.id/web</b> di Safari &rarr; Bagikan &rarr; <b>Tambah ke Layar Utama</b>.</div>'+
+    
     '<div class="card-title" style="margin-top:16px;font-size:14.5px;">Yang Baru</div>'+
     logs.map(function(g){ return '<div class="chg"><div class="chg-date">'+escapeHtml(formatDateID(g.date))+'</div><ul>'+g.items.map(function(it){ return '<li>'+escapeHtml(it)+'</li>'; }).join('')+'</ul></div>'; }).join('')+
     (APP_CHANGELOG.length>1 ? '<button class="btn btn-ghost btn-sm" data-action="app-chg-toggle">'+(showAll?'Sembunyikan riwayat lama':'Lihat semua pembaruan')+'</button>' : '')+
@@ -10222,7 +10217,7 @@ function renderMyProfilePage(){
       '<button class="btn btn-primary" data-action="choose-photo" data-emp="'+emp.id+'">'+(hasPhoto?'Ganti Foto':'Tambah Foto')+'</button>'+
       (hasPhoto ? '<button class="btn btn-secondary" data-action="remove-photo" data-emp="'+emp.id+'">Hapus Foto</button>' : '')+
     '</div>'+
-    '<div class="card-sub" style="margin-top:14px;">Foto dipotong persegi otomatis dan tampil di dashboard, menu samping, serta chat.</div>'+
+    
   '</div>'+
   '<div class="card">'+
     '<div class="card-title">Data Diri</div>'+
@@ -10257,7 +10252,7 @@ function renderEmailGoogleCard(emp){
   }
   html += '<div class="pref-row" style="margin-top:12px;"><div><div class="pref-label">Notifikasi lewat email</div><div class="pref-sub">'+(verified ? 'Salinan notifikasi (tugas, jadwal, pengajuan, SOP, pengumuman) dikirim ke '+escapeHtml(emp.email)+'.' : 'Verifikasi email dulu untuk mengaktifkan.')+'</div></div>'+
     '<button type="button" class="m3-switch'+(empEmailNotifOn(emp)?' on':'')+'" data-action="eg-notif" '+(verified?'':'disabled')+' role="switch" aria-checked="'+(empEmailNotifOn(emp)?'true':'false')+'"><span class="m3-switch-knob"></span></button></div>'+
-    (linked ? '<div class="muted" style="font-size:12px;margin-top:8px;">Kamu bisa login dengan tombol <b>Masuk dengan Google</b> di halaman login (web &amp; iPhone).</div>' : '')+
+
   '</div>';
   return html;
 }
