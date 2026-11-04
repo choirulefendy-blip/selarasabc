@@ -1286,6 +1286,96 @@ function canEditKpiRecord(record){
   return !record || record.status==='draft' || record.status==='rejected';
 }
 
+
+/* ---------- Verifikasi identitas saat absen: biometrik perangkat, cadangan kode email ---------- */
+var CKV_LABEL = {biometric:'Sidik jari / Face ID', email:'Kode email', none:'Tanpa verifikasi'};
+function attVerifyOn(){ return !(DB && DB.settings && DB.settings.attVerify===false); }
+function nativeBio(){ try{ return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.NativeBiometric) || null; }catch(e){ return null; } }
+function bioAvailable(){
+  var nb = nativeBio();
+  if(isNativeApp()){
+    if(!nb) return Promise.resolve(false);
+    return Promise.resolve().then(function(){ return nb.isAvailable({useFallback:true}); }).then(function(r){ return !!(r && r.isAvailable); }).catch(function(){ return false; });
+  }
+  try{
+    if(window.isSecureContext && window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable)
+      return PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable().then(function(v){ return !!v; }).catch(function(){ return false; });
+  }catch(e){}
+  return Promise.resolve(false);
+}
+function b64u(buf){ var s = '', a = new Uint8Array(buf); for(var i=0;i<a.length;i++) s += String.fromCharCode(a[i]); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function unb64u(str){ str = String(str).replace(/-/g,'+').replace(/_/g,'/'); while(str.length%4) str += '='; var b = atob(str), a = new Uint8Array(b.length); for(var i=0;i<b.length;i++) a[i] = b.charCodeAt(i); return a.buffer; }
+function rndBytes(n){ var a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
+function pkStoreKey(empId){ return 'abcsel_pk_'+empId; }
+function bioVerify(emp){
+  var nb = nativeBio();
+  if(isNativeApp() && nb){
+    return nb.verifyIdentity({reason:'Verifikasi absen ABC Selaras', title:'Verifikasi Absen', subtitle:emp.name, description:'Gunakan sidik jari, wajah, atau kunci layar', useFallback:true, maxAttempts:3});
+  }
+  var host = location.hostname, credId = null;
+  try{ credId = localStorage.getItem(pkStoreKey(emp.id)); }catch(e){}
+  if(credId){
+    return navigator.credentials.get({publicKey:{challenge:rndBytes(32), rpId:host, allowCredentials:[{type:'public-key', id:unb64u(credId)}], userVerification:'required', timeout:60000}})
+      .then(function(c){ if(!c) throw new Error('batal'); return c; });
+  }
+  /* pertama kali di perangkat ini: daftarkan kunci perangkat (juga meminta sidik jari / Face ID) */
+  return navigator.credentials.create({publicKey:{challenge:rndBytes(32), rp:{name:'ABC Selaras', id:host},
+      user:{id:new TextEncoder().encode(String(emp.id)), name:emp.username||emp.id, displayName:emp.name||'Karyawan'},
+      pubKeyCredParams:[{type:'public-key', alg:-7},{type:'public-key', alg:-257}],
+      authenticatorSelection:{authenticatorAttachment:'platform', userVerification:'required', residentKey:'preferred'}, timeout:60000, attestation:'none'}})
+    .then(function(c){
+      if(!c) throw new Error('batal');
+      try{ localStorage.setItem(pkStoreKey(emp.id), b64u(c.rawId)); }catch(e){}
+      emp.passkeyDevices = (emp.passkeyDevices||0) + 1; emp.updatedAt = new Date().toISOString();
+      return c;
+    });
+}
+function ckvStart(type){
+  var emp = getEmployee(SESSION.empId); if(!emp) return;
+  STATE.ckv = {type:type, step:'choose', bio:null, busy:false, email:emp.email||''};
+  openModal(ckvModalHtml());
+  bioAvailable().then(function(ok){
+    if(!STATE.ckv) return;
+    STATE.ckv.bio = ok; openModal(ckvModalHtml());
+    if(ok && isNativeApp()) ckvDoBio(); /* APK: langsung tampilkan prompt; web butuh ketukan tombol */
+  });
+}
+function ckvMaskEmail(e){ var m = String(e).split('@'); if(m.length<2) return e; return m[0].slice(0,2)+'***@'+m[1]; }
+function ckvModalHtml(){
+  var v = STATE.ckv; if(!v) return '';
+  var title = 'Verifikasi Absen '+(v.type==='in'?'Masuk':'Pulang');
+  var body;
+  if(v.step==='code'){
+    body = '<p style="font-size:14px;margin:0 0 12px;">Kode 6 digit dikirim ke <b>'+escapeHtml(ckvMaskEmail(v.email))+'</b>.</p>'+
+      '<input id="ckv_code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" style="width:100%;font-size:22px;letter-spacing:8px;text-align:center;font-weight:700;">'+
+      '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;"><button class="btn btn-primary" data-action="ckv-check"'+(v.busy?' disabled':'')+'>Verifikasi &amp; Kirim Absen</button><button class="btn btn-ghost" data-action="ckv-email">Kirim ulang</button></div>';
+  } else {
+    var bioBtn = v.bio===null ? '<div class="muted" style="font-size:13px;margin-bottom:10px;">Memeriksa sensor perangkat...</div>'
+      : (v.bio ? '<button class="btn btn-primary" style="width:100%;margin-bottom:10px;" data-action="ckv-bio"'+(v.busy?' disabled':'')+'>'+iconSvg('fingerprint',18)+' Sidik Jari / Face ID</button>' : '<div class="muted" style="font-size:13px;margin-bottom:10px;">Perangkat ini tidak mendukung sidik jari / Face ID.</div>');
+    var mailBtn = v.email ? '<button class="btn btn-secondary" style="width:100%;" data-action="ckv-email"'+(v.busy?' disabled':'')+'>'+iconSvg('mail',16)+' Kirim kode ke email</button>'
+      : '<div class="muted" style="font-size:13px;">Email belum terdaftar. Hubungi HR untuk menambahkan email.</div>'+(v.bio===false ? '<button class="btn btn-secondary" style="width:100%;margin-top:10px;" data-action="ckv-skip">Lanjut tanpa verifikasi (dicatat ke HR)</button>' : '');
+    body = bioBtn + mailBtn;
+  }
+  return '<div class="modal-overlay"><div class="modal" data-stop="1" style="max-width:400px;"><h3>'+title+'</h3>'+body+
+    '<div style="margin-top:14px;text-align:right;"><button class="btn btn-ghost btn-sm" data-action="ckv-cancel">Batal</button></div></div></div>';
+}
+function ckvDone(method){
+  var v = STATE.ckv; if(!v) return;
+  CHECKIN_DRAFT.verified = {type:v.type, method:method, at:new Date().toISOString()};
+  STATE.ckv = null; closeModal();
+  var b = document.querySelector('[data-action="submit-checkin"][data-type="'+v.type+'"]');
+  if(b) b.click();
+}
+function ckvDoBio(){
+  var v = STATE.ckv, emp = getEmployee(SESSION.empId); if(!v || !emp || v.busy) return;
+  v.busy = true; openModal(ckvModalHtml());
+  Promise.resolve().then(function(){ return bioVerify(emp); }).then(function(){ ckvDone('biometric'); })
+    .catch(function(err){
+      if(!STATE.ckv) return;
+      STATE.ckv.busy = false; openModal(ckvModalHtml());
+      toast('Verifikasi perangkat gagal/dibatalkan.'+(STATE.ckv.email?' Bisa pakai kode email.':''));
+    });
+}
 function resetCheckinDraft(){
   stopCameraStream();
   CHECKIN_DRAFT = {photoDataUrl:null, location:null, locationStatus:'idle', condition:null};
@@ -2907,6 +2997,9 @@ function renderLogin(){
 
 /* ---------------------------- RENDER: SHELL ---------------------------- */
 var ICONS = {
+  send:'<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/>',
+  mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+  fingerprint:'<path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>',
   reply:'<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
   forward:'<path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
   copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>',
@@ -4803,6 +4896,7 @@ function renderSettingsPage(){
       '<div class="pj-members">'+getDepartments().map(function(d){ return '<label class="pj-member"><input type="checkbox" class="s_flex" value="'+escapeHtml(d)+'"'+(isFlexDept(d)?' checked':'')+'> '+escapeHtml(d)+'</label>'; }).join('')+'</div></div>'+
     '<div class="form-row"><div class="form-group"><label>Jatah Cuti Tahunan (hari / periode)</label><input type="number" min="0" id="s_leaveQuota" value="'+leaveQuotaDefault()+'"></div>'+
       '<div class="form-group"><label>Periode cuti mulai (bulan perpanjangan kontrak)</label><select id="s_leaveMonth">'+MONTHS_ID.map(function(mn, i){ return '<option value="'+(i+1)+'"'+(leaveResetMonth()===i+1?' selected':'')+'>'+mn+'</option>'; }).join('')+'</select></div></div>'+
+    '<div class="checkbox-row"><input type="checkbox" id="s_attVerify"'+(attVerifyOn()?' checked':'')+'><label for="s_attVerify">Wajib verifikasi identitas saat absen (sidik jari / Face ID, atau kode email)</label></div>'+
     '<button class="btn btn-primary" data-action="save-payroll-settings">Simpan Aturan</button>'+
   '</div>'+
   '<div class="card">'+
@@ -13336,12 +13430,44 @@ document.addEventListener('click', function(e){
       typeCards.forEach(function(c){ c.classList.remove('active'); });
       el.classList.add('active');
     }
+  } else if(action==='ckv-cancel'){
+    STATE.ckv = null; closeModal();
+  } else if(action==='ckv-bio'){
+    ckvDoBio();
+  } else if(action==='ckv-skip'){
+    ckvDone('none');
+  } else if(action==='ckv-email'){
+    var cvE = getEmployee(SESSION.empId), cv = STATE.ckv; if(!cvE || !cv || !cvE.email) return;
+    if(cv.sentAt && Date.now()-cv.sentAt < 45000){ toast('Tunggu sebentar sebelum kirim ulang.'); return; }
+    var cvCode = String(Math.floor(100000 + Math.random()*900000));
+    cv.busy = true; openModal(ckvModalHtml());
+    egHash(cvCode, cvE.id+'|absen').then(function(h){
+      return sendEmailApi(cvE.email, 'Kode absen ABC Selaras: '+cvCode, 'Halo '+cvE.name+', kode verifikasi absen '+(cv.type==='in'?'masuk':'pulang')+' kamu adalah '+cvCode+'. Berlaku 10 menit. Abaikan jika kamu tidak sedang absen.', 'checkin', {kind:'code', code:cvCode}).then(function(r){
+        if(!STATE.ckv) return;
+        cv.busy = false;
+        if(!r.ok){ openModal(ckvModalHtml()); toast(r.error==='not-configured' ? 'Layanan email belum aktif.' : 'Gagal mengirim kode: '+r.error); return; }
+        cv.step = 'code'; cv.hash = h; cv.exp = Date.now()+10*60000; cv.sentAt = Date.now(); cv.tries = 0;
+        openModal(ckvModalHtml()); toast('Kode dikirim ke email.');
+        var ci = document.getElementById('ckv_code'); if(ci) ci.focus();
+      });
+    });
+  } else if(action==='ckv-check'){
+    var ccE = getEmployee(SESSION.empId), cc = STATE.ckv; if(!ccE || !cc || !cc.hash) return;
+    var ccVal = (document.getElementById('ckv_code').value||'').replace(/\D/g,'');
+    if(Date.now() > cc.exp){ cc.step='choose'; cc.hash=null; openModal(ckvModalHtml()); toast('Kode kedaluwarsa. Kirim ulang.'); return; }
+    if(++cc.tries > 5){ cc.step='choose'; cc.hash=null; openModal(ckvModalHtml()); toast('Terlalu banyak percobaan.'); return; }
+    egHash(ccVal, ccE.id+'|absen').then(function(h){
+      if(h!==cc.hash){ toast('Kode salah.'); return; }
+      ckvDone('email');
+    });
   } else if(action==='submit-checkin'){
     var ckType = el.getAttribute('data-type');
     if(!CHECKIN_DRAFT.photoDataUrl){ toast('Ambil foto selfie dulu.'); return; }
     var empIdCk = SESSION.empId;
     var rkLines = ckType==='out' ? ckrkEntries() : [];
     if(ckType==='out' && !rkLines.length && !rekapTodayEntries(empIdCk).length){ toast('Tulis Rekap Kerja hari ini dulu sebelum absen pulang.'); return; }
+    if(attVerifyOn() && !(CHECKIN_DRAFT.verified && CHECKIN_DRAFT.verified.type===ckType)){ ckvStart(ckType); return; }
+    var draftVerify = CHECKIN_DRAFT.verified ? CHECKIN_DRAFT.verified.method : null;
     var nowCk = new Date();
     var ymCk = nowCk.getFullYear()+'-'+pad2(nowCk.getMonth()+1);
     var dayCk = nowCk.getDate();
@@ -13361,7 +13487,9 @@ document.addEventListener('click', function(e){
         rec.checkInPhotoKey = result.key; rec.checkInPhotoUrl = result.url;
         rec.condition = draftCondition;
         rec.checkInGeo = draftGeoMatch;
+        if(draftVerify) rec.checkInVerify = draftVerify;
       } else {
+        if(draftVerify) rec.checkOutVerify = draftVerify;
         rec.checkOut = timeCk; rec.checkOutLoc = draftLoc; rec.checkOutHasPhoto = true;
         rec.checkOutPhotoKey = result.key; rec.checkOutPhotoUrl = result.url;
         var rkToday = todayISO();
@@ -13395,10 +13523,12 @@ document.addEventListener('click', function(e){
         var loc = r.type==='in' ? rec2.checkInLoc : rec2.checkOutLoc;
         var time = r.type==='in' ? rec2.checkIn : rec2.checkOut;
         var geo = r.type==='in' ? rec2.checkInGeo : rec2.checkOutGeo;
-        var geoHtml = geo ? '<div class="geo-match-box '+(geo.withinRange?'geo-ok':'geo-warn')+'" style="margin-top:8px;">'+
+        var vrf = r.type==='in' ? rec2.checkInVerify : rec2.checkOutVerify;
+        var vrfHtml = vrf ? '<div class="muted" style="font-size:12.5px;margin-top:6px;">Verifikasi: <b>'+escapeHtml(CKV_LABEL[vrf]||vrf)+'</b></div>' : '';
+        var geoHtml = vrfHtml + (geo ? '<div class="geo-match-box '+(geo.withinRange?'geo-ok':'geo-warn')+'" style="margin-top:8px;">'+
           '<div class="geo-match-title">'+(geo.withinRange ? '&#10003; Dalam jangkauan &mdash; '+escapeHtml(geo.name) : '&#9888; Di luar jangkauan &mdash; terdekat '+escapeHtml(geo.name)+' ('+geo.distance+' m)')+'</div>'+
           '<div class="geo-match-address">'+escapeHtml(geo.address)+'</div>'+
-        '</div>' : '';
+        '</div>' : '');
         var noteHtml = (r.type==='out' && rec2.checkOutNote) ? '<div class="card-sub" style="margin-top:8px;"><strong>Catatan Pekerjaan:</strong> '+escapeHtml(rec2.checkOutNote)+'</div>' : '';
         var condMeta = {sehat:{label:'Sehat',cls:'badge-success'}, kurang_sehat:{label:'Kurang Sehat',cls:'badge-warning'}, sakit:{label:'Sakit',cls:'badge-danger'}};
         var conditionHtml = (r.type==='in' && rec2.condition && condMeta[rec2.condition]) ? '<div class="card-sub" style="margin-top:8px;"><strong>Kondisi:</strong> <span class="badge '+condMeta[rec2.condition].cls+'">'+condMeta[rec2.condition].label+'</span></div>' : '';
@@ -13680,6 +13810,7 @@ document.addEventListener('click', function(e){
     DB.settings.lateRatePerMinute = Number(document.getElementById('s_rate').value)||0;
     DB.settings.lateDeductionCap = Number(document.getElementById('s_cap').value)||0;
     if(document.getElementById('s_leaveQuota')){ DB.settings.leaveQuotaDays = Math.max(0, Number(document.getElementById('s_leaveQuota').value)||0); DB.settings.leaveResetMonth = Number(document.getElementById('s_leaveMonth').value)||6; }
+    if(document.getElementById('s_attVerify')) DB.settings.attVerify = document.getElementById('s_attVerify').checked;
     var sfEls = document.querySelectorAll('.s_flex');
     if(sfEls.length){ DB.settings.flexDepts = Array.prototype.filter.call(sfEls, function(x){ return x.checked; }).map(function(x){ return x.value; }); }
     logActivity('Mengubah aturan BPJS/potongan telat.');

@@ -163,7 +163,7 @@ function login(w, who){
   console.log('\n[Notifikasi absen]');
   w.DB.officeLocations = [{id:'L1', name:'Briggs Inn Batu', lat:-7.9010474, lng:112.5586311, address:'Batu', radius:150}];
   async function doCheckin(empId, loc, type){
-    await login(w, empId); await nav(w, 'checkin');
+    w.DB.settings.attVerify=false; await login(w, empId); await nav(w, 'checkin');
     w.CHECKIN_DRAFT.photoDataUrl = 'data:image/jpeg;base64,AAAA';
     w.CHECKIN_DRAFT.location = loc;
     w.CHECKIN_DRAFT.condition = 'sehat';
