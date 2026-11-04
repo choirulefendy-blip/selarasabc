@@ -119,5 +119,5 @@ async function main() {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  main().catch((e) => { console.error(e.message); process.exit(1); });
+  main().catch((e) => { console.log('Artikel tidak diambil: ' + e.message); });
 }

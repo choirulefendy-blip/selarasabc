@@ -1027,6 +1027,8 @@
 .art-big .art-title{font-size:15px;}
 .art-ex{font-size:12.5px;opacity:.75;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .art-date{font-size:11.5px;opacity:.6;margin-top:auto;}
+.art-wrap{display:flex;flex-direction:column;gap:4px;}
+.art-tools{display:flex;justify-content:flex-end;gap:4px;}
 .art-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-bottom:12px;}
 </style>
 </head>
@@ -3009,6 +3011,7 @@ function renderLogin(){
 
 /* ---------------------------- RENDER: SHELL ---------------------------- */
 var ICONS = {
+  plus:'<path d="M12 5v14M5 12h14"/>',
   send:'<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/>',
   mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
   fingerprint:'<path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/>',
@@ -5847,19 +5850,53 @@ function articleCardHtml(a, big){
     (big && a.excerpt ? '<div class="art-ex">'+escapeHtml(a.excerpt)+'</div>' : '')+
     '<div class="art-date">'+articleDateText(a)+'</div></div></a>';
 }
+function canManageArticles(){
+  if(SESSION.role==='hr') return true;
+  var e = getEmployee(SESSION.empId);
+  return !!(e && /marketing|marcomm|komunikasi/i.test(e.department||''));
+}
+function allArticles(){
+  var seen = {}, out = [];
+  (DB.articles||[]).filter(function(a){ return !a.deleted; }).forEach(function(a){ seen[a.url] = 1; out.push(a); });
+  ARTICLES.items.forEach(function(a){ if(!seen[a.url]){ seen[a.url] = 1; out.push(a); } });
+  return out.sort(function(a,b){ return String(b.date||'').localeCompare(String(a.date||'')); });
+}
 function renderArticlesStrip(){
   loadArticles();
-  var it = ARTICLES.items.slice(0,6);
+  var it = allArticles().slice(0,6);
   if(!it.length) return '';
   return '<div class="card"><div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">Artikel ABC Hospitality<button class="btn btn-ghost btn-sm" data-action="nav" data-view="articles">Lihat semua</button></div>'+
     '<div class="art-strip">'+it.map(function(a){ return articleCardHtml(a, false); }).join('')+'</div></div>';
 }
 function renderArticlesPage(){
   loadArticles();
-  var it = ARTICLES.items;
-  if(!it.length) return '<div class="card"><div class="empty-state">'+(ARTICLES.loadedAt ? 'Belum ada artikel.' : 'Memuat artikel...')+'</div><div style="text-align:center;"><a class="btn btn-secondary btn-sm" href="'+ARTICLES_SITE+'" target="_blank" rel="noopener">Buka abchospitality.co.id</a></div></div>';
-  return '<div class="art-grid">'+it.map(function(a){ return articleCardHtml(a, true); }).join('')+'</div>'+
+  var it = allArticles(), mg = canManageArticles();
+  var head = mg ? '<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><button class="btn btn-primary" data-action="art-new">'+iconSvg('plus',16)+' Tambah Artikel</button></div>' : '';
+  if(!it.length) return head+'<div class="card"><div class="empty-state">Belum ada artikel.</div><div style="text-align:center;"><a class="btn btn-secondary btn-sm" href="'+ARTICLES_SITE+'" target="_blank" rel="noopener">Buka abchospitality.co.id</a></div></div>';
+  return head+'<div class="art-grid">'+it.map(function(a){
+      var tools = (mg && a.id) ? '<div class="art-tools"><button class="btn btn-ghost btn-sm" data-action="art-edit" data-id="'+a.id+'">Edit</button><button class="btn btn-ghost btn-sm" data-action="art-del" data-id="'+a.id+'" style="color:var(--danger);">Hapus</button></div>' : '';
+      return '<div class="art-wrap">'+articleCardHtml(a, true)+tools+'</div>';
+    }).join('')+'</div>'+
     '<div style="text-align:center;margin:6px 0 14px;"><a class="btn btn-ghost btn-sm" href="'+ARTICLES_SITE+'" target="_blank" rel="noopener">Buka abchospitality.co.id/article</a></div>';
+}
+function artModalHtml(a){
+  a = a || {};
+  var d = a.date ? String(a.date).slice(0,10) : todayISO();
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:520px;"><h3>'+(a.id?'Edit':'Tambah')+' Artikel</h3>'+
+    '<input type="hidden" id="art_id" value="'+escapeHtml(a.id||'')+'">'+
+    '<div class="form-group"><label>Link artikel</label><input id="art_url" type="url" value="'+escapeHtml(a.url||'')+'" placeholder="https://abchospitality.co.id/article/..."></div>'+
+    '<div class="form-group"><label>Judul</label><input id="art_title" value="'+escapeHtml(a.title||'')+'"></div>'+
+    '<div class="form-group"><label>Gambar</label><div id="art_prev" class="art-img" style="border-radius:12px;margin-bottom:8px;'+(a.image?'background-image:url(\''+escapeHtml(a.image).replace(/'/g,'%27')+'\')':'')+'">'+(a.image?'':iconSvg('image',26))+'</div>'+
+      '<input id="art_image" value="'+escapeHtml(a.image||'')+'" placeholder="Tempel link gambar (https://...)">'+
+      '<div style="margin-top:8px;"><label class="btn btn-secondary btn-sm" style="cursor:pointer;">'+iconSvg('image',14)+' Unggah gambar<input type="file" id="art_file" accept="image/*" style="display:none;"></label></div></div>'+
+    '<div class="form-row"><div class="form-group"><label>Tanggal</label><input id="art_date" type="date" value="'+escapeHtml(d)+'"></div></div>'+
+    '<div class="form-group"><label>Ringkasan (opsional)</label><textarea id="art_ex" rows="2">'+escapeHtml(a.excerpt||'')+'</textarea></div>'+
+    '<div style="display:flex;gap:8px;justify-content:flex-end;"><button class="btn btn-ghost" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="art-save">Simpan</button></div>'+
+  '</div></div>';
+}
+function artSetPreview(url){
+  var pv = document.getElementById('art_prev'); if(!pv) return;
+  pv.style.backgroundImage = url ? "url('"+String(url).replace(/'/g,'%27')+"')" : ''; pv.innerHTML = url ? '' : iconSvg('image',26);
 }
 /* ---------------------------- RENDER: PENGUMUMAN ---------------------------- */
 function renderAnnouncementsPage(){
@@ -10131,7 +10168,7 @@ function mergeLiveData(remote){
   DB.todos = mergeById(DB.todos, remote.todos, function(t){ return t.updatedAt || t.createdAt || ''; });
   /* pengumuman: hapus oleh HR (deletedAt) ikut ke semua akun, salinan lama tidak menghidupkan lagi */
   DB.announcements = mergeById(DB.announcements, remote.announcements, function(x){ return x.deletedAt || x.updatedAt || x.createdAt || ''; });
-  ['projects','timesheets','agenda','accJournals','accPOs','accPetty','sops','notifBroadcasts','notifSchedules','assets','chatGroups'].forEach(function(k){
+  ['articles','projects','timesheets','agenda','accJournals','accPOs','accPetty','sops','notifBroadcasts','notifSchedules','assets','chatGroups'].forEach(function(k){
     DB[k] = mergeById(DB[k], remote[k], function(x){ return x.updatedAt || x.createdAt || ''; });
   });
   if(remote.accCats){ DB.accCats = DB.accCats || {}; Object.keys(remote.accCats).forEach(function(pr){
@@ -13533,6 +13570,35 @@ document.addEventListener('click', function(e){
       if(h!==cc.hash){ toast('Kode salah.'); return; }
       ckvDone('email');
     });
+  } else if(action==='art-new' || action==='art-edit'){
+    if(!canManageArticles()) return;
+    var aeA = action==='art-edit' ? (DB.articles||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0] : null;
+    openModal(artModalHtml(aeA));
+  } else if(action==='art-del'){
+    if(!canManageArticles()) return;
+    var adA = (DB.articles||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
+    if(!adA || !confirm('Hapus artikel "'+adA.title+'"?')) return;
+    adA.deleted = true; adA.updatedAt = new Date().toISOString();
+    logActivity('Menghapus artikel "'+adA.title+'".');
+    saveDB().then(function(){ toast('Artikel dihapus.'); render(); });
+  } else if(action==='art-save'){
+    if(!canManageArticles()) return;
+    var asUrl = (document.getElementById('art_url').value||'').trim(), asTitle = (document.getElementById('art_title').value||'').trim();
+    var asImg = (document.getElementById('art_image').value||'').trim();
+    if(!/^https?:\/\//i.test(asUrl)){ toast('Isi link artikel (diawali https://).'); return; }
+    if(!asTitle){ toast('Isi judul artikel.'); return; }
+    if(asImg && !/^(https?:\/\/|data:image\/)/i.test(asImg)){ toast('Link gambar harus diawali https://'); return; }
+    var asId = document.getElementById('art_id').value, asNow = new Date().toISOString();
+    var asDate = document.getElementById('art_date').value || todayISO();
+    DB.articles = DB.articles || [];
+    if(!asId && DB.articles.some(function(x){ return !x.deleted && x.url===asUrl; })){ toast('Artikel dengan link ini sudah ada.'); return; }
+    var asA = asId ? DB.articles.filter(function(x){ return x.id===asId; })[0] : null;
+    if(!asA){ asA = {id:uid('ART'), createdAt:asNow, by:SESSION.role==='hr' ? hrActorLabel() : ((getEmployee(SESSION.empId)||{}).name||'')}; DB.articles.push(asA); }
+    asA.url = asUrl; asA.title = asTitle; asA.image = asImg; asA.date = asDate+'T05:00:00Z';
+    asA.excerpt = (document.getElementById('art_ex').value||'').trim().slice(0,300); asA.updatedAt = asNow;
+    logActivity((asId?'Mengubah':'Menambahkan')+' artikel "'+asTitle+'".');
+    closeModal();
+    saveDB().then(function(){ toast('Artikel disimpan.'); render(); });
   } else if(action==='submit-checkin'){
     var ckType = el.getAttribute('data-type');
     if(!CHECKIN_DRAFT.photoDataUrl){ toast('Ambil foto selfie dulu.'); return; }
@@ -13984,6 +14050,15 @@ document.addEventListener('drop', function(e){
 document.addEventListener('change', function(e){
   if(e.target && e.target.getAttribute && e.target.getAttribute('data-role')==='ckrk'){ ckrkReadRows(); }
   var t = e.target;
+  if(t.id==='art_image'){ artSetPreview(t.value.trim()); return; }
+  if(t.id==='art_file' && t.files && t.files[0]){
+    var af = t.files[0]; toast('Mengunggah gambar...');
+    compressImageFile(af, 1280, 0.8).then(function(du){
+      return uploadAttachment('article_'+Date.now()+'.jpg', du, 'image/jpeg').then(function(r){ return r.url || du; });
+    }).then(function(u){ var ai = document.getElementById('art_image'); if(ai) ai.value = u; artSetPreview(u); toast('Gambar siap.'); })
+      .catch(function(){ toast('Gagal mengunggah gambar.'); });
+    return;
+  }
   if(t.getAttribute && t.getAttribute('data-role')==='fwd-pick'){ STATE.chatFwdSel = STATE.chatFwdSel || {}; STATE.chatFwdSel[t.value] = t.checked; return; }
   if(t.getAttribute && t.getAttribute('data-role')==='cg-pick'){ STATE.chatGrpSel = STATE.chatGrpSel || {}; STATE.chatGrpSel[t.value] = t.checked; return; }
   if(t.id==='grpPhotoFile'){ var gpF = t.files && t.files[0], gpG = chatGroup('g:'+t.getAttribute('data-gid')); if(gpF && gpG) chatGroupSetPhoto(gpG, gpF); return; }
