@@ -1650,6 +1650,12 @@ function sendEmailApi(to, subject, body, link, extra){
     .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return {ok:r.ok && j.ok!==false, error:j.error || (r.ok ? '' : 'HTTP '+r.status)}; }); })
     .catch(function(err){ return {ok:false, error:String(err && err.message || err)}; });
 }
+var EMAIL_SECTIONS = {checkin:['Absensi','⏰','#3980C4'], attendance:['Absensi','⏰','#3980C4'], 'hod-attendance':['Absensi','⏰','#3980C4'], todo:['Selaras Board','📋','#7C5CD6'], announcements:['Pengumuman','📢','#E08A1E'], sop:['SOP & Peraturan','📘','#1F8F6A'], 'leave-request':['Cuti & Izin','🌴','#1F9BB5'], leave:['Cuti & Izin','🌴','#1F9BB5'], requests:['Pengajuan','📝','#C2557A'], 'form-request':['Pengajuan','📝','#C2557A'], 'form-approval':['Persetujuan','✅','#1F8F6A'], 'my-payslip':['Slip Gaji','💰','#2E8B57'], payroll:['Penggajian','💰','#2E8B57'], chat:['Chat','💬','#3980C4'], schedule:['Jadwal','📅','#296290'], dashboard:['ABC Selaras','🔔','#3980C4']};
+function emailSectionOf(link){
+  var v = String(link||'').split(/[?&#\/]/)[0];
+  var m = EMAIL_SECTIONS[v] || EMAIL_SECTIONS.dashboard;
+  return {label:m[0], icon:m[1], color:m[2]};
+}
 function triggerEmail(audience, message, link){
   if(!emailConfigured()) return;
   var toEmails = resolveEmailsForAudience(audience);
@@ -1657,7 +1663,7 @@ function triggerEmail(audience, message, link){
     fetch(EMAIL_FUNCTION_URL, {
       method:'POST',
       headers: supabaseHeaders({'Content-Type':'application/json'}),
-      body: JSON.stringify({to:toEmail, subject:'ABC Selaras \u2014 '+String(message).replace(/<[^>]+>/g,'').replace(/&mdash;/g,'—').slice(0,70), body:String(message).replace(/<[^>]+>/g,'').replace(/&mdash;/g,'—'), url:(typeof APP_PUBLIC_URL!=='undefined' ? APP_PUBLIC_URL : '')+(link ? '#'+link : '')})
+      body: JSON.stringify({section:emailSectionOf(link), to:toEmail, subject:'ABC Selaras \u2014 '+String(message).replace(/<[^>]+>/g,'').replace(/&mdash;/g,'—').slice(0,70), body:String(message).replace(/<[^>]+>/g,'').replace(/&mdash;/g,'—'), url:(typeof APP_PUBLIC_URL!=='undefined' ? APP_PUBLIC_URL : '')+(link ? '#'+link : '')})
     }).catch(function(err){ console.error('triggerEmail error', err); });
   });
 }
