@@ -9516,7 +9516,8 @@ function renderHrProfilePage(){
     '<div class="form-group"><label>No. HP / WhatsApp</label><input id="hp_phone" value="'+escapeHtml(t.phone||'')+'"></div></div>'+
     '<div class="form-row"><div class="form-group"><label>Username</label><input id="hp_user" value="'+escapeHtml(t.username||'')+'"></div>'+
     '<div class="form-group"><label>Password baru (kosongkan jika tidak diubah)</label><input id="hp_pass" type="password" autocomplete="new-password"></div></div>'+
-    '<button class="btn btn-primary" data-action="hr-profile-save">Simpan Profil</button></div>'+renderAppInfoCard();
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;"><button class="btn btn-primary" data-action="hr-profile-save">Simpan Profil</button>'+
+    '<button class="btn btn-secondary" data-action="hr-test-email"'+(t.email?'':' disabled title="Isi & simpan email dulu"')+'>'+iconSvg('send',14)+' Kirim Email Tes</button></div></div>'+renderAppInfoCard();
 }
 function setHrPhotoFromFile(file){
   var t = hrProfileTarget();
@@ -12200,6 +12201,16 @@ document.addEventListener('click', function(e){
     if(egV && DB.employees.some(function(x){ return x.id!==egE.id && x.active && String(x.email||'').toLowerCase()===egV.toLowerCase(); })){ toast('Email itu sudah dipakai karyawan lain.'); return; }
     if(String(egE.email||'').toLowerCase()!==egV.toLowerCase()){ egE.email = egV; egE.googleLinkedAt = null; egE.emailVerifiedFor = null; egE.emailNotif = false; egE.updatedAt = new Date().toISOString(); STATE.emailCode = null; }
     STATE.emailEdit = false; saveDB().then(function(){ toast('Email disimpan. Silakan verifikasi.'); render(); });
+  } else if(action==='hr-test-email'){
+    if(SESSION.role!=='hr') return;
+    var teT = hrProfileTarget(); if(!teT || !teT.email){ toast('Isi & simpan email dulu.'); return; }
+    var teCode = String(Math.floor(100000 + Math.random()*900000));
+    el.disabled = true;
+    sendEmailApi(teT.email, 'Tes email ABC Selaras: '+teCode, 'Halo '+(teT.name||'HR Admin')+', ini email tes dari ABC Selaras. Kode tes: '+teCode+'. Jika email ini masuk, notifikasi email HR sudah berjalan.', 'dashboard', {kind:'code', code:teCode}).then(function(r){
+      el.disabled = false;
+      if(!r.ok){ toast(r.error==='not-configured' || /404|not.?found/i.test(r.error) ? 'Layanan email belum aktif.' : 'Gagal mengirim: '+r.error); return; }
+      toast('Email tes (kode '+teCode+') dikirim ke '+teT.email+'.');
+    });
   } else if(action==='eg-send'){
     var esE = getEmployee(SESSION.empId || SESSION.asEmpId); if(!esE || !esE.email) return;
     if(STATE.emailCode && STATE.emailCode.sentAt && Date.now()-STATE.emailCode.sentAt < 45000){ toast('Tunggu sebentar sebelum kirim ulang.'); return; }
