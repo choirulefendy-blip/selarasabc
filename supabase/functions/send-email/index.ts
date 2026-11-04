@@ -30,8 +30,8 @@ const esc = (s: string) => String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&
 
 let cache: { at: number; emails: Set<string>; names: Map<string, string> } | null = null;
 let NAMES = new Map<string, string>();
-async function registeredEmails(): Promise<Set<string> | null> {
-  if (cache && Date.now() - cache.at < 60_000) { NAMES = cache.names; return cache.emails; }
+async function registeredEmails(fresh = false): Promise<Set<string> | null> {
+  if (!fresh && cache && Date.now() - cache.at < 60_000) { NAMES = cache.names; return cache.emails; }
   if (!SUPABASE_URL || !SERVICE_KEY) return null;
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/kv_store?key=eq.hrdb&select=value`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
@@ -56,7 +56,9 @@ serve(async (req) => {
     const { to, subject, body, url, kind, code, section } = await req.json();
     if (!to) return json({ ok: false, error: "to wajib diisi" }, 400);
     if (!RESEND_API_KEY) return json({ ok: false, error: "RESEND_API_KEY belum di-set" }, 500);
-    const reg = await registeredEmails();
+    let reg = await registeredEmails();
+    /* email baru saja diisi staff: muat ulang daftar sebelum menolak */
+    if (reg && !reg.has(String(to).trim().toLowerCase())) reg = await registeredEmails(true);
     if (reg && !reg.has(String(to).trim().toLowerCase())) return json({ ok: false, error: "Alamat email tidak terdaftar di ABC Selaras" }, 403);
 
     const link = typeof url === "string" && url.startsWith("http") ? url : APP_URL + (url || "");

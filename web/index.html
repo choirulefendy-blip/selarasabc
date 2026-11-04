@@ -10422,7 +10422,7 @@ function renderMyProfilePage(){
         tr('Jenis Kelamin', dash(emp.gender))+
         tr('Tanggal Lahir', emp.dateOfBirth ? formatDateID(emp.dateOfBirth)+(age!=null?' ('+age+' tahun)':'') : '&mdash;')+
         tr('Telepon', dash(emp.phone))+
-        tr('Email', dash(emp.email))+
+        tr('Email', dash(emp.email)+' <button class="btn btn-ghost btn-sm" data-action="eg-edit-jump">Ubah</button>')+
         tr('Alamat', dash(emp.address)))+
       '<div class="muted" style="font-size:12px;text-align:center;margin:-4px 0 12px;">Ada data yang salah? Hubungi HR.</div>';
   })()+
@@ -12294,13 +12294,29 @@ document.addEventListener('click', function(e){
     render();
   } else if(action==='eg-edit'){ STATE.emailEdit = true; render();
   } else if(action==='eg-edit-cancel'){ STATE.emailEdit = false; render();
+  } else if(action==='eg-edit-jump'){
+    STATE.emailEdit = true; render();
+    var ej = document.getElementById('eg_email'); if(ej){ ej.scrollIntoView({block:'center'}); ej.focus(); }
   } else if(action==='eg-save'){
     var egE = getEmployee(SESSION.empId || SESSION.asEmpId); if(!egE) return;
     var egV = (document.getElementById('eg_email').value||'').trim();
     if(egV && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(egV)){ toast('Format email tidak valid.'); return; }
     if(egV && DB.employees.some(function(x){ return x.id!==egE.id && x.active && String(x.email||'').toLowerCase()===egV.toLowerCase(); })){ toast('Email itu sudah dipakai karyawan lain.'); return; }
-    if(String(egE.email||'').toLowerCase()!==egV.toLowerCase()){ egE.email = egV; egE.googleLinkedAt = null; egE.emailVerifiedFor = null; egE.emailNotif = false; egE.updatedAt = new Date().toISOString(); STATE.emailCode = null; }
-    STATE.emailEdit = false; saveDB().then(function(){ toast('Email disimpan. Silakan verifikasi.'); render(); });
+    var egChanged = String(egE.email||'').toLowerCase()!==egV.toLowerCase();
+    if(egChanged){
+      var egOld = egE.email || '';
+      egE.email = egV; egE.googleLinkedAt = null; egE.emailVerifiedFor = null; egE.emailNotif = false; egE.updatedAt = new Date().toISOString(); STATE.emailCode = null;
+      logActivity((egOld ? 'Mengubah email dari '+egOld+' ke ' : 'Menambahkan email ')+(egV||'(kosong)')+'.');
+      addNotification({type:'hr'}, egE.name+(egOld ? ' mengubah email ke ' : ' menambahkan email ')+(egV||'(kosong)')+'.', 'employees', 'general');
+    }
+    STATE.emailEdit = false;
+    saveDB().then(function(){
+      render();
+      if(egChanged && egV && emailConfigured()){
+        toast('Email disimpan. Mengirim kode verifikasi...');
+        var sb = document.querySelector('[data-action="eg-send"]'); if(sb) sb.click();
+      } else toast('Email disimpan.');
+    });
   } else if(action==='hr-test-email'){
     if(SESSION.role!=='hr') return;
     var teT = hrProfileTarget(); if(!teT || !teT.email){ toast('Isi & simpan email dulu.'); return; }
