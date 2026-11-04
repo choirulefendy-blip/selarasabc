@@ -1,0 +1,872 @@
+&#8682; Import Spreadsheet|⇪ Import Spreadsheet
+, login, lalu ketuk|, log in, then tap
+, pukul|, at
+- Akun -|- Account -
+- Lewati -|- Skip -
+1, 2, 3...|1, 2, 3...
+11 digit|11 digits
+13 digit|13 digits
+2. Tinjau Pengajuan Cuti|2. Review Leave Requests
+4. Kelola Data Karyawan|4. Manage Employee Data
+5. Tinjau KPI|5. Review KPIs
+Absen|Attendance
+Absen Masuk|Clock In
+Absen Masuk Sekarang|Clock In Now
+Absen Pulang|Clock Out
+Absen Pulang Sekarang|Clock Out Now
+Absen di luar jangkauan|Clocked in out of range
+Absen hari ini sudah lengkap. Sampai jumpa besok!|Today's attendance is complete. See you tomorrow!
+Absensi & Pencocokan|Attendance & Matching
+Absensi Hari Ini|Today's Attendance
+Absensi Saya|My Attendance
+Absensi Tim|Team Attendance
+Absensi disimpan.|Attendance saved.
+Ada data yang salah? Hubungi HR.|Something wrong? Contact HR.
+Ada versi baru — perbarui sekarang|New version available — update now
+Agenda Google dimuat ulang.|Google agenda reloaded.
+Agenda dihapus.|Agenda deleted.
+Agenda disimpan.|Agenda saved.
+Ajukan|Submit
+Ajukan Cuti / Izin|Request Leave / Permit
+Ajukan Jadwal Departemen ke HR|Submit Department Schedule to HR
+Ajukan Lembur|Request Overtime
+Ajukan Semua Departemen Saya|Submit All My Departments
+Ajukan ke HR|Submit to HR
+Akan Datang|Upcoming
+Akses HR|HR Access
+Akses tambahan|Extra access
+Aksi|Actions
+Aktif|Active
+Aktifkan Notifikasi Perangkat|Enable Device Notifications
+Aktifkan semua notifikasi|Enable all notifications
+Aktivitas|Activity
+Aktivitas Saya|My Activity
+Aktivitas Selaras Board karyawan|Employee Selaras Board activity
+Akun|Account
+Akun Google tersambung ✓|Google account linked ✓
+Akun Google & Email|Google Account & Email
+Akun HR|HR Account
+Akun HR Tambahan|Additional HR Accounts
+Akun HR dihapus.|HR account deleted.
+Akun HR diperbarui.|HR account updated.
+Akun HR ditambahkan.|HR account added.
+Akun Saya|My Account
+Akun dan lawan akun tidak boleh sama.|Account and counter-account must differ.
+Akun ditambahkan.|Account added.
+Alamat|Address
+Alamat / Keterangan|Address / Notes
+Alpha|Absent
+Ambil Foto|Take Photo
+Ambil Ulang|Retake
+Ambil foto selfie dulu.|Take a selfie first.
+Anda|You
+Anda belum ditunjuk sebagai HOD departemen mana pun.|You have not been assigned as HOD of any department.
+Anggota|Members
+Apa yang dikerjakan|What was done
+Aplikasi ABC Selaras|ABC Selaras App
+Arah|Direction
+Artikel|Articles
+Artikel ABC|ABC Articles
+Artikel ABC Hospitality|ABC Hospitality Articles
+Artikel dengan link ini sudah ada.|An article with this link already exists.
+Artikel dihapus.|Article deleted.
+Artikel disimpan.|Article saved.
+Aset|Assets
+Aset Inventaris|Inventory Assets
+Aset dihapus.|Asset deleted.
+Atasan langsung|Direct supervisor
+Atur / Edit Jadwal|Set / Edit Schedule
+Atur Jadwal Tim|Set Team Schedule
+Aturan penggajian disimpan.|Payroll rules saved.
+Audit / Cek Fisik|Audit / Physical Check
+BPJS Kes.|BPJS Health
+BPJS TK|BPJS Employment
+BPJS Kesehatan|BPJS Health
+BPJS Ketenagakerjaan|BPJS Employment
+Bagikan|Share
+Balas|Reply
+Banner dihapus.|Banner deleted.
+Banner disimpan.|Banner saved.
+Barang Diterima|Goods Received
+Batal|Cancel
+Batalkan|Cancel
+Beban|Expenses
+Belakang|Back
+Belum Diajukan|Not Submitted
+Belum Diatur|Not Set
+Belum Diisi|Not Filled
+Belum ada|None yet
+Belum ada HOD|No HOD yet
+Belum ada HOD yang ditunjuk.|No HOD assigned yet.
+Belum ada KPI yang diajukan.|No KPIs submitted yet.
+Belum ada aktivitas tercatat.|No activity recorded yet.
+Belum ada akun HR tambahan.|No additional HR accounts yet.
+Belum ada anggota.|No members yet.
+Belum ada artikel.|No articles yet.
+Belum ada banner yang ditampilkan.|No banners displayed yet.
+Belum ada banner.|No banners yet.
+Belum ada catatan jam bulan ini.|No hours logged this month.
+Belum ada data absensi bulan ini.|No attendance data this month.
+Belum ada data bulan ini.|No data this month.
+Belum ada data karyawan.|No employee data yet.
+Belum ada data untuk grafik.|No data for charts yet.
+Belum ada data.|No data yet.
+Belum ada departemen lain dengan karyawan aktif.|No other departments with active employees.
+Belum ada grafik untuk diunduh.|No charts to download yet.
+Belum ada indikator.|No indicators yet.
+Belum ada jadwal yang diajukan.|No schedules submitted yet.
+Belum ada karyawan aktif.|No active employees yet.
+Belum ada karyawan dengan akses HR.|No employees with HR access yet.
+Belum ada karyawan.|No employees yet.
+Belum ada kategori.|No categories yet.
+Belum ada pengajuan cuti.|No leave requests yet.
+Belum ada pengajuan lembur.|No overtime requests yet.
+Belum ada pengajuan.|No requests yet.
+Belum ada pengumuman.|No announcements yet.
+Belum ada project aktif untuk dicatat jamnya.|No active projects to log hours for.
+Belum ada riwayat KPI.|No KPI history yet.
+Belum ada riwayat.|No history yet.
+Belum ada staf yang mengisi KPI bulan ini.|No staff have filled in KPIs this month.
+Belum ada staff di departemen ini.|No staff in this department yet.
+Belum ada struktur.|No structure yet.
+Belum ada tugas di Selaras Board.|No tasks on Selaras Board yet.
+Belum diajukan|Not submitted
+Belum diatur|Not set
+Belum diisi|Not filled
+Belum terverifikasi|Not verified
+Beralih ke Mode Karyawan|Switch to Employee Mode
+Beri Akses HR|Grant HR Access
+Beri bintang|Star
+Berkas tidak ditemukan.|File not found.
+Berlaku untuk|Applies to
+Berlangsung|Ongoing
+Besar|Large
+Bintang|Starred
+Bintang dihapus.|Star removed.
+Biru|Blue
+Board Saya|My Board
+Bobot|Weight
+Browser/perangkat ini tidak mendukung notifikasi.|This browser/device does not support notifications.
+Buat Jurnal|Create Journal
+Buat Pengumuman|Create Announcement
+Buat grup baru|Create new group
+Buka|Open
+Buka ABC Selaras dari|Open ABC Selaras from
+Buka Dashboard Sales|Open Sales Dashboard
+Buka File|Open File
+Buka Pantauan|Open Monitoring
+Buka Profil|Open Profile
+Buka Selaras Board|Open Selaras Board
+Buka abchospitality.co.id|Open abchospitality.co.id
+Buka abchospitality.co.id/article|Open abchospitality.co.id/article
+Buka di Board|Open in Board
+Buka di Google|Open in Google
+Buka di Google Maps|Open in Google Maps
+Buka halaman saat diklik|Page opened on click
+Bukti|Proof
+Bukti Absensi|Attendance Proof
+Bulan|Month
+Bulan berjalan|Current month
+Cabut|Revoke
+Cari SOP / peraturan...|Search SOPs / rules...
+Cari kode, nama, serial, pemegang...|Search code, name, serial, holder...
+Cari nama atau grup...|Search name or group...
+Cari nama staf…|Search staff name…
+Cari nama…|Search name…
+Cari nama...|Search name...
+Cari tugas atau nama...|Search task or name...
+Catat Kegiatan|Log Activity
+Catatan|Notes
+Catatan Pekerjaan:|Work Notes:
+Catatan dihapus.|Note deleted.
+Catatan perubahan|Change notes
+Cetak|Print
+Cetak Label QR|Print QR Labels
+Cetak tidak didukung di perangkat ini.|Printing is not supported on this device.
+Cetak tidak didukung di perangkat ini. Gunakan Unduh PNG.|Printing is not supported on this device. Use Download PNG.
+Chat bersama beberapa orang sekaligus|Chat with several people at once
+Chat diarsipkan. Pesan baru tidak akan mengeluarkannya dari arsip.|Chat archived. New messages won't unarchive it.
+Chat dihapus.|Chat deleted.
+Chat dikeluarkan dari arsip.|Chat unarchived.
+Chat dilepas dari sematan.|Chat unpinned.
+Chat disematkan di atas.|Chat pinned to top.
+Coba Lagi|Try Again
+Coba Sekarang|Try Now
+Contoh:|Example:
+Contoh: 2.5|Example: 2.5
+Cuti|Leave
+Cuti / Libur|Leave / Day Off
+Cuti Tahunan|Annual Leave
+Cuti & Izin|Leave & Permits
+Daftar Akun|Account List
+Daftar Banner|Banner List
+Dana Masuk|Funds In
+Dari|From
+Dari URL|From URL
+Dashboard Accounting|Accounting Dashboard
+Data berhasil diimpor.|Data imported successfully.
+Data diekspor.|Data exported.
+Data direset ke data contoh.|Data reset to sample data.
+Data karyawan disimpan.|Employee data saved.
+Data karyawan tidak ditemukan.|Employee data not found.
+Data tidak ditemukan.|Data not found.
+Data Kepegawaian|Employment Data
+Data Pribadi|Personal Data
+Depan|Front
+Departemen|Department
+Departemen Jam Fleksibel|Flexible-Hours Departments
+Departemen ditambahkan.|Department added.
+Departemen itu sudah ada.|That department already exists.
+Departemen:|Department:
+Deskripsi|Description
+Detail / Slip|Details / Slip
+Detail Karyawan:|Employee Details:
+Diarsipkan|Archived
+Dibaca staf|Read by staff
+Dibagikan ke|Shared with
+Dibayar / diterima lewat|Paid / received via
+Dibuka di browser — tekan lama lalu pilih Simpan/Unduh.|Opened in browser — long-press then choose Save/Download.
+Diisi oleh|Filled by
+Dijeda|Paused
+Disembunyikan|Hidden
+Disetujui|Approved
+Disetujui & diterbitkan.|Approved & published.
+Disetujui, diteruskan ke HR untuk persetujuan final.|Approved, forwarded to HR for final approval.
+Ditandai sudah dibaca.|Marked as read.
+Ditarik|Withdrawn
+Ditolak|Rejected
+Ditolak. HOD diberi tahu.|Rejected. HOD notified.
+Ditugaskan ke|Assigned to
+Diurutkan dari yang terbanyak|Sorted from highest
+Dokumen dibuat otomatis oleh Sistem HR.|Document generated automatically by the HR System.
+Dokumen dihapus.|Document deleted.
+Durasi|Duration
+Durasi harus antara 0,25 dan 24 jam.|Duration must be between 0.25 and 24 hours.
+Edit Karyawan|Edit Employee
+Edit Pekerjaan|Edit Work
+Email belum terdaftar. Hubungi HR untuk menambahkan email.|No email registered. Contact HR to add one.
+Email disimpan.|Email saved.
+Email disimpan. Mengirim kode verifikasi...|Email saved. Sending verification code...
+Email itu sudah dipakai karyawan lain.|That email is already used by another employee.
+Email terverifikasi|Email verified
+Email terverifikasi ✓ Notifikasi email aktif.|Email verified ✓ Email notifications on.
+Emas|Gold
+Est. Potongan|Est. Deduction
+Estimasi Potongan Telat|Estimated Late Deduction
+Estimasi bulan ini|This month's estimate
+File bukan paket dokumen ABC Selaras yang valid.|File is not a valid ABC Selaras document package.
+File harus berupa gambar.|File must be an image.
+File terlalu besar (maks. 10 MB).|File too large (max. 10 MB).
+File tidak ditemukan.|File not found.
+Fitur diblokir|Feature blocked
+Format email tidak valid.|Invalid email format.
+Format file tidak dikenali.|Unrecognized file format.
+Format kolom:|Column format:
+Foto|Photo
+Foto dihapus.|Photo deleted.
+Foto gagal diunggah, data tetap disimpan.|Photo upload failed, data still saved.
+Foto grup diperbarui.|Group photo updated.
+Foto profil dihapus.|Profile photo removed.
+Foto profil diperbarui.|Profile photo updated.
+Foto siap dikirim|Photo ready to send
+Foto tidak ditemukan.|Photo not found.
+Gagal membaca berkas.|Failed to read file.
+Gagal membaca file JSON.|Failed to read JSON file.
+Gagal membaca file. Pastikan formatnya sesuai template.|Failed to read file. Make sure it matches the template.
+Gagal membuat file .ics.|Failed to create .ics file.
+Gagal membuat gambar (perlu koneksi internet).|Failed to create image (internet required).
+Gagal membuat gambar grafik.|Failed to create chart image.
+Gagal membuat gambar.|Failed to create image.
+Gagal membuat template.|Failed to create template.
+Gagal membuka berkas.|Failed to open file.
+Gagal membuka file.|Failed to open file.
+Gagal memproses foto.|Failed to process photo.
+Gagal memproses gambar.|Failed to process image.
+Gagal memproses/mengunggah lampiran.|Failed to process/upload attachment.
+Gagal memuat lampiran.|Failed to load attachment.
+Gagal menerapkan paket. Coba lagi.|Failed to apply package. Try again.
+Gagal mengaktifkan notifikasi perangkat.|Failed to enable device notifications.
+Gagal mengambil foto, coba lagi.|Failed to take photo, try again.
+Gagal menghapus pesan.|Failed to delete message.
+Gagal menghubungkan Google. Coba lagi.|Failed to connect Google. Try again.
+Gagal mengirim absen, coba lagi.|Failed to submit attendance, try again.
+Gagal mengirim tugas.|Failed to send task.
+Gagal mengirim, coba lagi.|Failed to send, try again.
+Gagal mengunduh grafik.|Failed to download chart.
+Gagal mengunggah file.|Failed to upload file.
+Gagal mengunggah foto grup.|Failed to upload group photo.
+Gagal mengunggah foto profil.|Failed to upload profile photo.
+Gagal mengunggah foto.|Failed to upload photo.
+Gagal mengunggah gambar banner.|Failed to upload banner image.
+Gagal mengunggah gambar.|Failed to upload image.
+Gagal menyalin.|Failed to copy.
+Gagal menyimpan data.|Failed to save data.
+Gagal menyimpan media.|Failed to save media.
+Gagal menyimpan tugas. Coba lagi.|Failed to save task. Try again.
+Gaji Pokok|Base Salary
+Gambar|Image
+Gambar disisipkan.|Image inserted.
+Gambar siap.|Image ready.
+Google Kalender|Google Calendar
+Google Kalender terhubung.|Google Calendar connected.
+Grafik|Charts
+Grafik Saya|My Charts
+Grafik kehadiranmu pada|Your attendance chart for
+HOD per Departemen|HOD per Department
+Hadir|Present
+Hadir %|Present %
+Hak Akses Staff|Staff Permissions
+Halaman ini untuk HOD / Manager dan HR.|This page is for HODs / Managers and HR.
+Hapus|Delete
+Hapus Foto|Remove Photo
+Hapus chat|Delete chat
+Hapus gambar yang sekarang|Remove current image
+Hapus percakapan|Delete conversation
+Hapus untuk saya|Delete for me
+Hapus untuk semua orang|Delete for everyone
+Harga satuan|Unit price
+Hari|Day
+Hari ini|Today
+Hari ini bukan jadwal kerja.|Today is not a working day.
+Hubungkan Google Kalender|Connect Google Calendar
+ID KARYAWAN|EMPLOYEE ID
+ID Karyawan|Employee ID
+Ikut BPJS Kesehatan|Enrolled in BPJS Health
+Ikut BPJS Ketenagakerjaan|Enrolled in BPJS Employment
+Impor Absensi dari Spreadsheet|Import Attendance from Spreadsheet
+Impor Aset dari Excel|Import Assets from Excel
+Impor Data|Import Data
+Impor Excel|Import Excel
+Impor Paket Dokumen|Import Document Package
+Import Spreadsheet ke Selaras Board|Import Spreadsheet to Selaras Board
+Indikator KPI ditambahkan.|KPI indicator added.
+Indikator dihapus.|Indicator deleted.
+Info Karyawan|Employee Info
+Info grup|Group info
+Informasi Perusahaan|Company Information
+Informasi perusahaan disimpan.|Company information saved.
+Isi & simpan email dulu.|Enter & save an email first.
+Isi Dana / Top-up|Add Funds / Top-up
+Isi alamat.|Enter an address.
+Isi deskripsi dulu.|Enter a description first.
+Isi dokumen|Document content
+Isi jam masuk dan jam pulang.|Enter clock-in and clock-out times.
+Isi judul agenda.|Enter an agenda title.
+Isi judul artikel.|Enter the article title.
+Isi judul dan pesan.|Enter a title and message.
+Isi judul dokumen.|Enter a document title.
+Isi judul tugas.|Enter a task title.
+Isi keterangan.|Enter a description.
+Isi link artikel (diawali https://).|Enter the article link (starting with https://).
+Isi nama.|Enter a name.
+Isi password.|Enter a password.
+Isi tanggal.|Enter a date.
+Isi target.|Enter a target.
+Isi username.|Enter a username.
+Izin|Permit
+Izin notifikasi ditolak. Aktifkan lewat pengaturan browser kalau berubah pikiran.|Notification permission denied. Enable it in browser settings if you change your mind.
+Jabatan|Position
+Jabatan dihapus.|Position deleted.
+Jadwal|Schedule
+Jadwal & Absensi|Schedule & Attendance
+Jadwal Saat Ini|Current Schedule
+Jadwal Saya|My Schedule
+Jadwal Hari Ini|Today's Schedule
+Jadwal Besok|Tomorrow's Schedule
+Jadwal departemen diajukan ke HR.|Department schedule submitted to HR.
+Jadwal disetujui.|Schedule approved.
+Jadwal ditolak.|Schedule rejected.
+Jadwal tanggal ini diterapkan.|Schedule for this date applied.
+Jadwal tim diunduh.|Team schedule downloaded.
+Jam|Hours
+Jam Akhir|End Time
+Jam Masuk|Clock-In Time
+Jam Mulai|Start Time
+Jam Pulang|Clock-Out Time
+Jam masuk|Clock-in time
+Jam selesai harus setelah jam mulai.|End time must be after start time.
+Jam tersimpan.|Hours saved.
+Jelaskan pekerjaan yang dilembur|Describe the overtime work
+Jelaskan pengajuan Anda...|Describe your request...
+Jenis|Type
+Jenis Kelamin|Gender
+Judul|Title
+Judul 1|Heading 1
+Judul 2|Heading 2
+Judul 3|Heading 3
+Judul Agenda|Agenda Title
+Judul Tugas|Task Title
+Judul tugas wajib diisi.|Task title is required.
+Jumat|Friday
+Jumlah|Amount
+Jurnal dihapus.|Journal deleted.
+Jurnal disimpan.|Journal saved.
+KPI Tim|Team KPIs
+KPI disetujui.|KPI approved.
+KPI ditolak.|KPI rejected.
+KPI rata-rata|Average KPI
+Kalender|Calendar
+Kamera belum siap.|Camera not ready.
+Kamis|Thursday
+Kamu hanya bisa menghapus tugas buatanmu sendiri.|You can only delete tasks you created.
+Karyawan|Employees
+Karyawan Aktif|Active Employees
+Karyawan dengan Akses HR|Employees with HR Access
+Karyawan dihapus.|Employee deleted.
+Kategori|Category
+Kategori ditambahkan.|Category added.
+Kategori sudah ada.|Category already exists.
+Kecil|Small
+Kegiatan dicatat.|Activity logged.
+Kehadiran per Staf|Attendance per Staff
+Kelola Data|Manage Data
+Kelola HOD|Manage HODs
+Keluar|Out
+Keluar Grup|Leave Group
+Keluarkan|Remove
+Kembali|Back
+Kembalikan bawaan|Restore default
+Kerja|Work
+Ketentuan|Terms
+Keterangan|Notes
+Keterangan wajib diisi.|Notes are required.
+Keterlambatan per Karyawan|Lateness per Employee
+Kirim|Send
+Kirim Notifikasi|Send Notification
+Kirim Notifikasi ke Karyawan|Send Notification to Employees
+Kirim Pengajuan|Submit Request
+Kirim Pengumuman|Send Announcement
+Kirim Tugas ke Chat|Send Task to Chat
+Kirim ke|Send to
+Kirim sekarang|Send now
+Kirim ulang|Resend
+Kirim Email Tes|Send Test Email
+Kirim kode ke email|Send code to email
+Kirim kode verifikasi ke email|Send verification code to email
+Kode|Code
+Kode 6 digit dikirim ke|6-digit code sent to
+Kode dikirim ke email.|Code sent to email.
+Kode kedaluwarsa. Kirim ulang.|Code expired. Resend.
+Kode salah.|Wrong code.
+Komunikasi|Communication
+Kondisi|Condition
+Kondisi Hari Ini|Today's Condition
+Kondisi:|Condition:
+Kosong|Empty
+Kurang Sehat|Unwell
+Lama Bekerja|Length of Service
+Lampiran|Attachment
+Lampirkan Tugas|Attach Task
+Langkah Cepat|Quick Steps
+Laporan & Grafik|Reports & Charts
+Lembur|Overtime
+Lewat tenggat|Overdue
+Libur|Day Off
+Lihat|View
+Lihat Kalender|View Calendar
+Lihat Profil|View Profile
+Lihat Slip Gaji|View Payslip
+Lihat profil|View profile
+Lihat semua|See all
+Link artikel|Article link
+Link disalin.|Link copied.
+Link kalender aktif|Calendar link active
+Lokasi|Location
+Lokasi tidak tersedia.|Location unavailable.
+Masuk|In
+Masuk sebagai HR|Log in as HR
+Membuka kamera...|Opening camera...
+Memeriksa sensor perangkat...|Checking device sensor...
+Memuat...|Loading...
+Mendekati Target|Near Target
+Mengunggah bukti absen...|Uploading attendance proof...
+Mengunggah foto...|Uploading photo...
+Mengunggah gambar...|Uploading image...
+Menu|Menu
+Menunggu|Pending
+Menunggu HOD|Awaiting HOD
+Menunggu HR|Awaiting HR
+Menyimpan...|Saving...
+Minggu|Sunday
+Mode offline|Offline mode
+Nama|Name
+Nama Departemen|Department Name
+Nama Jabatan|Position Name
+Nama Karyawan|Employee Name
+Nama Lengkap|Full Name
+Nama Perusahaan|Company Name
+Nama Project|Project Name
+Nama Properti|Property Name
+Nama lengkap|Full name
+Nama tampilan|Display name
+Nama wajib diisi.|Name is required.
+Nanti|Later
+Nanti saja|Maybe later
+Nilai|Score
+No. BPJS Kesehatan|BPJS Health No.
+No. BPJS Ketenagakerjaan|BPJS Employment No.
+No. HP / WhatsApp|Phone / WhatsApp
+Nomor Telepon|Phone Number
+Nonaktif|Inactive
+Notifikasi|Notifications
+Notifikasi Absen Staf|Staff Attendance Notifications
+Notifikasi Email|Email Notifications
+Notifikasi Perangkat|Device Notifications
+Notifikasi Terjadwal|Scheduled Notifications
+Notifikasi di Aplikasi|In-App Notifications
+Notifikasi lewat email|Email notifications
+Notifikasi perangkat diaktifkan.|Device notifications enabled.
+Pantauan SOP per Departemen|SOP Monitoring per Department
+Pantauan Selaras Board|Selaras Board Monitoring
+Password minimal 4 karakter.|Password must be at least 4 characters.
+Password baru (kosongkan jika tidak diubah)|New password (leave blank to keep)
+Pekerjaan dicatat.|Work logged.
+Pekerjaan dihapus.|Work deleted.
+Pelaku|Actor
+Pencapaian|Achievement
+Pendapatan|Revenue
+Penerima|Recipients
+Pengajuan|Requests
+Pengajuan Cuti|Leave Requests
+Pengajuan Cuti / Izin|Leave / Permit Request
+Pengajuan Lembur|Overtime Requests
+Pengajuan dibatalkan.|Request cancelled.
+Pengajuan dikirim, menunggu persetujuan HOD.|Request sent, awaiting HOD approval.
+Pengajuan dikirim, menunggu persetujuan HR.|Request sent, awaiting HR approval.
+Pengajuan disetujui.|Request approved.
+Pengajuan ditolak.|Request rejected.
+Pengajuan terkirim.|Request sent.
+Pengaturan|Settings
+Pengaturan Notifikasi|Notification Settings
+Pengeluaran|Expenses
+Penggajian|Payroll
+Pengingat shift|Shift reminder
+Pengumuman|Announcements
+Pengumuman dihapus.|Announcement deleted.
+Pengumuman terkirim.|Announcement sent.
+Perangkat ini tidak mendukung sidik jari / Face ID.|This device does not support fingerprint / Face ID.
+Perbarui|Update
+Perbarui Dokumen|Update Document
+Peringatan Absen Hari Ini|Today's Attendance Alerts
+Periode|Period
+Periode:|Period:
+Perlu Perhatian|Needs Attention
+Persetujuan|Approvals
+Persetujuan Jadwal|Schedule Approval
+Persetujuan KPI|KPI Approval
+Persetujuan Lembur Tim|Team Overtime Approval
+Persetujuan Tim|Team Approvals
+Perubahan disimpan.|Changes saved.
+Pesan|Message
+Pesan gagal terkirim. Periksa koneksi lalu coba lagi.|Message failed to send. Check your connection and try again.
+Pilih|Select
+Pilih departemen.|Select a department.
+Pilih karyawan|Select employee
+Pilih karyawan.|Select an employee.
+Pilih karyawan...|Select employee...
+Pilih penerima.|Select recipients.
+Pilih percakapan atau mulai chat baru.|Select a conversation or start a new chat.
+Potongan|Deductions
+Potongan Keterlambatan|Late Deduction
+Prioritas|Priority
+Profil|Profile
+Profil Karyawan|Employee Profile
+Profil Saya|My Profile
+Profil disimpan.|Profile saved.
+Progres|Progress
+Properti|Property
+Pulang|Out
+Rabu|Wednesday
+Rendah|Low
+Report Karyawan|Employee Report
+Reset link|Reset link
+Riwayat|History
+Riwayat Aktivitas|Activity Log
+Riwayat KPI|KPI History
+Riwayat Lembur Saya|My Overtime History
+Riwayat Pengajuan Saya|My Request History
+Riwayat Pengumuman|Announcement History
+Ringkasan Absensi Tim|Team Attendance Summary
+Ringkasan Bulan Ini|This Month's Summary
+Ringkasan Penggajian|Payroll Summary
+SDM|HR
+SLIP GAJI|PAYSLIP
+SOP & Peraturan|SOPs & Rules
+Sabtu|Saturday
+Sakit|Sick
+Sakit / Izin|Sick / Permit
+Salin|Copy
+Salin Link|Copy Link
+Sedang|Medium
+Sedang offline: perubahan belum bisa disimpan. Coba lagi setelah koneksi pulih.|Offline: changes can't be saved yet. Try again once you're back online.
+Sehat|Healthy
+Selasa|Tuesday
+Selengkapnya|More
+Selesai|Done
+Semua Departemen|All Departments
+Semua Status|All Statuses
+Semua karyawan|All employees
+Senin|Monday
+Setiap absen masuk|Every clock-in
+Setiap absen pulang|Every clock-out
+Setujui|Approve
+Simpan|Save
+Simpan Absensi|Save Attendance
+Simpan Aturan|Save Rules
+Simpan Profil|Save Profile
+Simpan Tugas|Save Task
+Sisa Cuti|Remaining Leave
+Sisa Cuti Tahunan|Remaining Annual Leave
+Sistem|System
+Slip Gaji|Payslip
+Slip Gaji Saya|My Payslip
+Staf absen telat|Staff clocked in late
+Staf belum absen|Staff not clocked in
+Status Aktif|Active Status
+Struktur Organisasi|Organization Chart
+Sudah 8 jam kerja. Jangan lupa Absen Pulang.|8 working hours done. Don't forget to clock out.
+Tambah|Add
+Tambah Artikel|Add Article
+Tambah Akun HR|Add HR Account
+Tambahkan ke Google Calendar|Add to Google Calendar
+Sambungkan ke Google Calendar|Connect to Google Calendar
+Tandai semua dibaca|Mark all as read
+Tandai sudah dibaca|Mark as read
+Tanggal|Date
+Tanggal Bergabung|Join Date
+Tanggal Lahir|Date of Birth
+Tanggal Mulai|Start Date
+Tanggal Selesai|End Date
+Tanggal selesai tidak boleh sebelum tanggal mulai.|End date cannot be before start date.
+Telat|Late
+Telepon|Phone
+Tenggat|Due Date
+Tepat waktu|On time
+Terapkan|Apply
+Tercapai|Achieved
+Terkirim|Sent
+Terlalu banyak percobaan.|Too many attempts.
+Tidak ada notifikasi.|No notifications.
+Tidak ada tugas aktif.|No active tasks.
+Tim|Team
+Tim Saya|My Team
+Tinggi|High
+Tinjau|Review
+Tipe|Type
+Tolak|Reject
+Total Telat|Total Late
+Tugas|Tasks
+Tugas & Aktivitas|Tasks & Activities
+Tugas dihapus.|Task deleted.
+Tugas saya|My tasks
+Tugaskan ke|Assign to
+Tulis Rekap Kerja hari ini dulu sebelum absen pulang.|Write today's Work Recap before clocking out.
+Tulis pesan...|Write a message...
+Tunggu sebentar sebelum kirim ulang.|Wait a moment before resending.
+Tutup|Close
+Uang Makan|Meal Allowance
+Ubah|Change
+Ubah Profil|Edit Profile
+Ubah Tugas|Edit Task
+Unduh Excel|Download Excel
+Unduh PDF|Download PDF
+Unduh Template|Download Template
+Unggah gambar|Upload image
+Username tidak boleh kosong.|Username cannot be empty.
+Verifikasi|Verify
+Verifikasi:|Verification:
+Verifikasi bahwa email ini milikmu:|Verify that this email is yours:
+Verifikasi & Kirim Absen|Verify & Submit Attendance
+Sidik Jari / Face ID|Fingerprint / Face ID
+Versi baru aplikasi tersedia.|A new app version is available.
+Versi di perangkat ini|Version on this device
+Wajib|Required
+Waktu|Time
+Yang Baru|What's New
+atau|or
+atau pakai username|or use username
+Bahasa|Language
+Bahasa / Language|Language / Bahasa
+Terpakai|Used
+Kontrak s/d|Contract until
+Tersambung Google|Linked to Google
+Hapus Foto Profil|Remove Profile Photo
+Ganti Foto|Change Photo
+Tambah Foto|Add Photo
+Ringkasan (opsional)|Summary (optional)
+Tambah Artikel Baru|Add New Article
+Edit Artikel|Edit Article
+(tidak ada)|(none)
++ Baru|+ New
++ Tambah / Tugaskan Tugas|+ Add / Assign Task
++ Tambah Aset|+ Add Asset
++ Tambah Departemen Baru|+ Add New Department
++ Tambah Jabatan|+ Add Position
++ Tambah Jurnal|+ Add Journal
++ Tambah Karyawan|+ Add Employee
++ Tambah Properti Baru|+ Add New Property
++ Tambah SOP / Peraturan|+ Add SOP / Rule
++ Tambah Tugas|+ Add Task
+1. Kartu ini adalah identitas resmi|1. This card is the official ID of
+2. Wajib dikenakan selama jam kerja di|2. Must be worn during working hours at
+3. Kartu tidak dapat dipindahtangankan.|3. This card is non-transferable.
+3. Lihat & Unduh Slip Gaji|3. View & Download Payslip
+4. Jika menemukan kartu ini, mohon|4. If found, please
+karyawan ABC Hospitality Group.|employees of ABC Hospitality Group.
+kembalikan ke HR Department.|return it to the HR Department.
+9 jam+ (lembur)|9+ hours (overtime)
+Absen di luar radius lokasi kantor atau tanpa GPS.|Clocked in outside the office radius or without GPS.
+Absen tepat waktu, catat tugasmu, dan pantau semuanya di satu tempat.|Clock in on time, log your tasks, and track everything in one place.
+Selamat datang di ABC Selaras|Welcome to ABC Selaras
+Absensi & Pencocokan Jadwal|Attendance & Schedule Matching
+Agenda & Kalender|Agenda & Calendar
+Aplikasi ini diproduksi dan dikembangkan oleh|This app is produced and developed by
+Aset Inventaris (lihat)|Inventory Assets (view)
+Aturan BPJS & Potongan Keterlambatan|BPJS & Late Deduction Rules
+BPJS Kesehatan (% dari Gaji Pokok)|BPJS Health (% of Base Salary)
+BPJS Ketenagakerjaan (% dari Gaji Pokok)|BPJS Employment (% of Base Salary)
+Baris Jurnal (total debit harus sama dengan kredit)|Journal Lines (total debit must equal credit)
+Batas Maksimum Potongan Telat per Bulan (Rp, kosongkan/0 = tanpa batas)|Monthly Late Deduction Cap (Rp, blank/0 = no cap)
+Belum ada SOP atau peraturan.|No SOPs or rules yet.
+Belum ada SOP atau peraturan. Tambahkan lewat form di atas.|No SOPs or rules yet. Add one using the form above.
+Belum ada aset. Klik|No assets yet. Click
+Belum ada percakapan.|No conversations yet.
+Belum dibaca|Unread
+Board tugas, project & timesheet, agenda, rekap kerja|Task board, projects & timesheets, agenda, work recap
+Buat / Lihat PO|Create / View PO
+Buka Dashboard Accounting|Open Accounting Dashboard
+Catatan (opsional)|Notes (optional)
+Contoh: Besok briefing jam 08.00 di lobby Padi Heritage.|Example: Briefing tomorrow at 08.00 in the Padi Heritage lobby.
+Contoh: Jangan lupa absen tepat waktu ya|Example: Don't forget to clock in on time
+Contoh: Selamat Datang di ABC Selaras|Example: Welcome to ABC Selaras
+Contoh: Siapkan konten Instagram minggu ini|Example: Prepare this week's Instagram content
+Data Karyawan|Employee Data
+Email (untuk notifikasi email, opsional)|Email (for email notifications, optional)
+Email belum diisi|No email yet
+Estimasi Total THP|Estimated Total THP
+Gaji & Tunjangan|Salary & Allowances
+Grafik kehadiran & jam kerja pribadi|Personal attendance & working-hours charts
+Impor Excel ke Board|Import Excel to Board
+Impor dari Teks (per orang)|Import from Text (per person)
+Jadwal belum diatur oleh HOD/HR.|Schedule not yet set by HOD/HR.
+Jadwal diatur oleh HOD. Cocokkan hasil tarikan absensi di sini.|Schedules are set by the HOD. Match the attendance pull here.
+Jam (WIB)|Time (WIB)
+Jam Masuk–Pulang|Clock In–Out
+Jatah Cuti Tahunan (hari / periode)|Annual Leave Quota (days / period)
+Kamu belum punya akses ke Aset Inventaris. Minta HOD/HR membukanya di Hak Akses Staff.|You don't have access to Inventory Assets yet. Ask your HOD/HR to enable it in Staff Permissions.
+Keterangan (opsional)|Notes (optional)
+Ketuk baris untuk melihat detail, riwayat, mutasi, dan catatan perbaikan.|Tap a row to see details, history, transfers, and repair notes.
+Ketuk nama staff untuk mengatur aksesnya.|Tap a staff name to set their access.
+Khusus staf Accounting / Purchasing|Accounting / Purchasing staff only
+Khusus staf Sales & Marketing|Sales & Marketing staff only
+Lembur Disetujui|Approved Overtime
+Lihat semua pembaruan|See all updates
+Lokasi tidak tersedia — tetap bisa absen tanpa lokasi.|Location unavailable — you can still clock in without it.
+Melihat & mencetak kartu karyawan|View & print employee card
+Melihat daftar aset departemen|View department assets
+Melihat slip gaji & Take Home Pay|View payslip & Take Home Pay
+Membaca pengumuman|Read announcements
+Membaca artikel ABC Hospitality|Read ABC Hospitality articles
+Menambah, mengedit, dan mengimpor aset departemen|Add, edit, and import department assets
+Mengajukan cuti|Request leave
+Mengajukan lembur|Request overtime
+Mengisi form & pengajuan lain|Fill in forms & other requests
+Nama Aset|Asset Name
+Nama Lokasi|Location Name
+Nama Shift|Shift Name
+Nama Shift Baru|New Shift Name
+Panduan Kerja|Work Guide
+Pemberitahuan tiap staf absen masuk (jam, tepat waktu/telat). Bisa ramai, bawaan: mati.|Alert for every staff clock-in (time, on time/late). Can be noisy, default: off.
+Pemberitahuan tiap staf absen pulang beserta lama jam kerja. Bawaan: mati.|Alert for every staff clock-out with hours worked. Default: off.
+Pengajuan & lainnya|Requests & more
+Pengajuan, pengumuman & lainnya|Requests, announcements & more
+Pengajuan Anda langsung diteruskan ke HR untuk persetujuan final.|Your request goes straight to HR for final approval.
+Pengajuan Anda langsung diteruskan ke HR untuk persetujuan final. Kalau disetujui, hari tersebut otomatis ditandai Cuti di jadwal.|Your request goes straight to HR for final approval. If approved, those days are marked as Leave on the schedule.
+Pengajuan cuti, lembur, form, KPI, dan pemberitahuan sistem lain.|Leave, overtime, form, KPI requests and other system alerts.
+Pengaturan Jadwal|Schedule Settings
+Pengaturan ini berlaku untuk semua akun HR. Notifikasi yang dimatikan tidak akan dikirim sama sekali.|These settings apply to all HR accounts. Disabled notifications will not be sent at all.
+Pengaturan ini hanya untuk akunmu. Notifikasi yang dimatikan tidak akan dikirim sama sekali.|These settings are for your account only. Disabled notifications will not be sent at all.
+Perangkat/browser ini tidak mendukung notifikasi sistem. Notifikasi tetap muncul di ikon lonceng.|This device/browser doesn't support system notifications. They still appear under the bell icon.
+Periode cuti mulai (bulan perpanjangan kontrak)|Leave period starts (contract renewal month)
+Pesan baru dari HR dan rekan kerja.|New messages from HR and colleagues.
+Pesan baru dari karyawan lain.|New messages from other employees.
+Pilih jam mulai dan jam akhir untuk mengetahui berapa jam yang telah Anda lakukan.|Pick start and end times to see how many hours you worked.
+Rata-rata Kehadiran|Average Attendance
+Rekap Kerja|Work Recap
+Reset ke Data Contoh|Reset to Sample Data
+Ringkasan Progres Tim|Team Progress Summary
+Saat ada yang absen masuk melewati jam jadwal (termasuk info jam fleksibel).|When someone clocks in after their scheduled time (incl. flexible-hours info).
+Sakit/Izin|Sick/Permit
+Saklar utama. Matikan untuk berhenti menerima semua pemberitahuan.|Master switch. Turn off to stop all notifications.
+Saya & seluruh tim|Me & the whole team
+Sekali, pada tanggal & jam tertentu|Once, at a specific date & time
+Selesai hari ini|Done today
+Seluruh karyawan|All employees
+Semua|All
+Semua HOD|All HODs
+Semua Peran|All Roles
+Semua Properti|All Properties
+Semua Staff|All Staff
+Semua Staff & HOD|All Staff & HODs
+Semua departemen|All departments
+Semua kategori|All categories
+Semua kondisi|All conditions
+Semua properti|All properties
+Semua staf|All staff
+Semua status|All statuses
+Setelah semua potongan|After all deductions
+Setiap bulan|Monthly
+Setiap hari|Daily
+Setiap minggu|Weekly
+Simpan Jurnal|Save Journal
+Skor KPI per Departemen|KPI Score per Department
+Staf|Staff
+Status Saat Ini|Current Status
+Status persetujuan, pengumuman HR, dan pemberitahuan sistem lain.|Approval status, HR announcements, and other system alerts.
+Struktur organisasi group belum dibuat. Hubungi HR.|The group org chart hasn't been created yet. Contact HR.
+Susun Otomatis dari Data Karyawan|Auto-build from Employee Data
+Tambah Banner|Add Banner
+Tambah Lokasi|Add Location
+Tambah ke Board|Add to Board
+Tampilkan di dashboard|Show on dashboard
+Tampilkan jadwal shift, libur/cuti, tenggat tugas, dan agenda di Google Calendar. Ter-update otomatis.|Show shifts, days off/leave, task deadlines, and agenda in Google Calendar. Updates automatically.
+Tanggal tiap bulan|Day of month
+Tanpa keterangan|No notes
+Tarif Potongan per Menit Telat (Rp)|Deduction Rate per Late Minute (Rp)
+Terakhir diperbarui|Last updated
+Tidak ada karyawan.|No employees.
+Tidak ada pengajuan yang menunggu.|No pending requests.
+Tidak ada peringatan hari ini.|No alerts today.
+Tidak bisa mengakses kamera. Izinkan akses kamera untuk situs ini di pengaturan browser, lalu coba lagi.|Can't access the camera. Allow camera access for this site in browser settings, then try again.
+Toleransi Keterlambatan (menit)|Late Tolerance (minutes)
+Total Aset|Total Assets
+Total Menit Telat|Total Late Minutes
+Total Pendapatan|Total Revenue
+Total Potongan|Total Deductions
+Tugas HR (pribadi)|HR Tasks (personal)
+Tugas Selaras Board|Selaras Board Tasks
+Tugas baru dari HR/HOD dan pembaruan tugasmu.|New tasks from HR/HOD and updates to your tasks.
+Tugas baru dibuat atau diselesaikan oleh karyawan.|Tasks created or completed by employees.
+Tugas di kolom|Tasks in the column
+Umum (semua departemen)|General (all departments)
+Unduh APK Android|Download Android APK
+Unduh Belakang (PNG)|Download Back (PNG)
+Unduh Data (Excel)|Download Data (Excel)
+Unduh Depan (PNG)|Download Front (PNG)
+Unduh Grafik (PNG)|Download Chart (PNG)
+Unduh Slip (PDF)|Download Slip (PDF)
+Untuk seluruh karyawan (berlaku untuk semua akun HR).|For all employees (applies to all HR accounts).
+Urutan di sini = urutan tampil di dashboard.|The order here = the order shown on the dashboard.
+Verifikasi email di Profil untuk mengaktifkan.|Verify your email in Profile to enable.
+Verifikasi email dulu untuk mengaktifkan.|Verify your email first to enable.
+Wajib verifikasi identitas saat absen (sidik jari / Face ID, atau kode email)|Require identity verification at clock-in (fingerprint / Face ID, or email code)
+Waktu kirim|Send time
+e-ID CARD KARYAWAN|EMPLOYEE e-ID CARD
+hari tanpa keterangan|days without notice
+otomatis terhapus 30 hari setelah selesai.|deleted automatically 30 days after completion.
+target 8 jam|8-hour target
+untuk membuat dari data karyawan, lalu rapikan.|to build from employee data, then tidy up.
+untuk memulai chat atau membuat grup.|to start a chat or create a group.
+untuk mulai mendata inventaris departemen.|to start recording department inventory.
+Pengingat Shift|Shift Reminder
+Tugas Selesai|Tasks Done
