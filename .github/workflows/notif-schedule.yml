@@ -23,4 +23,6 @@ jobs:
       - name: Perbarui artikel abchospitality.co.id
         if: always()
         continue-on-error: true
+        env:
+          ARTICLE_FETCH_KEY: ${{ secrets.ARTICLE_FETCH_KEY }}
         run: node scripts/fetch-articles.mjs

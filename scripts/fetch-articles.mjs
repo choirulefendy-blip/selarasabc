@@ -20,6 +20,8 @@ const UA = {
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
   'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
 };
+/* kunci rahasia untuk aturan Cloudflare "Skip" (diatur admin situs), dari GitHub Secret ARTICLE_FETCH_KEY */
+if (process.env.ARTICLE_FETCH_KEY) UA['X-ABC-Selaras-Key'] = process.env.ARTICLE_FETCH_KEY;
 
 const decode = (s) => String(s || '')
   .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
