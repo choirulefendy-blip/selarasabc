@@ -16,7 +16,7 @@ Resend → **API Keys → Create API Key** (Permission: Sending access) → sali
 ## 3. Secrets di Supabase
 Dashboard Supabase → **Edge Functions → Secrets** → tambah:
 - `RESEND_API_KEY` = `re_...`
-- `FROM_EMAIL` = `ABC Selaras <noreply@abcselaras.my.id>`
+- `FROM_EMAIL` = `ABC Selaras <resend@abcselaras.my.id>`
 
 ## 4. Deploy fungsi `send-email`
 Edge Functions → **Deploy a new function → Via Editor** → nama **`send-email`** → hapus isi contoh, tempel seluruh isi `supabase/functions/send-email/index.ts` → **Deploy**. Lalu buka fungsi → **Details** → matikan **Verify JWT** → Save.

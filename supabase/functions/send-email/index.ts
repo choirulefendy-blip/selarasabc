@@ -7,7 +7,7 @@
 //
 // Secrets (Edge Functions → Secrets):
 //   RESEND_API_KEY = re_xxxxxxxx
-//   FROM_EMAIL     = "ABC Selaras <noreply@abcselaras.my.id>"   (domain harus diverifikasi di Resend)
+//   FROM_EMAIL     = "ABC Selaras <resend@abcselaras.my.id>"   (domain harus diverifikasi di Resend)
 //
 // Keamanan: fungsi hanya mau mengirim ke alamat email yang terdaftar di data ABC Selaras
 // (email karyawan aktif / akun HR), supaya tidak bisa dipakai mengirim spam ke sembarang alamat.
