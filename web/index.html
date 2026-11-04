@@ -10520,7 +10520,30 @@ function renderMyProfilePage(){
         tr('Alamat', dash(emp.address)))+
       '<div class="muted" style="font-size:12px;text-align:center;margin:-4px 0 12px;">Ada data yang salah? Hubungi HR.</div>';
   })()+
-  renderEmailGoogleCard(emp)+renderAppInfoCard();
+  renderEmailGoogleCard(emp)+renderCalendarCard(emp)+renderAppInfoCard();
+}
+/* ---------- Google Calendar: link langganan iCal per karyawan (Edge Function calendar-ics) ---------- */
+function calFeedUrl(emp){
+  if(!SUPABASE_URL || !emp || !emp.calToken) return '';
+  return SUPABASE_URL.replace(/\/$/,'')+'/functions/v1/calendar-ics?e='+encodeURIComponent(emp.id)+'&t='+emp.calToken;
+}
+function calGoogleAddUrl(emp){ var u = calFeedUrl(emp); return u ? 'https://calendar.google.com/calendar/r?cid='+encodeURIComponent(u.replace(/^https:/,'webcal:')) : ''; }
+function newCalToken(){ return Array.prototype.map.call(rndBytes(20), function(x){ return ('0'+x.toString(16)).slice(-2); }).join(''); }
+function renderCalendarCard(emp){
+  var on = !!emp.calToken, url = calFeedUrl(emp);
+  var h = '<div class="card"><div class="card-title" style="display:flex;align-items:center;gap:8px;">'+iconSvg('calendar',18)+' Google Calendar</div>';
+  if(!on){
+    h += '<div class="muted" style="font-size:13px;margin-bottom:12px;">Tampilkan jadwal shift, libur/cuti, tenggat tugas, dan agenda di Google Calendar. Ter-update otomatis.</div>'+
+      '<button class="btn btn-primary" data-action="cal-enable">'+iconSvg('calendar',16)+' Sambungkan ke Google Calendar</button>';
+  } else {
+    h += '<div class="eg-row" style="margin-bottom:10px;"><span class="eg-ok">'+iconSvg('checkAll',15)+' Link kalender aktif</span></div>'+
+      '<a class="btn btn-primary" href="'+escapeHtml(calGoogleAddUrl(emp))+'" target="_blank" rel="noopener">'+iconSvg('calendar',16)+' Tambahkan ke Google Calendar</a>'+
+      '<div class="muted" style="font-size:12px;margin:12px 0 6px;">Atau salin link ini (Google Calendar &rarr; Kalender lain &rarr; <b>Dari URL</b>; juga bisa untuk Apple/Outlook):</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;"><input id="cal_url" readonly value="'+escapeHtml(url)+'" style="flex:1;min-width:180px;font-size:12px;"><button class="btn btn-secondary btn-sm" data-action="cal-copy">Salin</button></div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;"><span class="muted" style="font-size:11.5px;">Google memperbarui kalender langganan secara berkala (bisa beberapa jam).</span>'+
+      '<button class="btn btn-ghost btn-sm" data-action="cal-reset" style="color:var(--danger);">Reset link</button></div>';
+  }
+  return h+'</div>';
 }
 /* kartu Profil: email Google, status tersambung/verifikasi, kirim kode, notifikasi email */
 function renderEmailGoogleCard(emp){
@@ -12391,6 +12414,17 @@ document.addEventListener('click', function(e){
   } else if(action==='eg-edit-jump'){
     STATE.emailEdit = true; render();
     var ej = document.getElementById('eg_email'); if(ej){ ej.scrollIntoView({block:'center'}); ej.focus(); }
+  } else if(action==='cal-enable' || action==='cal-reset'){
+    var ceE = getEmployee(SESSION.empId || SESSION.asEmpId); if(!ceE) return;
+    if(action==='cal-reset' && !confirm('Reset link kalender? Link lama berhenti bekerja dan kalender perlu ditambahkan ulang.')) return;
+    ceE.calToken = newCalToken(); ceE.updatedAt = new Date().toISOString();
+    logActivity(action==='cal-reset' ? 'Mereset link Google Calendar.' : 'Mengaktifkan link Google Calendar.');
+    saveDB().then(function(){ toast(action==='cal-reset' ? 'Link kalender baru dibuat.' : 'Link kalender aktif. Klik Tambahkan ke Google Calendar.'); render(); });
+  } else if(action==='cal-copy'){
+    var cu = document.getElementById('cal_url'); if(!cu) return;
+    var done = function(){ toast('Link disalin.'); };
+    if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(cu.value).then(done, function(){ cu.select(); document.execCommand('copy'); done(); });
+    else { cu.select(); document.execCommand('copy'); done(); }
   } else if(action==='eg-save'){
     var egE = getEmployee(SESSION.empId || SESSION.asEmpId); if(!egE) return;
     var egV = (document.getElementById('eg_email').value||'').trim();
