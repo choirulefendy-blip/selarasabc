@@ -15,7 +15,11 @@ const DRY = process.argv.includes('--dry');
 const SITE = 'https://abchospitality.co.id';
 const INDEX = SITE + '/article/';
 const MAX = 12;
-const UA = { 'User-Agent': 'ABC-Selaras-ArticleBot/1.0 (+https://abcselaras.my.id)' };
+const UA = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'id-ID,id;q=0.9,en;q=0.8',
+};
 
 const decode = (s) => String(s || '')
   .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
