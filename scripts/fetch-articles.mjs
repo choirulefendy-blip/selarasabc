@@ -80,7 +80,7 @@ export function parseArticle(html) {
 
 async function get(url) {
   const r = await fetch(url, { headers: UA, redirect: 'follow', signal: AbortSignal.timeout(20000) });
-  if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + url);
+  if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + url + ' [server=' + (r.headers.get('server') || '-') + ' cf=' + (r.headers.get('cf-ray') ? 'ya' : 'tidak') + ' cf-mitigated=' + (r.headers.get('cf-mitigated') || '-') + ']');
   return r.text();
 }
 
