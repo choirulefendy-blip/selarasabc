@@ -1016,6 +1016,18 @@
   @media(max-width:860px){
     .notif-panel{position:fixed;left:12px;right:12px;width:auto;max-width:none;}
   }
+
+.art-strip{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:6px;-webkit-overflow-scrolling:touch;}
+.art-strip .art-card{flex:0 0 220px;scroll-snap-align:start;}
+.art-card{display:flex;flex-direction:column;text-decoration:none;color:inherit;background:var(--surface,#fff);border:1px solid var(--border,#e3eaf2);border-radius:16px;overflow:hidden;transition:transform .15s, box-shadow .15s;}
+.art-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(19,52,81,.12);}
+.art-img{aspect-ratio:16/10;background:#EAF3FC center/cover no-repeat;display:flex;align-items:center;justify-content:center;color:#7aa6cf;}
+.art-body{padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px;flex:1;}
+.art-title{font-weight:700;font-size:13.5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.art-big .art-title{font-size:15px;}
+.art-ex{font-size:12.5px;opacity:.75;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.art-date{font-size:11.5px;opacity:.6;margin-top:auto;}
+.art-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-bottom:12px;}
 </style>
 </head>
 <body>
@@ -3081,7 +3093,7 @@ var NAV_ICON_MAP = {
   dashboard:'grid', report:'chart', employees:'users', attendance:'clock', 'hod-attendance':'clock', checkin:'clock',
   schedule:'calendar', 'schedule-approval':'calendarCheck', 'leave-request':'calendarCheck', 'leave-approval':'calendarCheck',
   'kpi':'chart', 'kpi-approval':'chart',
-  'form-request':'fileText', 'form-approval':'fileText', announcements:'megaphone', payroll:'banknote',
+  'form-request':'fileText', 'form-approval':'fileText', announcements:'megaphone', articles:'fileText', payroll:'banknote',
   'my-payslip':'banknote', 'my-schedule':'calendar', 'my-attendance':'clock', 'activity-log':'history', settings:'settings',
   'overtime-request':'clock', 'overtime-approval':'clock',
   banners:'image', todo:'listCheck', 'my-activity':'history', 'notif-settings':'bell', chat:'chat', 'my-profile':'user'
@@ -3103,7 +3115,7 @@ function navItemsForBase(role){
       {v:'leave-approval', label:'Pengajuan Cuti'},
       {v:'overtime-approval', label:'Pengajuan Lembur'},
       {v:'form-approval', label:'Form & Approval'},
-      {v:'announcements', label:'Pengumuman'},
+      {v:'announcements', label:'Pengumuman'},{v:'articles', label:'Artikel'},
       {v:'payroll', label:'Penggajian'},
       {v:'chat', label:'Chat'},
       {v:'banners', label:'Banner'},
@@ -3133,7 +3145,7 @@ function navItemsForBase(role){
       {v:'leave-request', label:'Pengajuan Cuti'},
       {v:'overtime-request', label:'Pengajuan Lembur'},
       {v:'form-request', label:'Form & Approval'},
-      {v:'announcements', label:'Pengumuman'},
+      {v:'announcements', label:'Pengumuman'},{v:'articles', label:'Artikel'},
       {v:'my-payslip', label:'Slip Gaji Saya'},
       {v:'todo', label:'Selaras Board'},
       {v:'chat', label:'Chat'},
@@ -3155,7 +3167,7 @@ function navItemsForBase(role){
     {v:'leave-request', label:'Pengajuan Cuti'},
     {v:'overtime-request', label:'Pengajuan Lembur'},
     {v:'form-request', label:'Form & Approval'},
-    {v:'announcements', label:'Pengumuman'},
+    {v:'announcements', label:'Pengumuman'},{v:'articles', label:'Artikel'},
     {v:'my-payslip', label:'Slip Gaji'},
     {v:'todo', label:'Selaras Board'},
     {v:'chat', label:'Chat'},
@@ -3174,7 +3186,7 @@ function navGroupsFor(role){
     return {top:['dashboard'], groups:[
       {id:'sdm', label:'SDM', views:['employees','attendance','report','payroll','org','id-card','assets']},
       {id:'persetujuan', label:'Persetujuan', views:['schedule-approval','kpi-approval','leave-approval','overtime-approval','form-approval']},
-      {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','banners','sop']},
+      {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','articles','banners','sop']},
       {id:'tugas', label:'Tugas & Aktivitas', views:['todo','accounting','activity-log']},
       {id:'sistem', label:'Sistem', views:['notif-settings','privileges','hr-profile','settings']}
     ]};
@@ -3183,7 +3195,7 @@ function navGroupsFor(role){
     return {top:['dashboard','checkin'], groups:[
       {id:'tim', label:'Tim Saya', views:['hod-attendance','report','schedule','kpi','assets','privileges']},
       {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request']},
-      {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','sop','org']},
+      {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','articles','sop','org']},
       {id:'tugas', label:'Tugas & Aktivitas', views:['todo','my-activity']},
       {id:'akun', label:'Akun Saya', views:['my-payslip','my-profile','id-card','notif-settings']}
     ]};
@@ -3191,7 +3203,7 @@ function navGroupsFor(role){
   return {top:['dashboard','checkin'], groups:[
     {id:'jadwal', label:'Jadwal & Absensi', views:['my-schedule','my-attendance','report']},
     {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request']},
-    {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','sop','org']},
+    {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','articles','sop','org']},
     {id:'tugas', label:'Tugas & Aktivitas', views:['todo','assets','my-activity']},
     {id:'akun', label:'Akun Saya', views:['my-payslip','my-profile','id-card','notif-settings']}
   ]};
@@ -3249,7 +3261,7 @@ function viewTitle(v){
     settings:'Pengaturan Sistem', 'my-schedule':'Jadwal Saya', 'my-attendance':'Absensi Saya', 'my-payslip':'Slip Gaji Saya',
     'leave-request':'Pengajuan Cuti', 'leave-approval':'Pengajuan Cuti',
     'form-request':'Form & Approval', 'form-approval':'Form & Approval',
-    checkin:'Absen', announcements:'Pengumuman', 'activity-log':'Riwayat Aktivitas',
+    checkin:'Absen', announcements:'Pengumuman', articles:'Artikel ABC', 'activity-log':'Riwayat Aktivitas',
     'schedule-approval':'Persetujuan Jadwal', 'hod-attendance':'Absensi Tim', report:'Laporan & Grafik',
     'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI',
     'overtime-request':'Pengajuan Lembur', 'overtime-approval':'Pengajuan Lembur',
@@ -3278,7 +3290,7 @@ function renderShell(){
 
   var body = '';
   if(role==='hr'){
-    if(STATE.view==='dashboard') body = renderAdminDashboard();
+    if(STATE.view==='dashboard') body = renderAdminDashboard() + renderArticlesStrip();
     else if(STATE.view==='employees') body = renderEmployees();
     else if(STATE.view==='attendance') body = renderAttendancePage();
     else if(STATE.view==='schedule-approval') body = renderScheduleApprovalPage();
@@ -3287,6 +3299,7 @@ function renderShell(){
     else if(STATE.view==='overtime-approval') body = renderOvertimeApprovalPage();
     else if(STATE.view==='form-approval') body = renderFormApprovalPage();
     else if(STATE.view==='announcements') body = renderAnnouncementsPage();
+    else if(STATE.view==='articles') body = renderArticlesPage();
     else if(STATE.view==='payroll') body = renderPayrollPage();
     else if(STATE.view==='payroll-detail') body = renderSlipPage(STATE.payrollDetailEmp, true);
     else if(STATE.view==='report') body = renderReportPage();
@@ -3306,7 +3319,7 @@ function renderShell(){
     else if(STATE.view==='settings') body = renderSettingsPage();
     else body = renderAdminDashboard();
   } else if(role==='hod'){
-    if(STATE.view==='dashboard') body = renderHodDashboard();
+    if(STATE.view==='dashboard') body = renderHodDashboard() + renderArticlesStrip();
     else if(STATE.view==='checkin') body = renderCheckinPage();
     else if(STATE.view==='hod-attendance') body = renderHodAttendancePage();
     else if(STATE.view==='report') body = renderReportPage();
@@ -3316,6 +3329,7 @@ function renderShell(){
     else if(STATE.view==='overtime-request') body = renderOvertimeRequestPage();
     else if(STATE.view==='form-request') body = renderFormRequestPage();
     else if(STATE.view==='announcements') body = renderAnnouncementsPage();
+    else if(STATE.view==='articles') body = renderArticlesPage();
     else if(STATE.view==='my-payslip') body = renderSlipPage(SESSION.empId, false);
     else if(STATE.view==='todo') body = renderTodoPage();
     else if(STATE.view==='accounting') body = renderAccountingPage();
@@ -3332,7 +3346,7 @@ function renderShell(){
     else if(STATE.view==='notif-settings') body = renderNotifSettingsPage();
     else body = renderHodDashboard();
   } else {
-    if(STATE.view==='dashboard') body = renderStaffDashboard();
+    if(STATE.view==='dashboard') body = renderStaffDashboard() + renderArticlesStrip();
     else if(STATE.view==='checkin') body = renderCheckinPage();
     else if(STATE.view==='my-schedule') body = renderStaffSchedule();
     else if(STATE.view==='my-attendance') body = renderStaffAttendance();
@@ -3341,6 +3355,7 @@ function renderShell(){
     else if(STATE.view==='overtime-request') body = renderOvertimeRequestPage();
     else if(STATE.view==='form-request') body = renderFormRequestPage();
     else if(STATE.view==='announcements') body = renderAnnouncementsPage();
+    else if(STATE.view==='articles') body = renderArticlesPage();
     else if(STATE.view==='my-payslip') body = renderSlipPage(SESSION.empId, false);
     else if(STATE.view==='todo') body = renderTodoPage();
     else if(STATE.view==='accounting') body = renderAccountingPage();
@@ -5805,6 +5820,47 @@ function rejectFormModalHtml(reqId){
   '</div>';
 }
 
+
+/* ---------------------------- ARTIKEL abchospitality.co.id ---------------------------- */
+/* Diambil server (GitHub Action scripts/fetch-articles.mjs) ke kv_store key "articles" */
+var ARTICLES_SITE = 'https://abchospitality.co.id/article/';
+var ARTICLES = {items:[], loadedAt:0, busy:false};
+function loadArticles(force){
+  if(ARTICLES.busy || (!force && Date.now()-ARTICLES.loadedAt < 10*60000)) return;
+  ARTICLES.busy = true;
+  var g = (typeof hasRemoteStorage==='function' && hasRemoteStorage()) ? remoteGet('articles') : fallbackGet('articles');
+  Promise.resolve(g).then(function(res){
+    ARTICLES.busy = false; ARTICLES.loadedAt = Date.now();
+    if(!res || !res.value) return;
+    var data; try{ data = JSON.parse(res.value); }catch(e){ return; }
+    var items = (data && data.items) || [];
+    var changed = JSON.stringify(items) !== JSON.stringify(ARTICLES.items);
+    ARTICLES.items = items; ARTICLES.updatedAt = data.updatedAt || '';
+    if(changed && (STATE.view==='articles' || STATE.view==='dashboard') && liveSafeToRerender()) render();
+  }).catch(function(){ ARTICLES.busy = false; ARTICLES.loadedAt = Date.now(); });
+}
+function articleDateText(a){ if(!a.date) return ''; var d = new Date(a.date); return isNaN(d) ? escapeHtml(a.date) : formatDateID(d.toISOString().slice(0,10)); }
+function articleCardHtml(a, big){
+  return '<a class="art-card'+(big?' art-big':'')+'" href="'+escapeHtml(a.url)+'" target="_blank" rel="noopener">'+
+    '<div class="art-img"'+(a.image?' style="background-image:url(\''+escapeHtml(a.image).replace(/'/g,'%27')+'\')"':'')+'>'+(a.image?'':iconSvg('fileText',28))+'</div>'+
+    '<div class="art-body"><div class="art-title">'+escapeHtml(a.title||'Artikel')+'</div>'+
+    (big && a.excerpt ? '<div class="art-ex">'+escapeHtml(a.excerpt)+'</div>' : '')+
+    '<div class="art-date">'+articleDateText(a)+'</div></div></a>';
+}
+function renderArticlesStrip(){
+  loadArticles();
+  var it = ARTICLES.items.slice(0,6);
+  if(!it.length) return '';
+  return '<div class="card"><div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">Artikel ABC Hospitality<button class="btn btn-ghost btn-sm" data-action="nav" data-view="articles">Lihat semua</button></div>'+
+    '<div class="art-strip">'+it.map(function(a){ return articleCardHtml(a, false); }).join('')+'</div></div>';
+}
+function renderArticlesPage(){
+  loadArticles();
+  var it = ARTICLES.items;
+  if(!it.length) return '<div class="card"><div class="empty-state">'+(ARTICLES.loadedAt ? 'Belum ada artikel.' : 'Memuat artikel...')+'</div><div style="text-align:center;"><a class="btn btn-secondary btn-sm" href="'+ARTICLES_SITE+'" target="_blank" rel="noopener">Buka abchospitality.co.id</a></div></div>';
+  return '<div class="art-grid">'+it.map(function(a){ return articleCardHtml(a, true); }).join('')+'</div>'+
+    '<div style="text-align:center;margin:6px 0 14px;"><a class="btn btn-ghost btn-sm" href="'+ARTICLES_SITE+'" target="_blank" rel="noopener">Buka abchospitality.co.id/article</a></div>';
+}
 /* ---------------------------- RENDER: PENGUMUMAN ---------------------------- */
 function renderAnnouncementsPage(){
   if(SESSION.role==='hr') return renderAnnouncementComposeCard() + renderAnnouncementHistoryCard();
@@ -9987,6 +10043,7 @@ var STAFF_FEATURES = [
   ['overtime-request','Pengajuan Lembur','Mengajukan lembur', true],
   ['form-request','Form & Approval','Mengisi form & pengajuan lain', true],
   ['announcements','Pengumuman','Membaca pengumuman', true],
+  ['articles','Artikel','Membaca artikel ABC Hospitality', true],
   ['my-payslip','Slip Gaji','Melihat slip gaji & Take Home Pay', true],
   ['chat','Chat','Mengirim & menerima chat', true],
   ['sop','SOP & Peraturan','Membaca SOP & peraturan', true],

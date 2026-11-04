@@ -18,7 +18,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   function navViews(){ return Array.prototype.map.call(d.querySelectorAll('.nav-item'), function(b){ return b.getAttribute('data-view'); }); }
 
   console.log('\n[Hak Akses Staff]');
-  as('hod','H1','privileges'); ok(/Hak Akses Default/.test(app()) && d.querySelectorAll('[data-action="priv-toggle"]').length===16, 'HOD membuka Hak Akses Staff (16 fitur)');
+  as('hod','H1','privileges'); ok(/Hak Akses Default/.test(app()) && d.querySelectorAll('[data-action="priv-toggle"]').length===17, 'HOD membuka Hak Akses Staff (17 fitur)');
   await click('[data-action="priv-toggle"][data-key="chat"]');
   ok(w.DB.privileges.dept.Marketing.chat===false, 'default departemen: Chat diblokir');
   as('staff','S1','dashboard'); ok(navViews().indexOf('chat')===-1 && !d.querySelector('.bottom-nav [data-view="chat"]') && !d.querySelector('.chat-fab'), 'staf Marketing: menu, bottom nav & tombol Chat hilang');

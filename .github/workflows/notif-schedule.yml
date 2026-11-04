@@ -20,3 +20,7 @@ jobs:
           node-version: 22
       - name: Kirim notifikasi yang jatuh tempo
         run: node scripts/run-schedules.mjs
+      - name: Perbarui artikel abchospitality.co.id
+        if: always()
+        continue-on-error: true
+        run: node scripts/fetch-articles.mjs
