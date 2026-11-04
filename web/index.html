@@ -9971,6 +9971,8 @@ function mergeLiveData(remote){
   DB.notifications = merged.slice(0,200);
 
   DB.todos = mergeById(DB.todos, remote.todos, function(t){ return t.updatedAt || t.createdAt || ''; });
+  /* pengumuman: hapus oleh HR (deletedAt) ikut ke semua akun, salinan lama tidak menghidupkan lagi */
+  DB.announcements = mergeById(DB.announcements, remote.announcements, function(x){ return x.deletedAt || x.updatedAt || x.createdAt || ''; });
   ['projects','timesheets','agenda','accJournals','accPOs','accPetty','sops','notifBroadcasts','notifSchedules','assets','chatGroups'].forEach(function(k){
     DB[k] = mergeById(DB[k], remote[k], function(x){ return x.updatedAt || x.createdAt || ''; });
   });
@@ -10061,7 +10063,7 @@ function refreshLiveData(){
     var fresh = myNotifications().filter(function(n){ return !before[n.id] && !n.read; });
     fresh.slice(0,3).forEach(function(n){ var nk = notifKind(n); systemNotify(nk.k==='hr' ? '📢 Pesan HR' : (nk.k==='sys' ? '⚠️ ABC Selaras' : 'ABC Selaras'), n.message); });
     if(fresh.length){ toast(fresh[0].message); }
-    var liveViews = ['dashboard','todo','my-activity','attendance','hod-attendance','banners'];
+    var liveViews = ['dashboard','announcements','todo','my-activity','attendance','hod-attendance','banners'];
     if(liveViews.indexOf(STATE.view)!==-1 && liveSafeToRerender()) render();
     else updateBellBadge();
     return true;
@@ -10291,14 +10293,39 @@ function renderMyProfilePage(){
     '</div>'+
     
   '</div>'+
-  '<div class="card">'+
-    '<div class="card-title">Data Diri</div>'+
-    '<div class="table-wrap"><table><tbody>'+
-      '<tr><td class="muted">ID Karyawan</td><td>'+escapeHtml(emp.empCode||emp.id)+'</td></tr>'+
-      '<tr><td class="muted">Username</td><td>@'+escapeHtml(emp.username||'')+'</td></tr>'+
-      '<tr><td class="muted">Bergabung</td><td>'+(emp.joinDate ? formatDateID(emp.joinDate) : '&mdash;')+'</td></tr>'+
-    '</tbody></table></div>'+
-  '</div>'+renderEmailGoogleCard(emp)+renderAppInfoCard();
+  (function(){
+    function tr(k,v){ return '<tr><td class="muted" style="width:42%;">'+k+'</td><td>'+v+'</td></tr>'; }
+    function sec(t,rows){ return '<div class="card"><div class="card-title">'+t+'</div><div class="table-wrap"><table><tbody>'+rows+'</tbody></table></div></div>'; }
+    var age=null; if(emp.dateOfBirth){ var d=new Date(emp.dateOfBirth+'T00:00:00'), n=new Date(); age=n.getFullYear()-d.getFullYear(); if(n.getMonth()<d.getMonth()||(n.getMonth()===d.getMonth()&&n.getDate()<d.getDate())) age--; }
+    var mono=function(v){ return v ? '<span style="font-family:monospace;">'+escapeHtml(v)+'</span>' : '&mdash;'; };
+    var dash=function(v){ return v ? escapeHtml(v) : '&mdash;'; };
+    var b=leaveBalance(emp.id);
+    var hodD=getHodDepartments(emp.id)||[];
+    return sec('Data Kepegawaian',
+        tr('ID Karyawan', mono(emp.empCode||emp.id))+
+        tr('Jabatan', dash(emp.position))+
+        tr('Departemen', dash(emp.department)+(hodD.length?' <span class="badge badge-info">HOD</span>':''))+
+        tr('Properti', dash((emp.properties||[]).join(', ')))+
+        tr('Tanggal Bergabung', emp.joinDate ? formatDateID(emp.joinDate) : '&mdash;')+
+        tr('Lama Bekerja', tenureText(emp.joinDate))+
+        (emp.contractUntil ? tr('Kontrak s/d', formatDateID(emp.contractUntil)) : '')+
+        tr('Username', '@'+escapeHtml(emp.username||'')))+
+      sec('Cuti Tahunan',
+        tr('Sisa Cuti', '<strong>'+b.left+'</strong> / '+b.quota+' hari')+
+        tr('Terpakai', b.used+' hari'+(b.pending?' <span class="muted">(+'+b.pending+' menunggu)</span>':''))+
+        tr('Periode', escapeHtml(b.period.label)))+
+      sec('BPJS',
+        tr('BPJS Ketenagakerjaan', (emp.bpjsKetenagakerjaanActive!==false?'Ikut':'Tidak ikut')+' &middot; '+mono(emp.bpjsTkNo))+
+        tr('BPJS Kesehatan', (emp.bpjsKesehatanActive!==false?'Ikut':'Tidak ikut')+' &middot; '+mono(emp.bpjsKesNo)))+
+      sec('Data Pribadi',
+        tr('Jenis Kelamin', dash(emp.gender))+
+        tr('Tanggal Lahir', emp.dateOfBirth ? formatDateID(emp.dateOfBirth)+(age!=null?' ('+age+' tahun)':'') : '&mdash;')+
+        tr('Telepon', dash(emp.phone))+
+        tr('Email', dash(emp.email))+
+        tr('Alamat', dash(emp.address)))+
+      '<div class="muted" style="font-size:12px;text-align:center;margin:-4px 0 12px;">Ada data yang salah? Hubungi HR.</div>';
+  })()+
+  renderEmailGoogleCard(emp)+renderAppInfoCard();
 }
 /* kartu Profil: email Google, status tersambung/verifikasi, kirim kode, notifikasi email */
 function renderEmailGoogleCard(emp){
