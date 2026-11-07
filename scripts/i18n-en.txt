@@ -26,6 +26,7 @@
 4. Kelola Data Karyawan|4. Manage Employee Data
 5. Tinjau KPI|5. Review KPIs
 9 jam+ (lembur)|9+ hours (overtime)
+AI menyusun…|AI is drafting…
 Absen|Attendance
 Absen Masuk|Clock In
 Absen Masuk Sekarang|Clock In Now
@@ -59,6 +60,7 @@ Akses HR|HR Access
 Akses tambahan|Extra access
 Aksi|Actions
 Aktif|Active
+Aktif untuk semua akun|On for all accounts
 Aktifkan Notifikasi Perangkat|Enable Device Notifications
 Aktifkan semua notifikasi|Enable all notifications
 Aktivitas|Activity
@@ -101,6 +103,9 @@ Aset|Assets
 Aset Inventaris|Inventory Assets
 Aset Inventaris (lihat)|Inventory Assets (view)
 Aset dihapus.|Asset deleted.
+Asisten AI|AI Assistant
+Asisten AI (Gemini)|AI Assistant (Gemini)
+Asisten Selaras|Selaras Assistant
 Atasan langsung|Direct supervisor
 Atur / Edit Jadwal|Set / Edit Schedule
 Atur Jadwal Tim|Set Team Schedule
@@ -117,9 +122,11 @@ Baca Kebijakan Privasi|Read Privacy Policy
 Baca Ketentuan Layanan|Read Terms of Service
 Bagaimana cara absen masuk?|How do I clock in?
 Bagaimana cara absen pulang?|How do I clock out?
+Bagaimana cara mengajukan lembur?|How do I request overtime?
 Bagaimana izin tidak masuk kerja (cuti / sakit / izin)?|How do I take time off (leave / sick / permit)?
 Bagaimana melihat dan mengunduh slip gaji?|How do I view and download my payslip?
 Bagaimana melihat jadwal kerja saya?|How do I see my work schedule?
+Bagaimana memakai Asisten AI?|How do I use the AI Assistant?
 Bagaimana memakai Selaras Board?|How do I use Selaras Board?
 Bagaimana memasang atau memperbarui aplikasi?|How do I install or update the app?
 Bagaimana menambah karyawan atau memberi akses HR?|How do I add employees or grant HR access?
@@ -140,6 +147,7 @@ Baris Jurnal (total debit harus sama dengan kredit)|Journal Lines (total debit m
 Batal|Cancel
 Batalkan|Cancel
 Batas Maksimum Potongan Telat per Bulan (Rp, kosongkan/0 = tanpa batas)|Monthly Late Deduction Cap (Rp, blank/0 = no cap)
+Batas pemakaian / akun / hari|Usage limit / account / day
 Beban|Expenses
 Belakang|Back
 Belum Diajukan|Not Submitted
@@ -191,6 +199,7 @@ Belum dibaca|Unread
 Belum diisi|Not filled
 Belum terverifikasi|Not verified
 Beralih ke Mode Karyawan|Switch to Employee Mode
+Berapa sisa cuti saya?|How much leave do I have left?
 Beri Akses HR|Grant HR Access
 Beri bintang|Star
 Berkas tidak ditemukan.|File not found.
@@ -208,6 +217,7 @@ Buat / Lihat PO|Create / View PO
 Buat Jurnal|Create Journal
 Buat Pengumuman|Create Announcement
 Buat grup baru|Create new group
+Buat ringkasan|Generate summary
 Buka|Open
 Buka ABC Selaras dari|Open ABC Selaras from
 Buka Dashboard Accounting|Open Accounting Dashboard
@@ -396,6 +406,7 @@ Hadir %|Present %
 Hak Akses Staff|Staff Permissions
 Halaman ini untuk HOD / Manager dan HR.|This page is for HODs / Managers and HR.
 Halaman tujuan|Target page
+Halo! Saya Asisten Selaras.|Hi! I'm the Selaras Assistant.
 Hapus|Delete
 Hapus Foto|Remove Photo
 Hapus Foto Profil|Remove Profile Photo
@@ -460,6 +471,7 @@ Jadwal departemen diajukan ke HR.|Department schedule submitted to HR.
 Jadwal diatur oleh HOD. Cocokkan hasil tarikan absensi di sini.|Schedules are set by the HOD. Match the attendance pull here.
 Jadwal disetujui.|Schedule approved.
 Jadwal ditolak.|Schedule rejected.
+Jadwal saya minggu ini|My schedule this week
 Jadwal tanggal ini diterapkan.|Schedule for this date applied.
 Jadwal tim diunduh.|Team schedule downloaded.
 Jam|Hours
@@ -593,6 +605,7 @@ Menambah, mengedit, dan mengimpor aset departemen|Add, edit, and import departme
 Mendekati Target|Near Target
 Mengajukan cuti|Request leave
 Mengajukan lembur|Request overtime
+Menganalisis…|Analyzing…
 Mengisi form & pengajuan lain|Fill in forms & other requests
 Mengunggah bukti absen...|Uploading attendance proof...
 Mengunggah foto...|Uploading photo...
@@ -602,8 +615,10 @@ Menunggu|Pending
 Menunggu HOD|Awaiting HOD
 Menunggu HR|Awaiting HR
 Menyimpan...|Saving...
+Merapikan…|Polishing…
 Minggu|Sunday
 Mode offline|Offline mode
+Mulai baru|New chat
 Nama|Name
 Nama Aset|Asset Name
 Nama Departemen|Department Name
@@ -718,12 +733,14 @@ Progres|Progress
 Properti|Property
 Pulang|Out
 Rabu|Wednesday
+Rapikan dengan AI|Polish with AI
 Rata-rata Kehadiran|Average Attendance
 Rekap Kerja|Work Recap
 Rendah|Low
 Report Karyawan|Employee Report
 Reset ke Data Contoh|Reset to Sample Data
 Reset link|Reset link
+Ringkas absensi saya bulan ini|Summarize my attendance this month
 Ringkasan (opsional)|Summary (optional)
 Ringkasan Absensi Tim|Team Attendance Summary
 Ringkasan Bulan Ini|This Month's Summary
@@ -748,6 +765,7 @@ Saklar utama. Matikan untuk berhenti menerima semua pemberitahuan.|Master switch
 Salin|Copy
 Salin Link|Copy Link
 Sambungkan ke Google Calendar|Connect to Google Calendar
+Saran Jadwal AI|AI Schedule Suggestion
 Saya & seluruh tim|Me & the whole team
 Sedang|Medium
 Sedang offline: perubahan belum bisa disimpan. Coba lagi setelah koneksi pulih.|Offline: changes can't be saved yet. Try again once you're back online.
@@ -827,6 +845,7 @@ Tanggal Selesai|End Date
 Tanggal selesai tidak boleh sebelum tanggal mulai.|End date cannot be before start date.
 Tanggal tiap bulan|Day of month
 Tanpa keterangan|No notes
+Tanya apa saja soal jadwal, cuti, absensi, SOP, atau cara memakai aplikasi. Jawaban saya berdasarkan data akun Anda.|Ask anything about schedules, leave, attendance, SOPs, or how to use the app. My answers are based on your account data.
 Tarif Potongan per Menit Telat (Rp)|Deduction Rate per Late Minute (Rp)
 Teks tombol (opsional)|Button text (optional)
 Telat|Late
@@ -840,6 +859,7 @@ Terkirim|Sent
 Terlalu banyak percobaan.|Too many attempts.
 Terpakai|Used
 Tersambung Google|Linked to Google
+Tes Koneksi AI|Test AI Connection
 Tidak ada karyawan.|No employees.
 Tidak ada notifikasi.|No notifications.
 Tidak ada pengajuan yang menunggu.|No pending requests.
@@ -872,6 +892,7 @@ Tugas dihapus.|Task deleted.
 Tugas saya|My tasks
 Tugaskan ke|Assign to
 Tulis Rekap Kerja hari ini dulu sebelum absen pulang.|Write today's Work Recap before clocking out.
+Tulis pertanyaan…|Type a question…
 Tulis pesan...|Write a message...
 Tunggu sebentar sebelum kirim ulang.|Wait a moment before resending.
 Tutup|Close
@@ -893,6 +914,7 @@ Unggah gambar|Upload image
 Untuk HOD|For HODs
 Untuk HR|For HR
 Untuk seluruh karyawan (berlaku untuk semua akun HR).|For all employees (applies to all HR accounts).
+Urungkan|Undo
 Urutan di sini = urutan tampil di dashboard.|The order here = the order shown on the dashboard.
 Username tidak boleh kosong.|Username cannot be empty.
 Verifikasi|Verify
