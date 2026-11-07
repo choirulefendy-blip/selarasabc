@@ -1635,6 +1635,7 @@
   .ai-foot{font-size:11.5px;margin-top:8px;}
   .ai-typing{display:flex;gap:4px;align-items:center;min-height:22px;}
   .ai-typing i{width:7px;height:7px;border-radius:50%;background:var(--text-muted);animation:aiDot 1s infinite ease-in-out;}
+  .ai-slow{font-size:12px;color:var(--text-muted);margin-left:6px;}
   .ai-typing i:nth-child(2){animation-delay:.15s} .ai-typing i:nth-child(3){animation-delay:.3s}
   @keyframes aiDot{0%,80%,100%{opacity:.25;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
   .ai-write-bar{display:flex;gap:8px;justify-content:flex-end;margin:6px 0 2px;}
@@ -1848,8 +1849,10 @@ function aiEnabled(){ return aiConfigured() && aiSettings().enabled===true; }
 function aiCall(task, payload){
   payload = payload || {}; payload.task = task; payload.account = sessionAccountKey() || 'hr';
   if(!aiConfigured()) return Promise.reject(new Error('Server AI belum dipasang.'));
-  return fetch(AI_FUNCTION_URL, {method:'POST', headers:supabaseHeaders({'Content-Type':'application/json'}), body:JSON.stringify(payload)})
-    .then(function(r){
+  var ac = (typeof AbortController!=='undefined') ? new AbortController() : null, timedOut = false;
+  var tm = ac ? setTimeout(function(){ timedOut = true; try{ ac.abort(); }catch(e){} }, 60000) : null;
+  return fetch(AI_FUNCTION_URL, {method:'POST', headers:supabaseHeaders({'Content-Type':'application/json'}), body:JSON.stringify(payload), signal: ac ? ac.signal : undefined})
+    .then(function(r){ if(tm) clearTimeout(tm);
       return r.text().then(function(t){
         var j = null; try{ j = JSON.parse(t); }catch(e){}
         if(r.status===404 && !j) throw new Error('Server AI belum di-deploy di Supabase (Edge Function "ai").');
@@ -1858,7 +1861,7 @@ function aiCall(task, payload){
         if(j.limit) STATE.aiUsage = {used:j.used||0, limit:j.limit};
         return j;
       });
-    }, function(){ throw new Error('Tidak bisa menghubungi server AI. Periksa koneksi internet.'); });
+    }, function(){ if(tm) clearTimeout(tm); throw new Error(timedOut ? 'AI terlalu lama merespons. Coba lagi.' : 'Tidak bisa menghubungi server AI. Periksa koneksi internet.'); });
 }
 /* teks AI -> HTML aman (tebal, daftar, baris baru) */
 function aiFormat(text){
@@ -1968,7 +1971,7 @@ function renderAiAssistantPage(){
   return '<div class="card ai-card">'+
     '<div class="ai-head"><div class="card-title" style="margin:0;display:flex;align-items:center;gap:8px;">'+iconSvg('sparkles',18)+' Asisten Selaras</div>'+
       (h.length ? '<button class="btn btn-ghost btn-sm" data-action="ai-clear">Mulai baru</button>' : '')+'</div>'+
-    '<div class="ai-log" id="aiLog">'+msgs+(STATE.aiBusy ? '<div class="ai-msg bot"><span class="ai-av">'+iconSvg('sparkles',15)+'</span><div class="ai-bubble ai-typing"><i></i><i></i><i></i></div></div>' : '')+'</div>'+
+    '<div class="ai-log" id="aiLog">'+msgs+(STATE.aiBusy ? '<div class="ai-msg bot"><span class="ai-av">'+iconSvg('sparkles',15)+'</span><div class="ai-bubble ai-typing"><i></i><i></i><i></i><span class="ai-slow" id="aiSlow"></span></div></div>' : '')+'</div>'+
     (!h.length || !STATE.aiBusy ? '<div class="ai-chips">'+chips+'</div>' : '')+
     '<div class="ai-input"><textarea id="ai_input" rows="1" placeholder="Tulis pertanyaan…" maxlength="1500">'+escapeHtml(STATE.aiDraft||'')+'</textarea>'+
       '<button class="btn btn-primary" data-action="ai-send"'+(STATE.aiBusy?' disabled':'')+' aria-label="Kirim">'+iconSvg('send',16)+'</button></div>'+
@@ -1982,12 +1985,13 @@ function aiSend(q){
   var h = aiChatLoad();
   h.push({role:'user', text:q, at:new Date().toISOString()});
   STATE.aiDraft = ''; STATE.aiBusy = true; aiChatSave(); render();
+  var slowT = setTimeout(function(){ var sl = document.getElementById('aiSlow'); if(sl) sl.textContent = 'Sedang berpikir…'; }, 5000);
   var hist = h.filter(function(m){ return !m.error; }).slice(-12).map(function(m){ return {role:m.role, text:m.text}; });
   aiCall('asisten', {messages:hist, context:aiContext()}).then(function(j){
     h.push({role:'model', text:j.text, at:new Date().toISOString(), model:j.model});
   }).catch(function(err){
     h.push({role:'model', text:err.message, error:true, at:new Date().toISOString()});
-  }).then(function(){ STATE.aiBusy = false; aiChatSave(); if(STATE.view==='ai-assistant') render(); });
+  }).then(function(){ clearTimeout(slowT); STATE.aiBusy = false; aiChatSave(); if(STATE.view==='ai-assistant') render(); });
 }
 
 /* ---------- Bantu tulis ---------- */
@@ -14465,7 +14469,7 @@ document.addEventListener('click', function(e){
     saveDB().then(function(){ toast('Pengaturan AI disimpan.'); render(); });
   } else if(action==='ai-test'){
     STATE.aiTestMsg = 'Menghubungi Gemini…'; render();
-    aiCall('ping', {}).then(function(j){ STATE.aiTestMsg = 'Terhubung ✓ (model: '+j.model+')'; })
+    aiCall('ping', {}).then(function(j){ STATE.aiTestMsg = 'Terhubung ✓ (model: '+j.model+(j.ms ? ', '+(j.ms/1000).toFixed(1)+' dtk' : '')+')'; })
       .catch(function(err){ STATE.aiTestMsg = 'Gagal: '+err.message; }).then(function(){ render(); });
   } else if(action==='device-revoke' || action==='device-revoke-all'){
     var dvKey = el.getAttribute('data-key'), dvId = el.getAttribute('data-id');

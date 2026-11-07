@@ -83,7 +83,7 @@ function systemFor(task: string, body: Record<string, unknown>): string {
 /* ---------- akun terdaftar ---------- */
 let accCache: { at: number; keys: Map<string, string> } | null = null;
 async function accounts(fresh = false): Promise<Map<string, string> | null> {
-  if (!fresh && accCache && Date.now() - accCache.at < 60_000) return accCache.keys;
+  if (!fresh && accCache && Date.now() - accCache.at < 300_000) return accCache.keys;
   if (!SUPABASE_URL || !SERVICE_KEY) return null;
   try {
     const r = await fetch(`${SUPABASE_URL}/rest/v1/kv_store?key=eq.hrdb&select=value`, { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } });
@@ -131,33 +131,74 @@ async function usage(account: string, limit: number, commit: boolean): Promise<{
   } catch (_) { return { ok: true, used: 0, limit }; }
 }
 
-/* ---------- panggil Gemini (dengan model cadangan) ---------- */
+/* ---------- panggil Gemini (dengan model cadangan) ----------
+   Supaya cepat:
+   - cara kirim key yang berhasil & model yang berhasil diingat (tidak dicoba ulang tiap pesan);
+   - mode "thinking" dimatikan/diminimalkan (Flash bawaan berpikir dulu beberapa detik);
+   - tiap percobaan dibatasi waktunya. */
 type Msg = { role: string; text: string };
-async function callGemini(models: string[], system: string, contents: unknown[], cfg: Record<string, unknown>) {
+let AUTH_MODE: "header" | "query" | "vertex" | "" = "";
+const GOOD_MODEL: Record<string, string> = {};
+const BAD_MODEL = new Map<string, number>();
+function thinkingFor(model: string): Record<string, unknown> | null {
+  if (/gemini-2\.5-flash-lite/.test(model)) return null;          // sudah tanpa thinking
+  if (/gemini-2\.5/.test(model)) return { thinkingBudget: 0 };
+  if (/gemini-[3-9]/.test(model)) return { thinkingLevel: "low" };
+  return null;
+}
+async function timed(url: string, init: RequestInit, ms: number): Promise<Response> {
+  const ac = new AbortController(); const t = setTimeout(() => ac.abort(), ms);
+  try { return await fetch(url, { ...init, signal: ac.signal }); } finally { clearTimeout(t); }
+}
+async function postGemini(model: string, body: string, ms: number): Promise<Response> {
+  const base = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const vertex = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent?key=${encodeURIComponent(KEY)}`;
+  const tries: Array<["header" | "query" | "vertex", () => Promise<Response>]> = [
+    ["header", () => timed(base, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY }, body }, ms)],
+    ["query", () => timed(`${base}?key=${encodeURIComponent(KEY)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body }, ms)],
+    ["vertex", () => timed(vertex, { method: "POST", headers: { "Content-Type": "application/json" }, body }, ms)],
+  ];
+  if (AUTH_MODE) tries.sort((a, b) => (a[0] === AUTH_MODE ? -1 : b[0] === AUTH_MODE ? 1 : 0));
+  let last: Response | null = null;
+  for (const [mode, go] of tries) {
+    const r = await go();
+    if (r.status !== 401 && r.status !== 403) { if (r.ok) AUTH_MODE = mode; return r; }
+    last = r;
+    if (AUTH_MODE === mode) AUTH_MODE = "";
+  }
+  return last as Response;
+}
+async function callGemini(models: string[], system: string, contents: unknown[], cfg: Record<string, unknown>, group: string) {
   const errors: string[] = [];
-  for (const model of models) {
-    const body = JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: cfg });
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-    let r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": KEY }, body });
-    if (r.status === 401 || r.status === 403) {
-      // beberapa jenis key (mis. "AQ.") hanya diterima lewat parameter ?key= atau endpoint Vertex express
-      r = await fetch(`${url}?key=${encodeURIComponent(KEY)}`, { method: "POST", headers: { "Content-Type": "application/json" }, body });
-      if (r.status === 401 || r.status === 403) {
-        const vx = `https://aiplatform.googleapis.com/v1/publishers/google/models/${model}:generateContent?key=${encodeURIComponent(KEY)}`;
-        const r2 = await fetch(vx, { method: "POST", headers: { "Content-Type": "application/json" }, body });
-        if (r2.ok || (r2.status !== 401 && r2.status !== 403)) r = r2;
-      }
+  const now = Date.now();
+  let order = models.filter((m) => !(BAD_MODEL.get(m)! > now));
+  if (!order.length) order = models.slice();
+  if (GOOD_MODEL[group] && order.includes(GOOD_MODEL[group])) order = [GOOD_MODEL[group]].concat(order.filter((m) => m !== GOOD_MODEL[group]));
+  const started = Date.now();
+  for (const model of order) {
+    if (Date.now() - started > 40_000) { errors.push("waktu habis"); break; }
+    const think = thinkingFor(model);
+    const gen = think ? { ...cfg, thinkingConfig: think } : cfg;
+    let body = JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: gen });
+    let r: Response;
+    try { r = await postGemini(model, body, 25_000); } catch (_) { errors.push(`${model}: waktu habis`); continue; }
+    let txt = await r.text();
+    if (r.status === 400 && think && /thinking/i.test(txt)) { // model tidak mendukung pengaturan thinking → ulang tanpa
+      body = JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: cfg });
+      try { r = await postGemini(model, body, 25_000); txt = await r.text(); } catch (_) { errors.push(`${model}: waktu habis`); continue; }
     }
-    const txt = await r.text();
     if (!r.ok) {
       errors.push(`${model}: ${r.status} ${clip(txt.replace(/\s+/g, " "), 160)}`);
-      if ([400].includes(r.status) && !/not found|not supported|unknown name|model/i.test(txt)) break; // permintaan salah, jangan ulang
+      if (r.status === 404 || (r.status === 400 && /not found|not supported|unknown name|model/i.test(txt))) BAD_MODEL.set(model, Date.now() + 6 * 3600_000);
+      if (r.status === 429) BAD_MODEL.set(model, Date.now() + 60_000);
+      if (r.status === 400 && !/not found|not supported|unknown name|model/i.test(txt)) break; // permintaan salah, jangan ulang
       continue; // 401/403/404/429/5xx → coba model berikutnya
     }
     try {
       const j = JSON.parse(txt);
-      const out = (j.candidates?.[0]?.content?.parts || []).map((p: { text?: string }) => p.text || "").join("").trim();
+      const out = (j.candidates?.[0]?.content?.parts || []).filter((p: { thought?: boolean }) => !p.thought).map((p: { text?: string }) => p.text || "").join("").trim();
       if (!out) { errors.push(`${model}: jawaban kosong (${j.candidates?.[0]?.finishReason || j.promptFeedback?.blockReason || "?"})`); continue; }
+      GOOD_MODEL[group] = model;
       return { ok: true, text: out, model };
     } catch (_) { errors.push(`${model}: format jawaban tidak dikenal`); }
   }
@@ -174,6 +215,8 @@ serve(async (req) => {
     if (!KEY) return json({ ok: false, error: "GEMINI_API_KEY belum di-set di Supabase (Edge Functions → Secrets)." }, 500);
 
     const account = clip(body.account, 80);
+    const t0 = Date.now();
+    const usagePre = usage(account, 100000, false); // dibaca bersamaan dengan daftar akun
     let acc = await accounts();
     if (acc && !acc.has(account)) acc = await accounts(true);
     if (acc && !acc.has(account)) return json({ ok: false, error: "Akun tidak terdaftar di ABC Selaras." }, 403);
@@ -181,13 +224,13 @@ serve(async (req) => {
     const limit = parseInt(acc?.get("__limit") || "", 10) || DAILY_LIMIT_ENV || 40;
 
     if (!minuteOk(account)) return json({ ok: false, error: "Terlalu cepat. Coba lagi dalam 1 menit." }, 429);
-    const pre = await usage(account, limit, false);
+    const pre0 = await usagePre, pre = { ok: pre0.used < limit, used: pre0.used, limit };
     if (!pre.ok) return json({ ok: false, error: `Batas pemakaian AI hari ini sudah habis (${pre.limit}x). Coba lagi besok.`, used: pre.used, limit: pre.limit }, 429);
 
     const context = clip(body.context, 14000);
     let contents: unknown[] = [];
     const cfg: Record<string, unknown> = { temperature: 0.6, maxOutputTokens: 900 };
-    let models = MODELS_ENV.length ? MODELS_ENV : FLASH.concat(LITE);
+    let models = MODELS_ENV.length ? MODELS_ENV : (task === "insight" || task === "jadwal" ? FLASH.concat(LITE) : LITE.concat(FLASH));
 
     if (task === "ping") {
       contents = [{ role: "user", parts: [{ text: "Balas tepat dengan: OK" }] }];
@@ -197,7 +240,6 @@ serve(async (req) => {
       if (!text) return json({ ok: false, error: "Teks masih kosong." }, 400);
       contents = [{ role: "user", parts: [{ text: (context ? "Konteks: " + context + "\n\n" : "") + "Teks:\n" + text }] }];
       cfg.temperature = 0.4; cfg.maxOutputTokens = body.kind === "article" || body.kind === "announcement" ? 1600 : 600;
-      if (!MODELS_ENV.length) models = LITE.concat(FLASH);
     } else if (task === "jadwal") {
       contents = [{ role: "user", parts: [{ text: "KONTEKS:\n" + context + "\n\nBuat draf jadwal sesuai aturan." }] }];
       cfg.temperature = 0.3; cfg.maxOutputTokens = 8000; cfg.responseMimeType = "application/json";
@@ -213,15 +255,19 @@ serve(async (req) => {
       }));
     }
 
-    const res = await callGemini(models, systemFor(task, body), contents, cfg);
+    const res = await callGemini(models, systemFor(task, body), contents, cfg, task === "insight" || task === "jadwal" ? "flash" : "lite");
     if (!res.ok) {
       const errs = (res as { errors: string[] }).errors || [];
       const auth = errs.some((e) => / 40[13] /.test(e));
       const quota = errs.length && errs.every((e) => / 429 /.test(e));
       return json({ ok: false, error: auth ? "API key Gemini ditolak. Periksa GEMINI_API_KEY di Supabase." : quota ? "Kuota gratis Gemini sedang habis. Coba lagi beberapa saat lagi." : "AI sedang tidak bisa dihubungi. Coba lagi nanti.", detail: errs.slice(0, 4) }, 502);
     }
-    const post = task === "ping" ? pre : await usage(account, limit, true);
-    return json({ ok: true, text: (res as { text: string }).text, model: (res as { model: string }).model, used: post.used, limit });
+    // catat pemakaian tanpa membuat pengguna menunggu
+    const save = task === "ping" ? Promise.resolve(pre) : usage(account, limit, true);
+    // deno-lint-ignore no-explicit-any
+    const rt = (globalThis as any).EdgeRuntime;
+    if (rt && typeof rt.waitUntil === "function") rt.waitUntil(save); else await save;
+    return json({ ok: true, text: (res as { text: string }).text, model: (res as { model: string }).model, used: pre.used + (task === "ping" ? 0 : 1), limit, ms: Date.now() - t0 });
   } catch (e) {
     return json({ ok: false, error: "Permintaan tidak valid: " + String((e as Error).message || e) }, 400);
   }
