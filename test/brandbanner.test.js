@@ -66,6 +66,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   w.DB.banners = [{id:'B1', title:'Jadwal', active:true, color:'blue', tapType:'view', tapView:'my-schedule', tapCta:'Cek jadwal'}, {id:'B2', title:'Web', active:true, color:'blue', tapType:'url', tapUrl:'https://abchospitality.co.id/'}];
   w.SESSION = {role:'staff', empId:'S1'}; w.STATE.view = 'dashboard'; w.render();
   var s1 = d.querySelector('.banner-slide[data-id="B1"]');
+  ok(!/INFO ABC SELARAS/i.test(d.querySelector('.banner-wrap').textContent), 'label "INFO ABC SELARAS" tidak tampil di banner');
   ok(s1 && s1.getAttribute('data-action')==='banner-tap' && /Cek jadwal/.test(s1.textContent), 'slide bisa diketuk + teks tombol tampil');
   s1.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(30);
   ok(w.STATE.view==='my-schedule', 'ketuk banner: membuka halaman Jadwal Saya');
