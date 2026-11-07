@@ -3942,6 +3942,7 @@ function renderShell(){
       userCardHtml+
       navHtml+
       '<div class="sidebar-foot">'+
+        modeSwitchBtnHtml()+
         '<button class="btn btn-secondary btn-block btn-sm" data-action="logout" data-en="Log Out">Keluar</button>'+
         '<div class="app-ver">ABC Selaras '+escapeHtml(appVersionLabel())+'</div>'+
       '</div>'+
@@ -4061,14 +4062,23 @@ function teamKpiScores(team, period){
 }
 
 function renderBentoHero(emp, role){
-  emp = emp || (DB.employees && DB.employees[0]) || {id:'E1', name:'Staff ABC', department:'Marketing', properties:['ABC Group']};
+  if(!emp || !emp.id) return '';
   var t = todayParts();
-  var m = emp.id ? getMatchDay(emp.id, t.ym, t.day) : {status:'libur', sched:{type:'kerja', start:'09:00', end:'17:00'}, att:{checkIn:'', checkOut:''}};
+  var m = getMatchDay(emp.id, t.ym, t.day) || {};
+  m.att = m.att || {};
   var hasIn = m.att && m.att.checkIn;
   var hasOut = m.att && m.att.checkOut;
-  var payroll = emp.id ? computePayroll(emp.id, t.ym) : {thp:4500000, summary:{totals:{hadir:0, workDays:21}}};
-  var propsStr = (emp.properties && emp.properties.length) ? emp.properties.join(', ') : 'ABC Group';
-  var shiftStr = (m.sched && m.sched.type==='kerja') ? (m.sched.name ? m.sched.name+' ('+m.sched.start+' - '+m.sched.end+')' : 'Shift ('+m.sched.start+' - '+m.sched.end+')') : 'Shift Regular (09:00 - 17:00)';
+  var monthSum = getMonthSummary(emp.id, t.ym), mt = monthSum.totals;
+  var attended = (mt.hadir||0) + (mt.telat||0);
+  var workDays = monthSum.days.filter(function(d){ return d.status==='hadir' || d.status==='telat' || d.status==='alpha' || d.status==='akan_datang'; }).length;
+  var onTimePct = attended ? Math.round((mt.hadir||0) / attended * 100) : null;
+  var propsStr = (emp.properties && emp.properties.length) ? emp.properties.join(', ') : '-';
+  var shiftStr;
+  if(m.sched && m.sched.type==='kerja' && m.sched.start) shiftStr = (m.sched.name || 'Shift')+' ('+m.sched.start+' - '+(m.sched.end||'')+')';
+  else if(m.sched){ var sk = (typeof schedKind==='function') ? schedKind(m.sched) : 'libur'; shiftStr = (typeof SCHED_KIND_LABEL!=='undefined' && SCHED_KIND_LABEL[sk]) || 'Libur'; }
+  else shiftStr = 'Belum ada jadwal';
+  var condLabel = {sehat:'Sehat', kurang_sehat:'Kurang Sehat', sakit:'Sakit'}[m.att.condition] || 'Tanpa keterangan kondisi';
+  var rekapN = (typeof rekapTodayEntries==='function') ? rekapTodayEntries(emp.id).length : 0;
 
   var durText = '0j 00m 00d';
   if(hasIn){
@@ -4080,7 +4090,9 @@ function renderBentoHero(emp, role){
   }
 
   var isHod = role==='hod' || isHOD(emp.id);
-  var deptCount = DB.employees.filter(function(e){ return e.department===(emp.department||'Marketing'); }).length || 2;
+  var deptEmps = DB.employees.filter(function(e){ return e.active!==false && emp.department && e.department===emp.department; });
+  var deptCount = deptEmps.length;
+  var deptPresent = deptEmps.filter(function(e){ var a = ((DB.attendance[t.ym]||{})[e.id]||{})[t.day]; return a && a.checkIn; }).length;
 
   var topBadgeHtml = ''; /* badge durasi/timer di bagian atas hero card dihapus karena sudah ada di timer kerja bawah */
 
@@ -4105,6 +4117,9 @@ function renderBentoHero(emp, role){
     '<button type="button" class="bento-sc-btn indigo" data-action="nav" data-view="overtime-request"><span>'+iconSvg('clock',15)+'</span> <span>Ajukan Lembur</span></button>'
   );
 
+  if(canSales()) scButtonsHtml += '<button type="button" class="bento-sc-btn blue" data-action="open-sales-dashboard"><span>'+iconSvg('chart',15)+'</span> <span>Dashboard Sales</span></button>';
+  if(canAccDashboard()){ var fullAccB = canAccounting() || canPurchasing();
+    scButtonsHtml += '<button type="button" class="bento-sc-btn dark" data-action="go-accounting"><span>'+iconSvg('fileText',15)+'</span> <span>'+(fullAccB?'Dashboard Accounting':'Purchase Order')+'</span></button>'; }
   var scheduleCardSnippet = (typeof nextScheduleCardHtml === 'function') ? nextScheduleCardHtml(emp) : '';
 
   return ''+
@@ -4116,7 +4131,8 @@ function renderBentoHero(emp, role){
             '<span style="background:#CEFF1C;color:#14141A;font-size:10px;font-weight:800;padding:3px 10px;border-radius:999px;letter-spacing:.05em;text-transform:uppercase;display:inline-flex;align-items:center;gap:5px;">'+
               iconSvg('zap', 11)+' QUICK ATTENDANCE &bull; '+t.iso+
             '</span>'+
-            '<h2 style="font-size:24px;font-weight:800;letter-spacing:-.02em;margin:8px 0 3px;color:#FFFFFF;">Halo, '+escapeHtml(emp.name)+'!</h2>'+
+            '<div style="display:flex;align-items:center;gap:12px;margin:8px 0 3px;">'+avatarDashHtml(emp)+
+              '<h2 style="font-size:24px;font-weight:800;letter-spacing:-.02em;margin:0;color:#FFFFFF;">Halo, '+escapeHtml(emp.name)+'!</h2></div>'+
             '<div style="font-size:11.5px;color:rgba(255,255,255,.85);">Shift Hari Ini: <strong>'+shiftStr+'</strong> &bull; Property: <strong>'+escapeHtml(propsStr)+'</strong></div>'+
           '</div>'+
           (topBadgeHtml ? '<div>'+topBadgeHtml+'</div>' : '')+
@@ -4126,12 +4142,12 @@ function renderBentoHero(emp, role){
           '<div style="background:rgba(255,255,255,.12);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.2);border-radius:18px;padding:14px 16px;">'+
             '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:rgba(255,255,255,.8);font-weight:700;"><span>Clock-In &amp; Mood</span><span style="width:7px;height:7px;border-radius:50%;background:#CEFF1C;"></span></div>'+
             '<div style="font-size:18px;font-weight:800;color:#FFFFFF;margin:6px 0 2px;">'+(hasIn ? m.att.checkIn : 'Belum Absen')+'</div>'+
-            '<div style="font-size:11px;color:#CEFF1C;font-weight:700;">'+(hasIn ? (m.att.mood || 'Kondisi Prima') : 'Pilih kondisi saat Clock-In')+'</div>'+
+            '<div style="font-size:11px;color:#CEFF1C;font-weight:700;">'+(hasIn ? escapeHtml(condLabel) : 'Pilih kondisi saat Clock-In')+'</div>'+
           '</div>'+
           '<div style="background:rgba(255,255,255,.12);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.2);border-radius:18px;padding:14px 16px;">'+
             '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10.5px;color:rgba(255,255,255,.8);font-weight:700;"><span>Clock-Out &amp; Rekap</span><span style="display:inline-flex;align-items:center;">'+iconSvg('clock',13)+'</span></div>'+
             '<div style="font-size:18px;font-weight:800;color:#FFFFFF;margin:6px 0 2px;">'+(hasOut ? m.att.checkOut : '--:--')+'</div>'+
-            '<div style="font-size:11px;color:rgba(255,255,255,.85);">'+(hasOut ? (m.att.workRecap || 'Selesai') : 'Tersinkron ke Selaras Board')+'</div>'+
+            '<div style="font-size:11px;color:rgba(255,255,255,.85);">'+(hasOut ? (rekapN ? rekapN+' rekap kerja tercatat' : 'Selesai') : 'Tersinkron ke Selaras Board')+'</div>'+
           '</div>'+
         '</div>'+
         (hasIn ? '<div style="margin-top:4px;">'+workTimerHtml(m.att, t.iso, false)+'</div>' : '')+
@@ -4146,16 +4162,16 @@ function renderBentoHero(emp, role){
         '<div class="bento-f-card">'+
           '<div>'+
             '<div class="f-sub">Kehadiran Bulan Ini</div>'+
-            '<div class="f-val">'+(payroll.summary?.totals?.hadir || 0)+' <span style="font-size:12px;color:var(--text-muted);font-weight:600;">/ '+(payroll.summary?.totals?.workDays || 21)+' Hr</span></div>'+
-            '<div style="margin-top:6px;"><span style="background:#CEFF1C;color:#14141A;font-weight:800;font-size:9.5px;padding:2px 7px;border-radius:999px;">+0% Rate</span> <span style="font-size:10px;color:var(--text-muted);">Tepat Waktu</span></div>'+
+            '<div class="f-val">'+attended+' <span style="font-size:12px;color:var(--text-muted);font-weight:600;">/ '+workDays+' Hr</span></div>'+
+            '<div style="margin-top:6px;"><span style="background:#CEFF1C;color:#14141A;font-weight:800;font-size:9.5px;padding:2px 7px;border-radius:999px;">'+(onTimePct===null?'&ndash;':onTimePct+'%')+'</span> <span style="font-size:10px;color:var(--text-muted);">Tepat Waktu'+(mt.telat?' &middot; '+mt.telat+'x telat':'')+'</span></div>'+
           '</div>'+
           '<div class="bento-ic-circle bento-ic-blue">'+iconSvg('calendarCheck',20)+'</div>'+
         '</div>'+
         '<div class="bento-f-card">'+
           '<div>'+
-            '<div class="f-sub">Tim Divisi ('+escapeHtml(emp.department||'Marketing')+')</div>'+
+            '<div class="f-sub">Tim Divisi ('+escapeHtml(emp.department||'-')+')</div>'+
             '<div class="f-val">'+deptCount+' <span style="font-size:12px;color:var(--text-muted);font-weight:600;">SDM Aktif</span></div>'+
-            '<div style="margin-top:6px;"><span class="bento-chip-blue" style="background:rgba(55,75,255,.1);color:#374BFF;font-weight:800;font-size:9.5px;padding:2px 7px;border-radius:999px;">KPI 89%</span> <span style="font-size:10px;color:var(--text-muted);">'+(role==='hod'?'Mode HOD':'Mode Staff')+'</span></div>'+
+            '<div style="margin-top:6px;"><span class="bento-chip-blue" style="background:rgba(55,75,255,.1);color:#374BFF;font-weight:800;font-size:9.5px;padding:2px 7px;border-radius:999px;">'+deptPresent+' hadir</span> <span style="font-size:10px;color:var(--text-muted);">hari ini</span></div>'+
           '</div>'+
           '<div class="bento-ic-circle bento-ic-lime">'+iconSvg('users',20)+'</div>'+
         '</div>'+
@@ -4224,7 +4240,7 @@ function renderAdminDashboardBase(){
   });
 
   var totalScheduledToday = todayHadir + todayBelum;
-  var attPct = totalScheduledToday > 0 ? Math.round((todayHadir / totalScheduledToday) * 100) : 100;
+  var attPct = totalScheduledToday > 0 ? Math.round((todayHadir / totalScheduledToday) * 100) : 0;
 
   /* Pengajuan Cuti & Lembur Approval */
   var pendingLeaves = (DB.leaveRequests||[]).filter(function(r){ return r.status==='pending_hr'; });
@@ -4357,7 +4373,7 @@ function renderAdminDashboardBase(){
     '<div style="margin-top:16px;background:rgba(255,255,255,.06);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">'+
       '<div style="display:flex;align-items:center;gap:10px;">'+
         '<span style="font-size:12px;color:rgba(255,255,255,.8);font-weight:700;">Tingkat Kehadiran Shift Hari Ini:</span>'+
-        '<span style="font-size:13px;font-weight:800;color:#CEFF1C;">'+attPct+'% Tepat Sasaran</span>'+
+        '<span style="font-size:13px;font-weight:800;color:#CEFF1C;">'+(totalScheduledToday>0 ? attPct+'% hadir ('+todayHadir+' dari '+totalScheduledToday+')' : 'Belum ada jadwal kerja hari ini')+'</span>'+
       '</div>'+
       '<div style="flex:1;min-width:160px;max-width:320px;height:7px;background:rgba(255,255,255,.15);border-radius:999px;overflow:hidden;">'+
         '<div style="width:'+attPct+'%;height:100%;background:#CEFF1C;border-radius:999px;"></div>'+
@@ -4382,10 +4398,13 @@ function renderAdminDashboardBase(){
       '<button type="button" class="btn btn-secondary" data-action="nav" data-view="leave-approval" style="display:flex;align-items:center;gap:8px;justify-content:flex-start;padding:12px 14px;border-radius:14px;font-weight:700;font-size:12.5px;">'+iconSvg('calendarCheck',16)+' <span>Persetujuan Cuti '+(pendingLeaves.length?'('+pendingLeaves.length+')':'')+'</span></button>'+
       '<button type="button" class="btn btn-secondary" data-action="nav" data-view="overtime-approval" style="display:flex;align-items:center;gap:8px;justify-content:flex-start;padding:12px 14px;border-radius:14px;font-weight:700;font-size:12.5px;">'+iconSvg('clock',16)+' <span>Persetujuan Lembur '+(pendingOvertimes.length?'('+pendingOvertimes.length+')':'')+'</span></button>'+
       '<button type="button" class="btn btn-secondary" data-action="nav" data-view="todo" style="display:flex;align-items:center;gap:8px;justify-content:flex-start;padding:12px 14px;border-radius:14px;font-weight:700;font-size:12.5px;">'+iconSvg('clipboard',16)+' <span>Selaras Board</span></button>'+
-      '<button type="button" class="btn btn-secondary" data-action="open-sales-dashboard" style="display:flex;align-items:center;gap:8px;justify-content:flex-start;padding:12px 14px;border-radius:14px;font-weight:700;font-size:12.5px;">'+iconSvg('chart',16)+' <span>Sales &amp; Marketing</span></button>'+
-      '<button type="button" class="btn btn-secondary" data-action="go-accounting" style="display:flex;align-items:center;gap:8px;justify-content:flex-start;padding:12px 14px;border-radius:14px;font-weight:700;font-size:12.5px;">'+iconSvg('landmark',16)+' <span>Accounting</span></button>'+
+      '<button type="button" class="btn btn-secondary" data-action="open-sales-dashboard" style="display:flex;align-items:center;gap:8px;justify-content:flex-start;padding:12px 14px;border-radius:14px;font-weight:700;font-size:12.5px;">'+iconSvg('chart',16)+' <span>Dashboard Sales</span></button>'+
+      '<button type="button" class="btn btn-secondary" data-action="go-accounting" style="display:flex;align-items:center;gap:8px;justify-content:flex-start;padding:12px 14px;border-radius:14px;font-weight:700;font-size:12.5px;">'+iconSvg('landmark',16)+' <span>Dashboard Accounting</span></button>'+
     '</div>'+
   '</div>'+
+
+  /* Peringatan Absen Hari Ini (telat, di luar jangkauan, tanpa GPS) */
+  renderTodayAlertsCard()+
 
   /* Akses ke Staff yang Absen Hari Ini */
   '<div class="card" style="margin-bottom:18px;">'+
@@ -6098,6 +6117,7 @@ function renderStaffDashboard(){
     '<div class="stat-card"><div class="label">Alpha</div><div class="value">'+s.alpha+'</div><div class="sub">Tanpa keterangan</div></div>'+
     '<div class="stat-card"><div class="label" style="display:flex;align-items:center;justify-content:space-between;">Take Home Pay'+moneyToggleBtn()+'</div><div class="value" style="font-size:18px;">'+moneyHtml(rupiah(p.thp))+'</div><div class="sub">Estimasi bulan ini</div></div>'+
   '</div>'+
+  (staffBlockedView('todo') ? '' : renderTodoWidget())+
   '<div class="card"><button class="btn btn-primary" data-action="nav" data-view="my-payslip">Lihat Slip Gaji</button></div>';
 }
 
@@ -6347,7 +6367,8 @@ function setAccountSignatureFromFile(targetKey, file){
   return compressSignaturePng(file).then(function(pngDataUrl){
     var safeKey = String(targetKey||'hr').replace(/[^a-zA-Z0-9_-]/g,'_');
     return uploadAttachment('sig_'+safeKey+'_'+Date.now()+'.png', pngDataUrl, 'image/png').then(function(res){
-      t.sigDataUrl = pngDataUrl;
+      /* simpan gambar di storage; salinan base64 hanya bila upload gagal/offline (hrdb tetap ringan) */
+      t.sigDataUrl = (res && (res.key || res.url)) ? null : pngDataUrl;
       t.sigKey = res && res.key ? res.key : null;
       t.sigUrl = res && res.url ? res.url : null;
       t.sigUpdatedAt = new Date().toISOString();
@@ -8542,7 +8563,7 @@ function boardTabsHtml(tab){
 }
 function renderTodoPage(){
   var bt = STATE.boardTab || 'board';
-  var head = boardTabsHtml(bt) + deptShortcutsHtml();
+  var head = boardTabsHtml(bt) + deptShortcutsHtml('board');
   if(bt==='board' && canImportBoard()) head += '<div class="no-print" style="margin-bottom:12px;"><button class="btn btn-secondary btn-sm" data-action="board-import-open">&#8682; Import Spreadsheet</button></div>';
   if(bt==='project') return head + boardChartsHtml('project') + renderProjectTab();
   if(bt==='agenda') return head + boardChartsHtml('agenda') + renderAgendaTab();
@@ -9776,8 +9797,18 @@ function employeesInDepts(list){
   return (DB.employees||[]).filter(function(e){ return e.active!==false && list.indexOf(deptKey(e.department))!==-1; });
 }
 
-function deptShortcutsHtml(){
-  return '';
+/* Pintas Dashboard Sales / Accounting.
+   Dashboard: sudah ada di grid shortcut bento (staf/HOD) & One Tap Access (HR) -> kosong.
+   Halaman Selaras Board ('board'): pil departemen. */
+function deptShortcutsHtml(where){
+  if(where!=='board') return '';
+  var out = '';
+  if(canSales()) out += '<button type="button" class="dash-dept-pill sales" data-action="open-sales-dashboard">'+iconSvg('chart',15)+' Dashboard Sales</button>';
+  if(canAccDashboard()){
+    var fullAcc = canAccounting() || canPurchasing();
+    out += '<button type="button" class="dash-dept-pill accounting" data-action="go-accounting">'+iconSvg('fileText',15)+' '+(fullAcc?'Dashboard Accounting':'Buat / Lihat PO')+'</button>';
+  }
+  return out ? '<div class="dash-dept-pills no-print" style="margin-bottom:14px;">'+out+'</div>' : '';
 }
 
 /* ---- Impor spreadsheet ke Selaras Board ---- */
@@ -12058,6 +12089,15 @@ function mergeLiveData(remote){
   DB.todos = mergeById(DB.todos, remote.todos, function(t){ return t.updatedAt || t.createdAt || ''; });
   /* pengumuman: hapus oleh HR (deletedAt) ikut ke semua akun, salinan lama tidak menghidupkan lagi */
   DB.announcements = mergeById(DB.announcements, remote.announcements, function(x){ return x.deletedAt || x.updatedAt || x.createdAt || ''; });
+  /* status kerja per orang: ambil yang paling baru (tidak saling menimpa antar akun) */
+  if(remote.workStatus || DB.workStatus){
+    var wsL = DB.workStatus || {}, wsR = remote.workStatus || {}, wsOut = {};
+    Object.keys(wsL).concat(Object.keys(wsR)).forEach(function(u){
+      var a1 = wsL[u], b1 = wsR[u];
+      wsOut[u] = !a1 ? b1 : !b1 ? a1 : (String(b1.at||'') > String(a1.at||'') ? b1 : a1);
+    });
+    DB.workStatus = wsOut;
+  }
   ['articles','projects','timesheets','agenda','accJournals','accPOs','accPetty','sops','notifBroadcasts','notifSchedules','assets','chatGroups'].forEach(function(k){
     DB[k] = mergeById(DB[k], remote[k], function(x){ return x.updatedAt || x.createdAt || ''; });
   });

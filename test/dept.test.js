@@ -20,7 +20,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   function app(){ return d.getElementById('app').textContent; }
 
   console.log('\n[Topbar HP]');
-  ok(/\.topbar\{padding:10px 12px;flex-wrap:nowrap/.test(html), 'topbar HP nowrap (satu baris)');
+  ok(/@media[^{]*max-width:\s*\d+px[^{]*\{[\s\S]*?\.topbar\{[^}]*flex-wrap:nowrap/.test(html), 'topbar HP nowrap (satu baris)');
 
   console.log('\n[Departemen default]');
   ok(['Sales','Accounting','Purchasing'].every(function(x){ return w.DB.departments.indexOf(x)!==-1; }), 'Sales/Accounting/Purchasing ada di daftar departemen');
