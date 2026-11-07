@@ -75,6 +75,7 @@ Akun HR ditambahkan.|HR account added.
 Akun Saya|My Account
 Akun dan lawan akun tidak boleh sama.|Account and counter-account must differ.
 Akun ditambahkan.|Account added.
+Akun ini telah dikeluarkan dari perangkat ini. Silakan login kembali.|This account was signed out from this device. Please sign in again.
 Alamat|Address
 Alamat / Keterangan|Address / Notes
 Alpha|Absent
@@ -83,6 +84,7 @@ Ambil Ulang|Retake
 Ambil foto selfie dulu.|Take a selfie first.
 Anda|You
 Anda belum ditunjuk sebagai HOD departemen mana pun.|You have not been assigned as HOD of any department.
+Anda dikeluarkan dari perangkat ini.|You were signed out from this device.
 Anggota|Members
 Apa yang dikerjakan|What was done
 Aplikasi|App
@@ -157,6 +159,7 @@ Belum ada aset. Klik|No assets yet. Click
 Belum ada banner yang ditampilkan.|No banners displayed yet.
 Belum ada banner.|No banners yet.
 Belum ada catatan jam bulan ini.|No hours logged this month.
+Belum ada catatan perangkat.|No devices recorded yet.
 Belum ada data absensi bulan ini.|No attendance data this month.
 Belum ada data bulan ini.|No data this month.
 Belum ada data karyawan.|No employee data yet.
@@ -292,6 +295,7 @@ Dibayar / diterima lewat|Paid / received via
 Dibuka di browser — tekan lama lalu pilih Simpan/Unduh.|Opened in browser — long-press then choose Save/Download.
 Diisi oleh|Filled by
 Dijeda|Paused
+Dikeluarkan|Signed out
 Disembunyikan|Hidden
 Disetujui|Approved
 Disetujui & diterbitkan.|Approved & published.
@@ -509,6 +513,8 @@ Kelola HOD|Manage HODs
 Keluar|Out
 Keluar Grup|Leave Group
 Keluarkan|Remove
+Keluarkan semua perangkat|Sign out all devices
+Keluarkan semua perangkat lain|Sign out all other devices
 Kembali|Back
 Kembalikan bawaan|Restore default
 Kembalikan ke logo bawaan|Restore default logo
@@ -671,7 +677,10 @@ Pengingat shift|Shift reminder
 Pengumuman|Announcements
 Pengumuman dihapus.|Announcement deleted.
 Pengumuman terkirim.|Announcement sent.
+Perangkat Login|Signed-in Devices
+Perangkat ini|This device
 Perangkat ini tidak mendukung sidik jari / Face ID.|This device does not support fingerprint / Face ID.
+Perangkat yang sedang/pernah masuk ke akun Anda. Jika ada yang tidak dikenal, keluarkan lalu ganti password.|Devices signed in to your account. If you see one you don't recognize, sign it out and change your password.
 Perangkat/browser ini tidak mendukung notifikasi sistem. Notifikasi tetap muncul di ikon lonceng.|This device/browser doesn't support system notifications. They still appear under the bell icon.
 Perbarui|Update
 Perbarui Dokumen|Update Document
