@@ -1501,6 +1501,59 @@
   body.dark .bd-card{background:#222331;border-color:#32344A;color:#F5F6FC;}
   body.dark .btn-secondary{background:#252738;color:#F5F6FC;border-color:#363850;}
   body.dark .bottom-nav{background:rgba(28,29,38,.96);border:1px solid rgba(255,255,255,.1);}
+
+  /* ===== Kartu persetujuan biru ===== */
+  .card.card-blue{background:linear-gradient(135deg,#374BFF 0%,#2B3DF0 55%,#1E2CC4 100%) !important;color:#FFFFFF;border:none !important;box-shadow:0 14px 34px rgba(55,75,255,.24);}
+  body.dark .card.card-blue{background:linear-gradient(135deg,#3344F0 0%,#2433C9 60%,#1A2596 100%) !important;box-shadow:0 14px 34px rgba(0,0,0,.35);}
+  .card-blue .card-title{color:#FFFFFF !important;}
+  .card-blue .card-sub,.card-blue .muted,.card-blue small{color:rgba(255,255,255,.8) !important;}
+  .card-blue a{color:#CEFF1C;}
+  .card-blue table th{background:rgba(255,255,255,.10) !important;color:rgba(255,255,255,.82) !important;border-bottom-color:rgba(255,255,255,.18) !important;}
+  .card-blue table td{color:#FFFFFF !important;border-bottom-color:rgba(255,255,255,.16) !important;background:transparent !important;}
+  .card-blue table tbody tr:hover td{background:rgba(255,255,255,.06) !important;}
+  .card-blue .empty-state{color:rgba(255,255,255,.88) !important;background:transparent !important;}
+  .card-blue .btn-ghost{color:#CEFF1C !important;}
+  .card-blue .btn-ghost:hover{background:rgba(255,255,255,.12) !important;}
+  .card-blue .btn-ghost[style*="--success"]{color:#14141A !important;background:#CEFF1C !important;}
+  .card-blue .btn-ghost[style*="--danger"]{color:#FFFFFF !important;background:rgba(239,68,68,.85) !important;}
+  .card-blue .btn-primary{background:#CEFF1C !important;color:#14141A !important;box-shadow:none !important;}
+  .card-blue .btn-secondary{background:rgba(255,255,255,.16) !important;color:#FFFFFF !important;border-color:transparent !important;}
+  .card-blue .badge{box-shadow:0 0 0 1px rgba(255,255,255,.25);}
+  .card-blue table.mob-stack-table tbody tr{background:rgba(255,255,255,.10) !important;border-color:rgba(255,255,255,.22) !important;}
+  .card-blue table.mob-stack-table tbody tr.mob-full-row{background:rgba(255,255,255,.08) !important;}
+  .card-blue table.mob-stack-table tbody td:first-child:not(.mob-colspan-cell){border-bottom-color:rgba(255,255,255,.22) !important;}
+  .card-blue table.mob-stack-table tbody td::before{color:rgba(255,255,255,.72) !important;}
+  .card-blue select,.card-blue input,.card-blue textarea{color:var(--text);}
+
+  /* ===== Selaras Board: yang di-scroll hanya isi tiap kategori ===== */
+  .bd-col{display:flex;flex-direction:column;}
+  .bd-col-body{max-height:min(64vh,620px);overflow-y:auto;overscroll-behavior:contain;padding:2px 4px 6px 2px;margin-right:-4px;scrollbar-width:thin;scrollbar-color:rgba(55,75,255,.35) transparent;}
+  .bd-col-body::-webkit-scrollbar{width:6px;}
+  .bd-col-body::-webkit-scrollbar-thumb{background:rgba(55,75,255,.35);border-radius:999px;}
+  @media(max-width:860px){ .bd-col-body{max-height:56vh;} }
+
+  /* ===== Rekap pekerjaan versi HP: baris ringkas ===== */
+  @media(max-width:860px){
+    .content table.mob-stack-table.rk-rekap tbody{gap:8px;}
+    .content table.mob-stack-table.rk-rekap tbody tr:not(.mob-full-row){display:flex !important;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:10px 12px !important;border-radius:14px;}
+    .content table.mob-stack-table.rk-rekap tbody tr:not(.mob-full-row)::after{content:"";order:4;flex-basis:100%;height:0;}
+    .content table.mob-stack-table.rk-rekap tbody td{display:block !important;flex:0 0 auto;width:auto !important;padding:0 !important;margin:0 !important;border:none !important;font-size:11.5px;line-height:1.3;}
+    .content table.mob-stack-table.rk-rekap tbody td::before{content:none !important;display:none !important;}
+    .content table.mob-stack-table.rk-rekap tbody td.rk-date{order:1;font-weight:800;font-size:12px;min-width:42px;}
+    .content table.mob-stack-table.rk-rekap tbody td.rk-date span{display:block;font-weight:600;font-size:10px;color:var(--text-muted);}
+    .content table.mob-stack-table.rk-rekap tbody td.rk-title{order:2;flex:1 1 0 !important;min-width:0;}
+    .content table.mob-stack-table.rk-rekap tbody td.rk-title b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13.5px;line-height:1.3;}
+    .content table.mob-stack-table.rk-rekap tbody td.rk-title span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:var(--text-muted);}
+    .content table.mob-stack-table.rk-rekap tbody td.rk-act{order:3;display:flex !important;flex-direction:row !important;align-items:center;gap:4px;}
+    .content table.mob-stack-table.rk-rekap tbody td.rk-act .rk-ibtn{width:30px;height:30px;}
+    .content table.mob-stack-table.rk-rekap tbody .rk-chip{font-size:10.5px;padding:2px 8px;}
+    .content table.mob-stack-table.rk-rekap tbody td:nth-child(3){order:5;color:var(--text-muted);font-weight:700;}
+    .content table.mob-stack-table.rk-rekap tbody td:nth-child(4){order:6;color:var(--text-muted);}
+    .content table.mob-stack-table.rk-rekap tbody td:nth-child(4)::before{content:"\00B7" !important;display:inline !important;margin-right:6px;font-size:11.5px;text-transform:none;letter-spacing:0;color:var(--text-muted);}
+    .content table.mob-stack-table.rk-rekap tbody td:nth-child(5){order:7;margin-left:auto !important;}
+    .content table.mob-stack-table.rk-rekap tbody td:nth-child(6){order:8;}
+    .content table.mob-stack-table.rk-rekap tbody td:nth-child(3):empty,.content table.mob-stack-table.rk-rekap tbody td:nth-child(4):empty{display:none !important;}
+  }
 </style>
 </head>
 <body>
@@ -4153,7 +4206,6 @@ function renderBentoHero(emp, role){
         (hasIn ? '<div style="margin-top:4px;">'+workTimerHtml(m.att, t.iso, false)+'</div>' : '')+
         '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;">'+
           btnActionHtml+
-          '<button type="button" class="theme-toggle-btn" data-action="notif-open" style="background:rgba(255,255,255,.16);color:#CEFF1C;border:none;border-radius:50%;width:40px;height:40px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;">'+iconSvg('bell',18)+'</button>'+
         '</div>'+
       '</div>'+
     '</div>'+
@@ -7032,7 +7084,7 @@ function renderLeaveRequestPage(){
       '</tr>';
     }).join('');
     teamSection = ''+
-    '<div class="card">'+
+    '<div class="card card-blue">'+
       '<div class="card-title">Persetujuan Tim</div>'+
       '<div class="card-sub">Pengajuan cuti/izin anggota tim (departemen: '+escapeHtml(getHodDepartments(empId).join(', ')||'-')+') menunggu keputusan Anda sebagai HOD. Setelah Anda setujui, lanjut ke HR untuk persetujuan final.</div>'+
       '<div class="table-wrap"><table><thead><tr><th>Nama</th><th>Tanggal</th><th>Jenis</th><th>Keterangan</th><th>Aksi</th></tr></thead>'+
@@ -7055,7 +7107,7 @@ function renderLeaveRequestPage(){
       '</tr>';
     }).join('');
     teamSection += ''+
-    '<div class="card">'+
+    '<div class="card card-blue">'+
       '<div class="card-title">Riwayat Keputusan Saya</div>'+
       
       '<div class="table-wrap"><table><thead><tr><th>Nama</th><th>Tanggal</th><th>Jenis</th><th>Keputusan Anda</th><th>Status Saat Ini</th></tr></thead>'+
@@ -7137,7 +7189,7 @@ function renderKpiApprovalPageBase(){
   '</div>'+
     '<button class="btn btn-secondary" data-action="manage-kpi-catalog" data-dept="'+escapeHtml(catalogDept)+'">Kelola KPI'+(filterDept?' ('+escapeHtml(filterDept)+')':'')+'</button>'+
   '</div>'+
-  '<div class="card"><div class="card-title">Persetujuan KPI</div>'+
+  '<div class="card card-blue"><div class="card-title">Persetujuan KPI</div>'+
     '<div class="table-wrap"><table><thead><tr><th>Nama</th><th>Departemen</th><th>Periode</th><th class="num">Skor</th><th>Status</th><th>Aksi</th></tr></thead>'+
     '<tbody>'+(rows||'<tr><td colspan="6" class="empty-state">Belum ada KPI yang diajukan.</td></tr>')+'</tbody></table></div>'+
   '</div>';
@@ -7199,7 +7251,7 @@ function renderScheduleApprovalPage(){
   var pendingCount = DB.scheduleApprovals.filter(function(a){ return a.status==='pending'; }).length;
 
   return ''+
-  '<div class="card">'+
+  '<div class="card card-blue">'+
     '<div class="card-title">Persetujuan Jadwal</div>'+
     '<div class="card-sub">'+pendingCount+' jadwal departemen yang diajukan HOD menunggu persetujuan Anda.</div>'+
     '<div class="table-wrap"><table><thead><tr><th>Departemen</th><th>Bulan</th><th>Status</th><th>Kalender</th><th>Aksi</th></tr></thead>'+
@@ -7267,7 +7319,7 @@ function renderLeaveApprovalPage(){
   var pendingHodCount = DB.leaveRequests.filter(function(r){ return r.status==='pending_hod'; }).length;
 
   return ''+
-  '<div class="card">'+
+  '<div class="card card-blue">'+
     '<div class="card-title">Pengajuan Cuti / Izin</div>'+
     '<div class="card-sub">'+pendingHrCount+' pengajuan menunggu persetujuan final HR'+(pendingHodCount>0 ? ' &middot; '+pendingHodCount+' lainnya masih menunggu HOD' : '')+'. Menyetujui otomatis menandai tanggal tersebut sebagai Cuti di jadwal karyawan (tidak dihitung Alpha).</div>'+
     '<div class="table-wrap"><table><thead><tr><th>Nama</th><th>Tanggal</th><th>Jenis</th><th>Keterangan</th><th>Status</th><th>Aksi</th></tr></thead>'+
@@ -7348,7 +7400,7 @@ function renderOvertimeRequestPage(){
       '</tr>';
     }).join('');
     teamSection = ''+
-    '<div class="card">'+
+    '<div class="card card-blue">'+
       '<div class="card-title">Persetujuan Lembur Tim</div>'+
       '<div class="card-sub">Pengajuan lembur anggota tim (departemen: '+escapeHtml(getHodDepartments(empId).join(', ')||'-')+') menunggu keputusan Anda sebagai HOD.</div>'+
       '<div class="table-wrap"><table><thead><tr><th>Nama</th><th>Tanggal</th><th>Jam</th><th class="num">Durasi</th><th>Uraian</th><th>Aksi</th></tr></thead>'+
@@ -7408,7 +7460,7 @@ function renderOvertimeApprovalPage(){
   var pendingHodCount = DB.overtimeRequests.filter(function(r){ return r.status==='pending_hod'; }).length;
 
   return ''+
-  '<div class="card">'+
+  '<div class="card card-blue">'+
     '<div class="card-title">Pengajuan Lembur</div>'+
     '<div class="card-sub">'+pendingHrCount+' pengajuan menunggu persetujuan final HR'+(pendingHodCount>0 ? ' &middot; '+pendingHodCount+' lainnya masih menunggu HOD' : '')+'.</div>'+
     '<div class="table-wrap"><table><thead><tr><th>Nama</th><th>Tanggal</th><th>Jam</th><th class="num">Durasi</th><th>Uraian</th><th>Status</th><th>Aksi</th></tr></thead>'+
@@ -10862,7 +10914,7 @@ function renderRekapTab(){
       '<td class="rk-act no-print">'+(ed ? '<button class="rk-ibtn" data-action="rekap-edit" data-id="'+t.id+'" title="Edit" aria-label="Edit">'+iconSvg('edit',15)+'</button>'+
         '<button class="rk-ibtn" data-action="rekap-del" data-id="'+t.id+'" title="Hapus" aria-label="Hapus">'+iconSvg('trash',15)+'</button>' : '')+'</td></tr>';
   }).join('');
-  var table = '<div class="card rk-table-card"><div class="rk-table-wrap"><table class="rk-table"><thead><tr><th>Tanggal</th><th>Uraian pekerjaan</th><th>PIC</th><th>Tim</th><th>Prioritas</th><th>Status</th><th class="no-print"></th></tr></thead><tbody>'+
+  var table = '<div class="card rk-table-card"><div class="rk-table-wrap"><table class="rk-table rk-rekap"><thead><tr><th>Tanggal</th><th>Uraian pekerjaan</th><th>PIC</th><th>Tim</th><th>Prioritas</th><th>Status</th><th class="no-print"></th></tr></thead><tbody>'+
     (rows || '<tr><td colspan="7"><div class="empty-state">Belum ada rekap kerja di '+escapeHtml(monthLabel(ym))+'.</div></td></tr>')+'</tbody></table></div></div>';
   return '<div class="toolbar no-print" style="flex-wrap:wrap;gap:8px;"><div class="toolbar-left" style="gap:8px;flex-wrap:wrap;">'+boardMonthNavHtml()+empSel+'</div>'+
       '<button class="btn btn-secondary btn-sm" data-action="rekap-dl">Unduh Rekap (Excel)</button></div>'+
@@ -11189,7 +11241,7 @@ function renderSopPage(){
       (canM ? '<button class="btn btn-secondary btn-sm" data-action="sop-edit" data-id="'+d.id+'">Perbarui</button><button class="btn btn-ghost btn-sm" style="color:var(--danger);" data-action="sop-del" data-id="'+d.id+'">Hapus</button>' : '')+'</div></div>';
   }).join('');
   var pendList = SESSION.role==='hr' ? all.filter(function(d){ return d.status==='pending' || (d.pendingRev && d.pendingRev.status==='pending'); }) : [];
-  var pendCard = pendList.length ? '<div class="card sop-pend-card no-print"><div class="card-title">Menunggu Persetujuan HR ('+pendList.length+')</div>'+pendList.map(function(d){
+  var pendCard = pendList.length ? '<div class="card card-blue sop-pend-card no-print"><div class="card-title">Menunggu Persetujuan HR ('+pendList.length+')</div>'+pendList.map(function(d){
     var rv = d.pendingRev && d.pendingRev.status==='pending';
     return '<div class="sop-pend-row"><div style="min-width:0;flex:1;"><b>'+escapeHtml(rv ? d.pendingRev.title : d.title)+'</b> <span class="badge badge-neutral">v'+escapeHtml(rv ? d.pendingRev.version : sopVer(d))+'</span>'+(rv?' <span class="badge badge-info">Revisi</span>':'')+
       '<div class="muted" style="font-size:12px;">'+escapeHtml((d.dept||'Umum')+' · '+(rv ? d.pendingRev.by : ((d.approval||{}).requestedBy||d.by||'')))+'</div></div><button class="btn btn-primary btn-sm" data-action="sop-review" data-id="'+d.id+'">Tinjau</button></div>';

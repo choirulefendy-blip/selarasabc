@@ -85,5 +85,25 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   await w.setAccountSignatureFromFile('S1', {type:'image/png', size:1000});
   ok(/^data:image\/png/.test(w.getEmployee('S1').sigDataUrl||''), 'upload gagal/offline: salinan base64 tetap disimpan');
 
+  console.log('\n[Tampilan: lonceng, kartu persetujuan biru, Board, rekap HP]');
+  w.SESSION = {role:'staff', empId:'S1'}; w.STATE.view = 'dashboard'; w.render();
+  ok(!d.querySelector('.bento-hero-blue [data-action="notif-open"]'), 'tombol lonceng tanpa fungsi di kartu sapaan dihapus');
+  ok(!!d.querySelector('[data-action="toggle-notif"], .notif-bell, .topbar [data-action*="notif"]') || /notif/i.test(d.querySelector('.topbar-right').innerHTML), 'lonceng notifikasi di topbar tetap ada');
+  w.DB.departmentHods = w.DB.departmentHods || {};
+  var hodSet = false; try{ w.DB.employees[1].department = 'Marketing'; }catch(e){}
+  w.SESSION = {role:'hod', empId:'S2'}; w.isHOD = function(id){ return id==='S2'; }; w.getTeamForHod = function(){ return [w.getEmployee('S1')]; }; w.getHodDepartments = function(){ return ['Marketing']; };
+  w.STATE.view = 'leave-request'; w.render();
+  var blue = Array.prototype.map.call(d.querySelectorAll('.card.card-blue .card-title'), function(x){ return x.textContent; }).join('|');
+  ok(/Persetujuan Tim/.test(blue) && /Riwayat Keputusan Saya/.test(blue), 'Persetujuan Tim & Riwayat Keputusan = kartu biru');
+  w.STATE.view = 'overtime-request'; w.render();
+  ok(/Persetujuan Lembur Tim/.test(Array.prototype.map.call(d.querySelectorAll('.card.card-blue .card-title'), function(x){ return x.textContent; }).join('|')), 'Persetujuan Lembur Tim = kartu biru');
+  w.SESSION = {role:'hr', empId:null, hrAccountId:null};
+  ['leave-approval','overtime-approval'].forEach(function(v){ w.STATE.view = v; w.render(); });
+  ok(!!d.querySelector('.card.card-blue'), 'halaman persetujuan HR memakai kartu biru');
+  ok(/\.bd-col-body\{max-height:[^;]+;overflow-y:auto/.test(html), 'kolom Board: scroll per kategori (max-height + overflow-y)');
+  w.SESSION = {role:'staff', empId:'S1'}; w.STATE.view = 'todo'; w.STATE.boardTab = 'rekap'; w.render();
+  ok(!!d.querySelector('table.rk-table.rk-rekap'), 'tabel rekap punya kelas khusus (tabel aset tidak ikut berubah)');
+  ok(/rk-rekap tbody tr:not\(\.mob-full-row\)\{display:flex !important;flex-wrap:wrap/.test(html), 'rekap HP: baris ringkas (flex 2 baris)');
+
   console.log('\nHASIL: '+pass+' lulus, '+fail+' gagal'); process.exit(fail ? 1 : 0);
 })();
