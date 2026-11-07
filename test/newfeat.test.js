@@ -118,10 +118,10 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   delete w.STATE.nscNow;
 
   console.log('\n[Info aplikasi di Profil]');
-  as('staff','S1','my-profile'); ok(/Unduh APK Android/.test(app()) && /releases\/download\/apk-terbaru\/app-debug\.apk/.test(app()) && /Yang Baru/.test(app()) && /Versi di perangkat ini/.test(app()), 'staf: link APK, versi, dan daftar pembaruan di Profil');
+  as('staff','S1','my-profile'); ok(/Unduh APK Android/.test(app()) && /releases\/download\/apk-terbaru\/app-debug\.apk/.test(app()) && /Panduan &amp; FAQ/.test(app()) && /Versi di perangkat ini/.test(app()), 'staf: link APK, versi, dan Panduan & FAQ di Profil');
   as('hod','H1','my-profile'); ok(/Unduh APK Android/.test(app()), 'HOD: info aplikasi di Profil');
   as('hr',null,'hr-profile'); ok(/Unduh APK Android/.test(app()), 'HR: info aplikasi di Profil');
-  await click('[data-action="app-chg-toggle"]'); ok(d.querySelectorAll('.chg').length===w.APP_CHANGELOG.length, 'lihat semua riwayat pembaruan');
+  ok(d.querySelectorAll('.faq-item').length>0 && !d.querySelector('[data-action="app-chg-toggle"]'), 'Panduan & FAQ menggantikan riwayat pembaruan');
   as('hod','H1','dashboard'); ok(w.navItemsFor('hod').some(function(x){ return x.v==='assets'; }), 'HOD punya menu Aset Inventaris');
 
   console.log('\n[Notifikasi: ikon, waktu, warna]');

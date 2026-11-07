@@ -870,3 +870,30 @@ untuk memulai chat atau membuat grup.|to start a chat or create a group.
 untuk mulai mendata inventaris departemen.|to start recording department inventory.
 Pengingat Shift|Shift Reminder
 Tugas Selesai|Tasks Done
+Panduan & FAQ|Guide & FAQ
+Absensi|Attendance
+Untuk HOD|For HODs
+Untuk HR|For HR
+Tugas & Kerja|Tasks & Work
+Aplikasi|App
+Ketentuan & Privasi|Terms & Privacy
+Kebijakan Privasi|Privacy Policy
+Baca Ketentuan Layanan|Read Terms of Service
+Baca Kebijakan Privasi|Read Privacy Policy
+Ketentuan Layanan|Terms of Service
+Bagaimana cara absen masuk?|How do I clock in?
+Bagaimana cara absen pulang?|How do I clock out?
+Sidik jari / Face ID tidak bisa dipakai?|Fingerprint / Face ID not working?
+Bagaimana melihat jadwal kerja saya?|How do I see my work schedule?
+Bagaimana izin tidak masuk kerja (cuti / sakit / izin)?|How do I take time off (leave / sick / permit)?
+Bagaimana mengajukan lembur?|How do I request overtime?
+Bagaimana mengatur jadwal tim?|How do I set the team schedule?
+Bagaimana menyetujui cuti / lembur tim?|How do I approve team leave / overtime?
+Bagaimana menyetujui jadwal, cuti, dan lembur?|How do I approve schedules, leave and overtime?
+Bagaimana menambah karyawan atau memberi akses HR?|How do I add employees or grant HR access?
+Bagaimana memakai Selaras Board?|How do I use Selaras Board?
+Bagaimana melihat dan mengunduh slip gaji?|How do I view and download my payslip?
+Bagaimana mengganti foto profil dan email?|How do I change my profile photo and email?
+Lupa password atau tidak bisa login?|Forgot password or can't log in?
+Notifikasi tidak muncul?|Not receiving notifications?
+Bagaimana memasang atau memperbarui aplikasi?|How do I install or update the app?

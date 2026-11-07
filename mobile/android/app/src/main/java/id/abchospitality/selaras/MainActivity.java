@@ -1,14 +1,31 @@
 package id.abchospitality.selaras;
 
+import android.content.SharedPreferences;
+import android.content.res.Configuration;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.view.Window;
 import android.webkit.WebView;
 import androidx.activity.OnBackPressedCallback;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    private static final String BAR_PREFS = "abc_system_bars";
+    private int barColor = 0;
+    private boolean barDark = false;
+    private boolean barSet = false;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        registerPlugin(AbcBarsPlugin.class);
         super.onCreate(savedInstanceState);
+        /* Warna status bar & navigation bar terakhir (terang/gelap) dipakai sejak aplikasi dibuka. */
+        try {
+            SharedPreferences sp = getSharedPreferences(BAR_PREFS, MODE_PRIVATE);
+            if (sp.contains("color")) applySystemBars(sp.getInt("color", Color.parseColor("#F5F6FC")), sp.getBoolean("dark", false), false);
+        } catch (Exception ignored) { }
         /* Tombol Back HP: biarkan aplikasi kembali ke layar sebelumnya.
            Kalau sudah di halaman awal, aplikasi diminimalkan (tidak ditutup). */
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
@@ -25,6 +42,40 @@ public class MainActivity extends BridgeActivity {
                 }
             }
         });
+    }
+
+    /** Area status bar (atas) & navigation bar (bawah) diberi warna yang sama dengan latar aplikasi. */
+    public void applySystemBars(int color, boolean dark, boolean persist) {
+        try {
+            barColor = color; barDark = dark; barSet = true;
+            Window w = getWindow();
+            w.getDecorView().setBackgroundColor(color);
+            w.setStatusBarColor(color);
+            w.setNavigationBarColor(color);
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                w.setNavigationBarContrastEnforced(false);
+                w.setStatusBarContrastEnforced(false);
+            }
+            WindowInsetsControllerCompat c = WindowCompat.getInsetsController(w, w.getDecorView());
+            c.setAppearanceLightStatusBars(!dark);
+            c.setAppearanceLightNavigationBars(!dark);
+            if (persist) {
+                getSharedPreferences(BAR_PREFS, MODE_PRIVATE).edit().putInt("color", color).putBoolean("dark", dark).apply();
+            }
+        } catch (Exception ignored) { }
+    }
+
+    /* Plugin SystemBars bawaan mengembalikan warna saat konfigurasi berubah (rotasi, tema sistem): pasang lagi. */
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (barSet) applySystemBars(barColor, barDark, false);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (barSet) applySystemBars(barColor, barDark, false);
     }
 
     /* Biarkan JavaScript tetap berjalan saat aplikasi di latar belakang,
