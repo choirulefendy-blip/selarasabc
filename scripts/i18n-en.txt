@@ -316,6 +316,7 @@ Ditolak|Rejected
 Ditolak. HOD diberi tahu.|Rejected. HOD notified.
 Ditugaskan ke|Assigned to
 Diurutkan dari yang terbanyak|Sorted from highest
+Dokumen / berkas|Document / file
 Dokumen dibuat otomatis oleh Sistem HR.|Document generated automatically by the HR System.
 Dokumen dihapus.|Document deleted.
 Durasi|Duration
@@ -387,6 +388,7 @@ Gagal menyimpan media.|Failed to save media.
 Gagal menyimpan tugas. Coba lagi.|Failed to save task. Try again.
 Gaji & Tunjangan|Salary & Allowances
 Gaji Pokok|Base Salary
+Galeri foto & video|Photo & video gallery
 Gambar|Image
 Gambar Layar Memuat|Loading Screen Image
 Gambar baru (PNG/JPG, maks. 2MB)|New image (PNG/JPG, max 2MB)
@@ -505,6 +507,7 @@ KPI disetujui.|KPI approved.
 KPI ditolak.|KPI rejected.
 KPI rata-rata|Average KPI
 Kalender|Calendar
+Kamera (foto)|Camera (photo)
 Kamera belum siap.|Camera not ready.
 Kamis|Thursday
 Kamu belum punya akses ke Aset Inventaris. Minta HOD/HR membukanya di Hak Akses Staff.|You don't have access to Inventory Assets yet. Ask your HOD/HR to enable it in Staff Permissions.
@@ -568,6 +571,7 @@ Kosong|Empty
 Kurang Sehat|Unwell
 Lama Bekerja|Length of Service
 Lampiran|Attachment
+Lampirkan|Attach
 Lampirkan Tugas|Attach Task
 Langkah Cepat|Quick Steps
 Laporan & Grafik|Reports & Charts
@@ -610,6 +614,7 @@ Mengisi form & pengajuan lain|Fill in forms & other requests
 Mengunggah bukti absen...|Uploading attendance proof...
 Mengunggah foto...|Uploading photo...
 Mengunggah gambar...|Uploading image...
+Mengunggah video... (bisa agak lama)|Uploading video... (may take a while)
 Menu|Menu
 Menunggu|Pending
 Menunggu HOD|Awaiting HOD
@@ -735,6 +740,7 @@ Pulang|Out
 Rabu|Wednesday
 Rapikan dengan AI|Polish with AI
 Rata-rata Kehadiran|Average Attendance
+Rekam video|Record video
 Rekap Kerja|Work Recap
 Rendah|Low
 Report Karyawan|Employee Report
@@ -925,6 +931,7 @@ Verifikasi email dulu untuk mengaktifkan.|Verify your email first to enable.
 Verifikasi:|Verification:
 Versi baru aplikasi tersedia.|A new app version is available.
 Versi di perangkat ini|Version on this device
+Video siap dikirim|Video ready to send
 Wajib|Required
 Wajib verifikasi identitas saat absen (sidik jari / Face ID, atau kode email)|Require identity verification at clock-in (fingerprint / Face ID, or email code)
 Waktu|Time

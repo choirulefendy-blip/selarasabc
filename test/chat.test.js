@@ -129,8 +129,8 @@ function typeInto(w, id, v){ var e = w.document.getElementById(id); e.value = v;
   ok(!w.document.querySelector('[data-peer="hr"]') && w.document.querySelector('[data-peer="E1"]'), 'HR: kontak = semua karyawan');
   await click(w, 'chat-open', {peer:'E1'});
   typeInto(w, 'chatInput', 'Bud, tolong kirim laporan.'); await sleep(450);
-  w.document.getElementById('chatInput').dispatchEvent(new w.KeyboardEvent('keydown', {key:'Enter', bubbles:true})); await sleep(150);
-  ok(text(w).indexOf('Bud, tolong kirim laporan.')!==-1, 'HR: kirim dengan tombol Enter');
+  w.document.getElementById('chatInput').dispatchEvent(new w.KeyboardEvent('keydown', {key:'Enter', ctrlKey:true, bubbles:true})); await sleep(150);
+  ok(text(w).indexOf('Bud, tolong kirim laporan.')!==-1, 'HR: kirim dengan Ctrl+Enter (Enter biasa = baris baru)');
   /* balasan notifikasi */
   await login(w, 'E1'); await w.chatPoll(); await sleep(50);
   ok(w.chatUnreadTotal()===2, 'Budi: 2 pesan masuk (Dewi dan HR)');

@@ -19,8 +19,9 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
   console.log('\n[Manual dari chat]');
   as('staff','S1','chat'); w.chatEnsureIdentity(); w.STATE.chatWith='S2'; w.render();
-  ok(!!d.querySelector('[data-action="chat-task-pick"]'), 'tombol lampirkan tugas di kolom chat');
-  await click('[data-action="chat-task-pick"]');
+  await click('[data-action="chat-attach"]');
+  ok(!!d.querySelector('#modalRoot [data-action="chat-task-pick"]'), 'menu Lampirkan berisi "Tugas dari Selaras Board"');
+  await click('#modalRoot [data-action="chat-task-pick"]');
   ok(/Desain feed Natal/.test(d.getElementById('modalRoot').textContent), 'daftar tugas Board muncul');
   await click('[data-action="chat-task-send"][data-tid="TK1"]'); await sleep(150);
   var m=w.CHAT.msgs.filter(function(x){ return x.kind==='task' && w.chatTaskId(x)==='TK1'; })[0];
