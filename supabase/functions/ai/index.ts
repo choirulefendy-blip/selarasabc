@@ -143,7 +143,7 @@ const BAD_MODEL = new Map<string, number>();
 function thinkingFor(model: string): Record<string, unknown> | null {
   if (/gemini-2\.5-flash-lite/.test(model)) return null;          // sudah tanpa thinking
   if (/gemini-2\.5/.test(model)) return { thinkingBudget: 0 };
-  if (/gemini-[3-9]/.test(model)) return { thinkingLevel: "low" };
+  if (/gemini-[3-9]/.test(model)) return { thinkingLevel: "minimal" }; // token "berpikir" ikut memakan jatah jawaban
   return null;
 }
 async function timed(url: string, init: RequestInit, ms: number): Promise<Response> {
@@ -198,6 +198,19 @@ async function callGemini(models: string[], system: string, contents: unknown[],
       const j = JSON.parse(txt);
       const out = (j.candidates?.[0]?.content?.parts || []).filter((p: { thought?: boolean }) => !p.thought).map((p: { text?: string }) => p.text || "").join("").trim();
       if (!out) { errors.push(`${model}: jawaban kosong (${j.candidates?.[0]?.finishReason || j.promptFeedback?.blockReason || "?"})`); continue; }
+      if (j.candidates?.[0]?.finishReason === "MAX_TOKENS") {
+        // jawaban terpotong (jatah token habis) → ulang sekali dengan jatah 2x
+        const cfg2: Record<string, unknown> = { ...cfg, maxOutputTokens: Math.min(32000, Number(cfg.maxOutputTokens || 2000) * 2) };
+        const b2 = JSON.stringify({ systemInstruction: { parts: [{ text: system }] }, contents, generationConfig: think ? { ...cfg2, thinkingConfig: think } : cfg2 });
+        try {
+          const r2 = await postGemini(model, b2, 25_000);
+          if (r2.ok) {
+            const j2 = JSON.parse(await r2.text());
+            const out2 = (j2.candidates?.[0]?.content?.parts || []).filter((p: { thought?: boolean }) => !p.thought).map((p: { text?: string }) => p.text || "").join("").trim();
+            if (out2 && out2.length >= out.length) { GOOD_MODEL[group] = model; return { ok: true, text: out2, model }; }
+          }
+        } catch (_) { /* pakai jawaban pertama */ }
+      }
       GOOD_MODEL[group] = model;
       return { ok: true, text: out, model };
     } catch (_) { errors.push(`${model}: format jawaban tidak dikenal`); }
@@ -229,23 +242,23 @@ serve(async (req) => {
 
     const context = clip(body.context, 14000);
     let contents: unknown[] = [];
-    const cfg: Record<string, unknown> = { temperature: 0.6, maxOutputTokens: 900 };
+    const cfg: Record<string, unknown> = { temperature: 0.6, maxOutputTokens: 3000 }; // longgar: token berpikir ikut dihitung
     let models = MODELS_ENV.length ? MODELS_ENV : (task === "insight" || task === "jadwal" ? FLASH.concat(LITE) : LITE.concat(FLASH));
 
     if (task === "ping") {
       contents = [{ role: "user", parts: [{ text: "Balas tepat dengan: OK" }] }];
-      cfg.maxOutputTokens = 10; cfg.temperature = 0;
+      cfg.maxOutputTokens = 400; cfg.temperature = 0;
     } else if (task === "tulis") {
       const text = clip(body.text, 6000).trim();
       if (!text) return json({ ok: false, error: "Teks masih kosong." }, 400);
       contents = [{ role: "user", parts: [{ text: (context ? "Konteks: " + context + "\n\n" : "") + "Teks:\n" + text }] }];
-      cfg.temperature = 0.4; cfg.maxOutputTokens = body.kind === "article" || body.kind === "announcement" ? 1600 : 600;
+      cfg.temperature = 0.4; cfg.maxOutputTokens = body.kind === "article" || body.kind === "announcement" ? 4000 : 2000;
     } else if (task === "jadwal") {
       contents = [{ role: "user", parts: [{ text: "KONTEKS:\n" + context + "\n\nBuat draf jadwal sesuai aturan." }] }];
-      cfg.temperature = 0.3; cfg.maxOutputTokens = 8000; cfg.responseMimeType = "application/json";
+      cfg.temperature = 0.3; cfg.maxOutputTokens = 16000; cfg.responseMimeType = "application/json";
     } else if (task === "insight") {
       contents = [{ role: "user", parts: [{ text: "KONTEKS:\n" + context + "\n\nBuat ringkasan sesuai format." }] }];
-      cfg.temperature = 0.4; cfg.maxOutputTokens = 900;
+      cfg.temperature = 0.4; cfg.maxOutputTokens = 4000;
     } else {
       const hist: Msg[] = Array.isArray(body.messages) ? body.messages.slice(-12) : [];
       if (!hist.length) return json({ ok: false, error: "Pesan kosong." }, 400);

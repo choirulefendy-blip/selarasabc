@@ -15,7 +15,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   ok(/usage\(account, limit/.test(fn) && /Akun tidak terdaftar/.test(fn) && /minuteOk/.test(fn), 'server: hanya akun terdaftar + batas harian + batas per menit');
   ok(/gemini-2\.5-flash/.test(fn) && /flash-lite/.test(fn) && /continue; \/\/ 401\/403\/404\/429\/5xx/.test(fn), 'server: model cadangan saat kuota habis / model tidak tersedia');
 
-  ok(/thinkingBudget: 0/.test(fn) && /thinkingLevel: "low"/.test(fn), 'cepat: mode thinking dimatikan/diminimalkan');
+  ok(/thinkingBudget: 0/.test(fn) && /thinkingLevel: "minimal"/.test(fn) && /MAX_TOKENS/.test(fn), 'cepat: mode thinking dimatikan/diminimalkan');
   ok(/AUTH_MODE = mode/.test(fn) && /GOOD_MODEL\[group\] = model/.test(fn) && /BAD_MODEL\.set/.test(fn), 'cepat: cara kirim key & model yang berhasil diingat, model gagal dilewati');
   ok(/timed\(/.test(fn) && /waitUntil/.test(fn) && /usagePre = usage/.test(fn), 'cepat: batas waktu per percobaan, kuota dicek paralel & dicatat di belakang');
   ok(/AI terlalu lama merespons/.test(html) && /Sedang berpikir/.test(html), 'aplikasi: batas waktu 60 dtk & penanda "Sedang berpikir…"');
