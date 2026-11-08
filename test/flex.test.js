@@ -26,7 +26,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   set('FN',1,'09:30','17:00'); m=w.getMatchDay('FN',ym,1);
   ok(m.status==='telat' && m.lateMinutes===30 && /kurang dari 8 jam/.test(w.flexNoteHtml(m)), 'pulang sebelum 8 jam -> tetap Telat');
   set('AC',1,'09:20',null); m=w.getMatchDay('AC',ym,1);
-  ok(m.status==='telat' && m.flex.pending && m.flex.needOut==='17:20' && /pulang &ge; 17:20/.test(w.flexNoteHtml(m)), 'belum pulang -> sementara Telat + info jam pulang minimal');
+  ok(m.status==='telat' && m.flex.pending && m.flex.needOut==='17:20' && !/[Jj]am fleksibel/.test(w.flexNoteHtml(m)), 'belum pulang -> sementara Telat (tanpa kalimat jam fleksibel)');
   set('PU',1,'21:00','05:30'); w.DB.schedules[ym].PU[1]={type:'kerja',start:'20:00',end:'04:00'}; m=w.getMatchDay('PU',ym,1);
   ok(m.status==='hadir' && m.flex.workedMin===510, 'shift lintas tengah malam dihitung benar');
   set('FO',1,'09:30','18:00'); m=w.getMatchDay('FO',ym,1);
@@ -37,7 +37,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
   console.log('\n[Notifikasi HR]');
   w.DB.officeLocations=[]; w.DB.notifications=[]; w.raiseAttendanceAlerts('AC',ym,1,'in','09:20');
-  ok(/Jam fleksibel/.test(w.DB.notifications[0].message) && !/TELAT/.test(w.DB.notifications[0].message), 'absen masuk telat (fleksibel): info, bukan TELAT');
+  ok(!/Jam fleksibel/.test(w.DB.notifications[0].message) && /lewat/.test(w.DB.notifications[0].message) && !/TELAT/.test(w.DB.notifications[0].message), 'absen masuk telat (fleksibel): info tanpa kalimat jam fleksibel, bukan TELAT');
   w.DB.notifications=[]; w.raiseAttendanceAlerts('FN',ym,1,'out','17:00');
   ok(/kurang dari 8 jam/.test(w.DB.notifications[0].message) && /TELAT 30/.test(w.DB.notifications[0].message), 'pulang < 8 jam: HR diberi tahu TELAT');
   w.DB.notifications=[]; w.raiseAttendanceAlerts('MK',ym,1,'out','17:30');

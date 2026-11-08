@@ -422,6 +422,7 @@ Hari|Day
 Hari ini|Today
 Hari ini bukan jadwal kerja.|Today is not a working day.
 Hubungkan Google Kalender|Connect Google Calendar
+Human Resources|Human Resources
 ID KARYAWAN|EMPLOYEE ID
 ID Karyawan|Employee ID
 Ikut BPJS Kesehatan|Enrolled in BPJS Health
@@ -839,6 +840,7 @@ Tambah Foto|Add Photo
 Tambah Lokasi|Add Location
 Tambah ke Board|Add to Board
 Tambahkan ke Google Calendar|Add to Google Calendar
+Tampil sesaat ketika aplikasi dibuka di HP &amp; aplikasi Android/iPhone. Di web (laptop) tetap logo standar. Bisa diganti logo, maskot, atau poster acara.|Shown briefly when the app opens on phones &amp; the Android/iPhone app. On the web (laptop) the standard logo is always used. Can be a logo, mascot, or event poster.
 Tampilkan di dashboard|Show on dashboard
 Tampilkan jadwal shift, libur/cuti, tenggat tugas, dan agenda di Google Calendar. Ter-update otomatis.|Show shifts, days off/leave, task deadlines, and agenda in Google Calendar. Updates automatically.
 Tandai semua dibaca|Mark all as read

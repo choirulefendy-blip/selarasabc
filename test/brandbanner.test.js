@@ -39,7 +39,10 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   w.SESSION = {role:'hr', empId:null, hrAccountId:null}; w.STATE.view = 'settings'; w.render();
   ok(/Gambar Layar Memuat/.test(app().textContent) && !!d.querySelector('[data-action="save-loading-image"]'), 'HR: kartu ganti gambar layar memuat di Pengaturan');
   ok(/data:image\/png/.test(w.localStorage.getItem('abcsel_loading_img')||''), 'gambar disimpan di perangkat (tampil sebelum data termuat)');
-  w.DB.settings = {}; w.STATE.loaded = false; w.render();
+  w.DB.settings = {}; w.STATE.loaded = false;
+  w.loadingIsMobile = function(){ return false; }; w.render();
+  ok(/icon-192\.png/.test(app().querySelector('.loading-img').getAttribute('src')) && !app().querySelector('.loading-screen.is-full'), 'web (laptop): tetap logo standar walau HR memasang gambar');
+  w.loadingIsMobile = function(){ return true; }; w.render();
   var li = app().querySelector('.loading-img');
   ok(li && /^data:image\/png/.test(li.getAttribute('src')) && app().querySelector('.loading-screen.is-full'), 'saat buka berikutnya: gambar khusus + mode penuh layar');
   w.STATE.loaded = true; w.DB.settings = w.DB.settings||{}; w.DB.settings.loadingImage = {src:'data:image/png;base64,AAAA', mode:'logo'};
