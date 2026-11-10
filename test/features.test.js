@@ -165,7 +165,7 @@ function login(w, who){
   async function doCheckin(empId, loc, type){
     w.DB.settings.attVerify=false; await login(w, empId); await nav(w, 'checkin');
     w.CHECKIN_DRAFT.photoDataUrl = 'data:image/jpeg;base64,AAAA';
-    w.CHECKIN_DRAFT.location = loc;
+    w.CHECKIN_DRAFT.location = loc; w.CHECKIN_DRAFT.locationStatus = loc ? 'ok' : 'unavailable';
     w.CHECKIN_DRAFT.condition = 'sehat';
     w.render(); await sleep(60);
     await click(w, 'submit-checkin', {type:type});
@@ -184,7 +184,7 @@ function login(w, who){
   var farN = w.DB.notifications.filter(function(n){ return n.message.indexOf('Dewi Front')!==-1 && n.message.indexOf('LUAR JANGKAUAN')!==-1; });
   ok(farN.length===1 && farN[0].message.indexOf('Briggs Inn Batu')!==-1, 'HR dapat notifikasi saat absen di luar jangkauan (menyebut lokasi terdekat)');
   await doCheckin('E2', null, 'in');
-  ok(w.DB.notifications.some(function(n){ return n.message.indexOf('Sari HOD')!==-1 && n.message.indexOf('tanpa data lokasi')!==-1; }), 'HR dapat notifikasi saat GPS tidak terdeteksi');
+  ok(!((w.DB.attendance[info.ym]||{}).E2 && w.DB.attendance[info.ym].E2[info.day] && w.DB.attendance[info.ym].E2[info.day].checkIn), 'absen tanpa lokasi (GPS tidak terdeteksi) ditolak, tidak tersimpan');
   await login(w, 'hr');
   ok(text(w).indexOf('Peringatan Absen Hari Ini')!==-1 && text(w).indexOf('Dewi Front')!==-1 && text(w).indexOf('Di luar jangkauan')!==-1, 'HR: kartu Peringatan Absen Hari Ini di dashboard');
   /* absen pulang di luar jangkauan */

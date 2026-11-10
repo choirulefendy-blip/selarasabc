@@ -1273,6 +1273,12 @@
   .chat-head-sub{font-size:12px;color:var(--text-muted);}
   .chat-back{display:none;}
   .chat-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:6px;}
+  .chat-msgs-wrap{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;}
+  .chat-msgs-wrap .chat-messages{min-height:0;-webkit-overflow-scrolling:touch;}
+  .chat-tobottom{position:absolute;right:14px;bottom:14px;width:42px;height:42px;border-radius:50%;border:1px solid var(--border);background:var(--surface);color:var(--primary);box-shadow:0 4px 14px rgba(0,0,0,.18);display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;z-index:5;}
+  .chat-tobottom:hover{filter:brightness(.97);}
+  .chat-thread-pane{position:relative;}
+  .chat-msg-hit mark,.cm-hit mark{background:#CEFF1C;color:#14141A;border-radius:4px;padding:0 2px;}
   .chat-msg{max-width:78%;display:flex;flex-direction:column;}
   .chat-msg.mine{align-self:flex-end;align-items:flex-end;}
   .chat-msg.theirs{align-self:flex-start;}
@@ -2379,6 +2385,7 @@ var STATE = {
   employeeFilterProperty:'',
   employeeFilterRole:'',
   employeeFilterStatus:'',
+  employeeQuery:'',
   hodAttFilterDept:'',
   hodAttFilterProp:'',
   hodAttFilterName:'',
@@ -2508,6 +2515,30 @@ function ckvDoBio(){
       toast('Verifikasi perangkat gagal/dibatalkan.'+(STATE.ckv.email?' Bisa pakai kode email.':''));
     });
 }
+/* Simpan absen lalu pastikan benar-benar sudah ada di server.
+   Sebelum menimpa, data server digabung dulu (mergeLiveData) supaya absen rekan lain
+   yang baru masuk tidak ikut terhapus oleh penyimpanan dari perangkat ini. */
+function attSaveVerified(ym, emp, day, type, tries){
+  tries = tries || 0;
+  return storageGet('hrdb').then(function(res){
+    if(res && res.value){ try{ mergeLiveData(JSON.parse(res.value)); }catch(e){} }
+    return saveDB(true);
+  }).then(function(){
+    return storageGet('hrdb');
+  }).then(function(res){
+    var ok = false;
+    try{
+      var srv = JSON.parse(res.value), r = srv.attendance[ym][emp][day];
+      ok = !!(r && (type==='in' ? r.checkIn : r.checkOut));
+    }catch(e){}
+    if(ok) return true;
+    if(tries < 2) return attSaveVerified(ym, emp, day, type, tries+1);
+    return false;
+  }).catch(function(){
+    return false;
+  });
+}
+
 function resetCheckinDraft(){
   stopCameraStream();
   CHECKIN_DRAFT = {photoDataUrl:null, location:null, locationStatus:'idle', condition:null};
@@ -4059,7 +4090,8 @@ function afterRender(){
   hydrateImages();
   try{ hydrateSignatures(); }catch(e){}
   if(SESSION.role){
-    if(STATE.view==='chat') chatScrollToEnd();
+    if(STATE.view==='chat'){ chatScrollToEnd(); chatBindScroll(); }
+    try{ todoReminderSync(); }catch(e){}
     if(STATE.loaded && !CHAT.loaded) chatPoll();
     updateNavChatBadge();
   }
@@ -4168,8 +4200,65 @@ function gsiMount(){
 }
 
 /* ---------------------------- RENDER: LOGIN ---------------------------- */
+/* ---------------------------- SYARAT & KETENTUAN / KEBIJAKAN PRIVASI ---------------------------- */
+function legalContentHtml(page){
+  var co = escapeHtml((DB && DB.company && DB.company.name) || 'ABC Hospitality Group');
+  if(page==='privacy'){
+    return '<h2>Kebijakan Privasi</h2>'+
+      '<p>Kebijakan ini menjelaskan data apa saja yang dikumpulkan oleh aplikasi ABC Selaras milik '+co+', untuk apa dipakai, dan bagaimana melindunginya.</p>'+
+      '<h3>1. Data yang kami kumpulkan</h3>'+
+      '<ul><li>Data kepegawaian: nama, kode karyawan, jabatan, departemen, properti, dan kontak kerja.</li>'+
+      '<li>Data absensi: waktu masuk dan pulang, foto selfie saat absen, lokasi GPS saat absen, dan kondisi kesehatan harian yang kamu pilih sendiri.</li>'+
+      '<li>Data penggunaan: pesan dan lampiran di chat kerja, tugas di Selaras Board, serta riwayat pengajuan cuti, izin, dan lembur.</li>'+
+      '<li>Data akun: username, password (disimpan dalam bentuk terenkripsi/tidak dapat dibaca), dan alamat email bila kamu mengisinya atau masuk dengan akun Google.</li></ul>'+
+      '<h3>2. Tujuan penggunaan</h3>'+
+      '<p>Data dipakai untuk mencatat kehadiran, mengelola jadwal dan cuti, penggajian sesuai kebijakan perusahaan, komunikasi kerja, dan keamanan akun.</p>'+
+      '<h3>3. Lokasi dan kamera</h3>'+
+      '<p>Lokasi dan kamera hanya dipakai saat kamu melakukan absen atau mengirim foto dan video di chat. Absen wajib menyertakan lokasi agar bisa dicocokkan dengan lokasi kantor.</p>'+
+      '<h3>4. Pihak yang dapat mengakses</h3>'+
+      '<p>Data hanya dapat dilihat oleh HR dan atasan (HOD) sesuai peran dan departemenmu. Fitur AI hanya menerima ringkasan data sesuai peran dan tidak mengirim data gaji.</p>'+
+      '<h3>5. Penyimpanan dan keamanan</h3>'+
+      '<p>Data disimpan di layanan cloud yang dikelola perusahaan. Kami membatasi akses dan menggunakan koneksi terenkripsi (HTTPS). Setiap perangkat yang login tercatat dan bisa dicabut dari menu Akun Saya.</p>'+
+      '<h3>6. Hak kamu</h3>'+
+      '<p>Kamu dapat meminta data pribadimu dilihat, diperbaiki, atau dihapus sesuai kebijakan perusahaan dengan menghubungi HR.</p>'+
+      '<h3>7. Perubahan kebijakan</h3>'+
+      '<p>Kebijakan ini dapat diperbarui. Perubahan penting akan diumumkan di aplikasi.</p>';
+  }
+  return '<h2>Syarat &amp; Ketentuan</h2>'+
+    '<p>Dengan menggunakan aplikasi ABC Selaras milik '+co+', kamu setuju dengan syarat berikut.</p>'+
+    '<h3>1. Akun</h3>'+
+    '<ul><li>Akun hanya untuk karyawan yang terdaftar. Jangan memakai akun orang lain.</li>'+
+    '<li>Kamu bertanggung jawab menjaga kerahasiaan username dan password. Segera hubungi HR bila curiga akunmu dipakai orang lain.</li>'+
+    '<li>Ganti password secara berkala dan jangan membagikannya ke siapa pun.</li></ul>'+
+    '<h3>2. Absensi</h3>'+
+    '<ul><li>Absen harus dilakukan sendiri, dengan foto dan lokasi yang sebenarnya.</li>'+
+    '<li>Data absen yang dimanipulasi dapat dikenai sanksi sesuai peraturan perusahaan.</li></ul>'+
+    '<h3>3. Penggunaan yang wajar</h3>'+
+    '<ul><li>Gunakan chat, Board, dan fitur lain untuk keperluan kerja.</li>'+
+    '<li>Dilarang mengunggah konten yang melanggar hukum, menyinggung, atau mengandung data rahasia pihak lain tanpa izin.</li></ul>'+
+    '<h3>4. Hak perusahaan</h3>'+
+    '<p>Perusahaan dapat menonaktifkan akun, membatasi akses, atau menghapus konten yang melanggar ketentuan ini.</p>'+
+    '<h3>5. Perubahan ketentuan</h3>'+
+    '<p>Ketentuan ini dapat diperbarui sewaktu-waktu. Dengan terus menggunakan aplikasi, kamu dianggap menyetujui perubahan tersebut.</p>';
+}
+function renderLegalPage(){
+  var page = STATE.legalPage === 'privacy' ? 'privacy' : 'terms';
+  return '<div class="center-screen"><div class="card" style="max-width:720px;width:100%;margin:16px;">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;">'+
+      '<div class="tab-switch" style="margin:0;">'+
+        '<button class="'+(page==='terms'?'active':'')+'" data-action="legal-open" data-page="terms">Syarat &amp; Ketentuan</button>'+
+        '<button class="'+(page==='privacy'?'active':'')+'" data-action="legal-open" data-page="privacy">Kebijakan Privasi</button>'+
+      '</div>'+
+      '<button class="btn btn-secondary btn-sm" data-action="legal-back">Kembali</button>'+
+    '</div>'+
+    '<div class="legal-body" style="line-height:1.6;font-size:14px;">'+legalContentHtml(page)+'</div>'+
+    '<div class="muted" style="font-size:12px;margin-top:14px;">Terakhir diperbarui: November 2026</div>'+
+  '</div></div>';
+}
+
 function renderLogin(){
   var tab = STATE.loginTab;
+  if(STATE.legalPage) return renderLegalPage();
 
   var tabsHtml = ['hr','staff'].map(function(tb){
     var lbl = tb==='hr' ? 'HR' : 'Staff / HOD';
@@ -4216,6 +4305,11 @@ function renderLogin(){
         '<div class="tab-switch">'+tabsHtml+'</div>'+
         '<div>'+formHtml+'</div>'+
         '<div class="login-hint">'+hint+'</div>'+
+        '<div class="login-hint" style="margin-top:12px;text-align:center;">'+
+          '<a href="#" data-action="legal-open" data-page="terms" style="color:inherit;text-decoration:underline;">Syarat &amp; Ketentuan</a>'+
+          ' &middot; '+
+          '<a href="#" data-action="legal-open" data-page="privacy" style="color:inherit;text-decoration:underline;">Kebijakan Privasi</a>'+
+        '</div>'+
       '</div>'+
     '</div>'+
   '</div>';
@@ -4224,6 +4318,8 @@ function renderLogin(){
 /* ---------------------------- RENDER: SHELL ---------------------------- */
 var ICONS = {
   video:'<rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  arrowDown:'<path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/>',
   paperclip:'<path d="M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9"/>',
   sparkles:'<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/><path d="M5 2.5l.6 1.4L7 4.5l-1.4.6L5 6.5l-.6-1.4L3 4.5l1.4-.6z"/>',
   monitor:'<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
@@ -5178,7 +5274,12 @@ function renderEmployees(){
   var filterProp = STATE.employeeFilterProperty;
   var filterRole = STATE.employeeFilterRole || '';
   var filterStatus = STATE.employeeFilterStatus || '';
+  var empQuery = String(STATE.employeeQuery || '').trim().toLowerCase();
   var filtered = DB.employees.filter(function(e){
+    if(empQuery){
+      var hay = [e.name, e.username, e.empCode, e.position, e.department, (e.properties||[]).join(' ')].join(' ').toLowerCase();
+      if(hay.indexOf(empQuery)===-1) return false;
+    }
     if(filterDept && e.department !== filterDept) return false;
     if(filterProp && (!e.properties || e.properties.indexOf(filterProp)===-1)) return false;
     if(filterRole==='hod' && !isHOD(e.id)) return false;
@@ -5228,10 +5329,11 @@ function renderEmployees(){
     '<option value="active" '+(filterStatus==='active'?'selected':'')+'>Aktif</option>'+
     '<option value="inactive" '+(filterStatus==='inactive'?'selected':'')+'>Nonaktif</option>';
 
-  var anyFilter = filterDept||filterProp||filterRole||filterStatus;
+  var anyFilter = filterDept||filterProp||filterRole||filterStatus||empQuery;
 
   return ''+
   '<div class="toolbar"><div class="toolbar-left" style="flex-wrap:wrap;">'+
+    '<input id="employeeSearch" data-role="emp-search" type="search" placeholder="Cari nama, kode, jabatan..." value="'+escapeHtml(STATE.employeeQuery||'')+'" style="padding:9px 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface-container-low);min-width:220px;font:inherit;">'+
     '<span class="muted">'+filtered.length+' dari '+DB.employees.length+' karyawan'+(anyFilter?' (terfilter)':'')+'</span>'+
     '<select id="employeeFilterRole" style="padding:9px 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface-container-low);font-weight:600;">'+roleOptionsFilter+'</select>'+
     '<select id="employeeFilterStatus" style="padding:9px 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface-container-low);font-weight:600;">'+statusOptionsFilter+'</select>'+
@@ -6949,7 +7051,8 @@ function renderCheckinPage(){
 
   var locText = CHECKIN_DRAFT.locationStatus==='loading' ? 'Mengambil lokasi...' :
     CHECKIN_DRAFT.locationStatus==='ok' ? ('Lokasi terdeteksi (akurasi &plusmn;'+Math.round(CHECKIN_DRAFT.location.accuracy||0)+' m).') :
-    'Lokasi tidak tersedia &mdash; tetap bisa absen tanpa lokasi.';
+    'Lokasi belum terdeteksi &mdash; <b>aktifkan GPS</b> dan izinkan akses lokasi, lalu ketuk <b>Coba Lagi</b>. Absen hanya bisa dikirim setelah lokasi terdeteksi.'+
+    '<div style="margin-top:8px;"><button type="button" class="btn btn-secondary btn-sm" data-action="retry-checkin-location">Coba Lagi</button></div>';
 
   var geoMatch = CHECKIN_DRAFT.locationStatus==='ok' ? matchOfficeLocation(CHECKIN_DRAFT.location) : null;
   var geoMatchHtml = '';
@@ -9297,6 +9400,7 @@ function todoItemHtml(t, mode, cols){
   var mine = t.ownerId===todoSelfKey();
   var meta = '<span class="badge '+pr.cls+'">'+pr.label+'</span>'+
     (t.due ? ' <span class="badge '+(overdue?'badge-danger':'badge-neutral')+'">'+(overdue?'Lewat ':'')+formatDateID(t.due)+'</span>' : '')+
+    (t.due && t.remind ? ' <span class="badge badge-info" title="Pengingat">🔔 '+escapeHtml(remindLabel(t.remind))+'</span>' : '')+
     (proj ? ' <span class="badge badge-info">'+escapeHtml(proj.name)+'</span>' : '')+
     (t.createdById && t.createdById!==t.ownerId ? ' <span class="badge badge-warning">Ditugaskan '+escapeHtml(t.createdByLabel||'')+'</span>' : '');
   var actions = '';
@@ -9340,6 +9444,40 @@ function renderKanban(list, mode, dept){
   return '<div class="bd-board" style="--bd-cols:'+cols.length+';">'+html+'</div>';
 }
 
+/* pengingat tenggat tugas: H-1 atau hari H, dikirim pukul 08.00 (lewat lonceng notifikasi) */
+var TODO_REMIND_OPTS = [['', 'Tidak'], ['h1', 'H-1 pukul 08.00'], ['h0', 'Hari H pukul 08.00']];
+function remindOptionsHtml(sel){
+  return TODO_REMIND_OPTS.map(function(o){ return '<option value="'+o[0]+'"'+(String(sel||'')===o[0]?' selected':'')+'>'+o[1]+'</option>'; }).join('');
+}
+function remindLabel(k){ var o = TODO_REMIND_OPTS.filter(function(x){ return x[0]===k; })[0]; return k && o ? o[1] : ''; }
+function todoRemindAt(t){
+  if(!t.due || !t.remind) return null;
+  var p = String(t.due).split('-'); if(p.length!==3) return null;
+  var d = new Date(+p[0], (+p[1])-1, +p[2], 8, 0, 0, 0);
+  if(t.remind==='h1') d.setDate(d.getDate()-1);
+  return d;
+}
+/* kirim pengingat tugas yang sudah waktunya (sekali per kombinasi tenggat + pilihan pengingat) */
+function todoReminderSync(){
+  if(!SESSION.role || !STATE.loaded || !DB || !DB.todos) return;
+  var now = Date.now(), changed = false, me = todoSelfKey();
+  DB.todos.forEach(function(t){
+    if(t.deleted || t.status==='done' || !t.remind || !t.due) return;
+    var at = todoRemindAt(t); if(!at) return;
+    var key = t.due+'|'+t.remind;
+    if(t.remindSent===key || now < at.getTime()) return;
+    t.remindSent = key; changed = true;
+    var msg = '🔔 Pengingat tenggat: "'+t.title+'" jatuh tempo '+formatDateID(t.due)+'.';
+    if(t.ownerId==='hr') addNotification({type:'hr'}, msg, 'todo', 'reminder');
+    else addNotification({type:'emp', empId:t.ownerId}, msg, 'todo', 'reminder');
+    if(t.ownerId===me || (t.ownerId==='hr' && SESSION.role==='hr')){
+      toast(msg.length>90 ? msg.slice(0,90)+'…' : msg);
+      if(!isNativeApp()) systemNotify('Pengingat tenggat', msg);
+    }
+  });
+  if(changed){ try{ saveDB(true); }catch(e){} updateBellBadge(); }
+}
+
 function todoFormHtml(prefix, withOwner, scope, selfOpt){
   var ownerSel = '';
   if(withOwner){
@@ -9357,6 +9495,7 @@ function todoFormHtml(prefix, withOwner, scope, selfOpt){
       '<div class="form-group"><label>Tenggat (opsional)</label><input type="date" id="'+prefix+'_due"></div>'+
       '<div class="form-group"><label>Prioritas</label><select id="'+prefix+'_prio"><option value="normal">Normal</option><option value="tinggi">Tinggi</option><option value="rendah">Rendah</option></select></div>'+
     '</div>'+
+    '<div class="form-group"><label>Ingatkan saya (butuh tenggat)</label><select id="'+prefix+'_remind">'+remindOptionsHtml('')+'</select></div>'+
     projectSelectHtml(prefix+'_proj')+
     '<div class="form-group"><label>Foto (opsional)</label><input type="file" id="'+prefix+'_photo" accept="image/*"></div>';
 }
@@ -9495,6 +9634,7 @@ function todoEditModalHtml(t){
       '<div class="form-group"><label>Tenggat</label><input type="date" id="te_due" value="'+escapeHtml(t.due||'')+'"></div>'+
       ownerField+
     '</div>'+
+    '<div class="form-group"><label>Ingatkan saya (butuh tenggat)</label><select id="te_remind">'+remindOptionsHtml(t.remind||'')+'</select></div>'+
     projectSelectHtml('te_proj', t.projectId)+
     '<div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;flex-wrap:wrap;">'+
       (todoCanDelete(t) ? '<button class="btn btn-ghost" data-action="delete-todo" data-id="'+t.id+'" style="color:var(--danger);">'+iconSvg('trash',14)+' Hapus</button>' : '<span></span>')+
@@ -9508,6 +9648,7 @@ function todoApplyEdit(t, f){
   if((f.note||'')!==(t.note||'')){ changes.push('catatan'); t.note = f.note||''; }
   if((f.priority||'normal')!==(t.priority||'normal')){ changes.push('prioritas'); t.priority = f.priority; }
   if((f.due||'')!==(t.due||'')){ changes.push('tenggat'); t.due = f.due||''; }
+  if(f.remind!==undefined && (f.remind||'')!==(t.remind||'')){ changes.push('pengingat'); t.remind = f.remind||''; }
   if((f.projectId||null)!==(t.projectId||null)){ changes.push('project'); t.projectId = f.projectId||null; }
   var oldOwner = t.ownerId;
   if(f.ownerId && f.ownerId!==t.ownerId && todoCanReassign(t)){
@@ -13169,7 +13310,7 @@ function createTodo(f){
   var selfEmp = SESSION.role==='hr' ? null : getEmployee(SESSION.empId);
   var selfName = SESSION.role==='hr' ? hrActorLabel() : (selfEmp ? selfEmp.name : '');
   var t = {
-    id: uid('TD'), ownerId: f.ownerId, title: f.title, note: f.note||'', due: f.due||'',
+    id: uid('TD'), ownerId: f.ownerId, title: f.title, note: f.note||'', due: f.due||'', remind: f.due ? (f.remind||'') : '',
     priority: f.priority||'normal', status: f.ownerId==='hr' ? boardFirstCol('') : boardFirstCol((getEmployee(f.ownerId)||{}).department||''),
     createdById: selfKey, createdByLabel: 'oleh '+selfName,
     createdAt: now, updatedAt: now, doneAt: null,
@@ -13975,6 +14116,8 @@ function renderChatPage(){
   var peerOk = peer && chatConvs().some(function(p){ return p.id===peer; });
   if(!peerOk){ peer = STATE.chatWith = null; }
   if(!peer) STATE.chatEdit = false;
+  /* percakapan baru dibuka: selalu mulai dari pesan terbaru */
+  if(peer !== CHAT.stickPeer){ CHAT.stickPeer = peer; CHAT.stick = true; }
   var threadHtml;
   if(peer){
     var isGrp = chatIsGroup(peer), online = !isGrp && chatOnline(peer);
@@ -13991,7 +14134,10 @@ function renderChatPage(){
         '<button type="button" class="btn btn-secondary btn-sm" data-action="chat-edit">'+(STATE.chatEdit ? 'Selesai' : 'Edit')+'</button>'+
       '</div>'+
     '</div>'+
-    '<div class="chat-messages" id="chatMessages">'+chatMessagesHtml()+'</div>'+
+    '<div class="chat-msgs-wrap">'+
+      '<div class="chat-messages" id="chatMessages">'+chatMessagesHtml()+'</div>'+
+      '<button type="button" class="chat-tobottom" id="chatToBottom" data-action="chat-to-bottom" aria-label="Ke pesan terbaru" title="Ke pesan terbaru" style="display:none;">'+iconSvg('arrowDown',18)+'</button>'+
+    '</div>'+
     '<div class="chat-compose-wrap">'+
       (CHAT.replyTo ? '<div class="chat-replybar"><div class="chat-quote"><b>Membalas '+escapeHtml(CHAT.replyTo.sender===CHAT.me?'dirimu sendiri':chatPeerName(CHAT.replyTo.sender))+'</b><span>'+escapeHtml(chatPreviewText(CHAT.replyTo).slice(0,90))+'</span></div><button type="button" class="btn btn-ghost btn-sm" data-action="chat-reply-cancel" aria-label="Batal balas">'+iconSvg('close',16)+'</button></div>' : '')+
       (CHAT.pending ? (CHAT.pending.video
@@ -14017,7 +14163,7 @@ function renderChatPage(){
     ? '<div class="chat-list-head"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-new-cancel" aria-label="Kembali">&larr;</button><span class="chat-list-title">Pilih kontak</span></div>'
     : (CHAT.showArchived
       ? '<div class="chat-list-head"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-archived-close" aria-label="Kembali">&larr;</button><span class="chat-list-title">Diarsipkan</span></div>'
-      : '<div class="chat-list-head"><span class="chat-list-title">Pesan</span><span style="display:flex;gap:6px;"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-starred" title="Pesan berbintang" aria-label="Pesan berbintang">'+iconSvg('star',18)+'</button><button type="button" class="btn btn-primary btn-sm" data-action="chat-new">+ Baru</button></span></div>');
+      : '<div class="chat-list-head"><span class="chat-list-title">Pesan</span><span style="display:flex;gap:6px;"><button type="button" class="btn btn-ghost btn-sm" data-action="chat-msg-search" title="Cari pesan" aria-label="Cari pesan">'+iconSvg('search',18)+'</button><button type="button" class="btn btn-ghost btn-sm" data-action="chat-starred" title="Pesan berbintang" aria-label="Pesan berbintang">'+iconSvg('star',18)+'</button><button type="button" class="btn btn-primary btn-sm" data-action="chat-new">+ Baru</button></span></div>');
   return ''+
   (CHAT.error ? '<div class="card" style="background:var(--warning-bg);color:var(--warning);margin-bottom:12px;">'+escapeHtml(CHAT.error)+'</div>' : '')+
   ((CHAT.noFileCols || CHAT.noReads || CHAT.noPresence) && SESSION.role==='hr' && !CHAT.error ? '<div class="card" style="background:var(--info-bg);color:var(--info);margin-bottom:12px;font-size:13px;">Fitur chat baru (kirim berkas, centang dibaca, status online, sematkan/arsip lintas perangkat) butuh pembaruan server: jalankan ulang <b>supabase/chat.sql</b> di Supabase SQL Editor.</div>' : '')+
@@ -14083,13 +14229,13 @@ function updateChatDom(){
   if(list) list.innerHTML = chatListHtml();
   var box = document.getElementById('chatMessages');
   if(box){
-    var nearBottom = (box.scrollHeight - box.scrollTop - box.clientHeight) < 80;
+    var nearBottom = chatIsStuck() || (box.scrollHeight - box.scrollTop - box.clientHeight) < 80;
     var cmHtml = chatMessagesHtml();
     /* jangan gambar ulang bila tidak ada perubahan, atau saat video sedang diputar (agar tidak terhenti) */
     var vidPlaying = Array.prototype.some.call(box.querySelectorAll('video'), function(v){ return !v.paused && !v.ended; });
     if(box._cmHtml !== cmHtml && !vidPlaying){
       box.innerHTML = cmHtml; box._cmHtml = cmHtml;
-      if(nearBottom) box.scrollTop = box.scrollHeight;
+      if(nearBottom) chatScrollToEnd();
     }
   }
   var hs = document.getElementById('chatHeadSub');
@@ -14123,10 +14269,41 @@ function updateNavChatBadge(){
   var bb = document.querySelector('.bottom-nav [data-view="chat"] .bn-ic');
   if(bb){ var bbg = bb.querySelector('.bn-badge'); if(n>0){ if(!bbg){ bbg = document.createElement('span'); bbg.className = 'bn-badge'; bb.appendChild(bbg); } bbg.textContent = n>99 ? '99+' : String(n); } else if(bbg) bbg.remove(); }
 }
-function chatScrollToEnd(){
-  var box = document.getElementById('chatMessages');
-  if(box) box.scrollTop = box.scrollHeight;
+/* Posisi scroll chat. "stick" = pengguna sedang di bagian bawah (pesan terbaru).
+   Di iPhone, layout sering belum selesai saat scroll pertama dijalankan, dan gambar
+   yang baru termuat menambah tinggi. Karena itu scroll diulang beberapa kali. */
+function chatIsStuck(){ return CHAT.stick !== false; }
+function chatScrollToEnd(force){
+  if(force) CHAT.stick = true;
+  var apply = function(){
+    var box = document.getElementById('chatMessages');
+    if(box && chatIsStuck()) box.scrollTop = box.scrollHeight;
+  };
+  apply();
+  if(window.requestAnimationFrame) requestAnimationFrame(apply);
+  [60, 200, 500, 1000].forEach(function(ms){ setTimeout(apply, ms); });
 }
+function chatBindScroll(){
+  var box = document.getElementById('chatMessages');
+  var btn = document.getElementById('chatToBottom');
+  if(!box) return;
+  box.onscroll = function(){
+    var away = box.scrollHeight - box.scrollTop - box.clientHeight;
+    CHAT.stick = away < 120;
+    var b = document.getElementById('chatToBottom');
+    if(b) b.style.display = CHAT.stick ? 'none' : '';
+  };
+  if(btn) btn.style.display = chatIsStuck() ? 'none' : '';
+}
+/* gambar/video di chat yang baru termuat bisa menambah tinggi: jaga tetap di bawah bila masih "stick" */
+document.addEventListener('load', function(e){
+  var t = e.target;
+  if(t && t.closest && t.closest('#chatMessages') && chatIsStuck()) chatScrollToEnd();
+}, true);
+document.addEventListener('loadedmetadata', function(e){
+  var t = e.target;
+  if(t && t.closest && t.closest('#chatMessages') && chatIsStuck()) chatScrollToEnd();
+}, true);
 
 function chatPoll(){
   if(!STATE.loaded || STATE.loadError || !SESSION.role) return Promise.resolve(false);
@@ -14425,6 +14602,35 @@ function mediaSave(key, url, name){
     }).catch(function(){ try{ window.open(src, '_blank'); }catch(e){} });
   }).catch(function(){ toast('Gagal menyimpan media.'); });
 }
+/* Cari pesan di semua percakapan (hanya pesan yang terlihat di chat kamu) */
+function chatMsgSearchModalHtml(){
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:520px;">'+
+    '<h3>Cari Pesan</h3>'+
+    '<div class="form-group"><input id="cmSearchQ" type="search" placeholder="Ketik kata kunci..." data-role="cm-search" style="width:100%;box-sizing:border-box;"></div>'+
+    '<div id="cmSearchRes" style="max-height:52vh;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"><div class="muted" style="font-size:13px;">Ketik minimal 2 huruf.</div></div>'+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Tutup</button></div></div></div>';
+}
+function chatMsgSearchRun(q){
+  var box = document.getElementById('cmSearchRes'); if(!box) return;
+  q = String(q||'').trim().toLowerCase();
+  if(q.length < 2){ box.innerHTML = '<div class="muted" style="font-size:13px;">Ketik minimal 2 huruf.</div>'; return; }
+  var me = CHAT.me;
+  var hits = chatVisible().filter(function(m){
+    return m.kind==='msg' && chatBodyText(m).toLowerCase().indexOf(q)!==-1;
+  }).slice(-60).reverse();
+  if(!hits.length){ box.innerHTML = '<div class="muted" style="font-size:13px;">Tidak ada pesan yang cocok.</div>'; return; }
+  box.innerHTML = hits.map(function(m){
+    var conv = chatConvOf(m, me);
+    var who = chatIsGroup(conv) ? chatPeerName(conv) : chatPeerName(conv);
+    var d = new Date(m.created_at);
+    var snip = chatBodyText(m), i = snip.toLowerCase().indexOf(q);
+    var pre = snip.slice(Math.max(0, i-30), i), hit = snip.slice(i, i+q.length), post = snip.slice(i+q.length, i+q.length+60);
+    var html = (i>30 ? '…' : '')+escapeHtml(pre)+'<mark>'+escapeHtml(hit)+'</mark>'+escapeHtml(post)+(snip.length>i+q.length+60 ? '…' : '');
+    return '<button type="button" class="cm-hit" data-action="chat-msg-go" data-mid="'+m.id+'" style="text-align:left;background:var(--surface-container-low);border:1px solid var(--border);border-radius:12px;padding:10px 12px;cursor:pointer;font:inherit;color:inherit;">'+
+      '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;"><b>'+escapeHtml(who)+'</b><span class="muted">'+formatDateID(d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()))+' '+pad2(d.getHours())+':'+pad2(d.getMinutes())+'</span></div>'+
+      '<div style="font-size:13.5px;margin-top:4px;">'+html+'</div></button>';
+  }).join('');
+}
 function chatJumpTo(id){
   var el = document.querySelector('.chat-msg[data-mid="'+id+'"]');
   if(!el){ toast('Pesan asli tidak ada di layar.'); return; }
@@ -14532,10 +14738,19 @@ document.addEventListener('click', function(e){
 
   var el = e.target.closest('[data-action]');
   if(!el) return;
+  if(el.tagName==='A') e.preventDefault();
   var action = el.getAttribute('data-action');
 
   try{
 
+  if(action==='legal-open'){
+    STATE.legalPage = el.getAttribute('data-page') === 'privacy' ? 'privacy' : 'terms';
+    render(); window.scrollTo(0,0);
+    return;
+  }
+  if(action==='legal-back'){
+    STATE.legalPage = null; render(); return;
+  }
   if(action==='login-tab'){
     STATE.loginTab = el.getAttribute('data-tab');
     STATE.loginError = '';
@@ -15071,6 +15286,7 @@ document.addEventListener('click', function(e){
       ownerId: tdOwner, title: tdTitle,
       note: document.getElementById(tdPrefix+'_note').value.trim(),
       due: document.getElementById(tdPrefix+'_due').value || '',
+      remind: (document.getElementById(tdPrefix+'_remind') && document.getElementById(tdPrefix+'_remind').value) || '',
       priority: document.getElementById(tdPrefix+'_prio').value,
       projectId: (document.getElementById(tdPrefix+'_proj') && document.getElementById(tdPrefix+'_proj').value) || null
     };
@@ -15111,6 +15327,7 @@ document.addEventListener('click', function(e){
       status: document.getElementById('te_status').value,
       priority: document.getElementById('te_prio').value,
       due: document.getElementById('te_due').value || '',
+      remind: (document.getElementById('te_remind') && document.getElementById('te_remind').value) || '',
       projectId: (document.getElementById('te_proj') && document.getElementById('te_proj').value) || null,
       ownerId: tesOwnerEl ? tesOwnerEl.value : null
     });
@@ -15211,11 +15428,29 @@ document.addEventListener('click', function(e){
     openModal(viewA4DocModalHtml(el.getAttribute('data-kind'), el.getAttribute('data-id')));
   } else if(action==='print-a4-doc'){
     printA4Doc();
+  } else if(action==='chat-to-bottom'){
+    chatScrollToEnd(true);
+    var tbBtn = document.getElementById('chatToBottom'); if(tbBtn) tbBtn.style.display = 'none';
+  } else if(action==='chat-msg-search'){
+    openModal(chatMsgSearchModalHtml());
+    var cmq = document.getElementById('cmSearchQ'); if(cmq) cmq.focus();
+  } else if(action==='chat-msg-go'){
+    var goM = chatMsgById(parseInt(el.getAttribute('data-mid'),10));
+    if(!goM){ toast('Pesan tidak ditemukan.'); }
+    else {
+      var goC = chatConvOf(goM, CHAT.me);
+      closeModal();
+      STATE.view = 'chat'; STATE.chatWith = goC; STATE.chatNew = false; CHAT.showArchived = chatIsArchived(goC);
+      CHAT.stick = false; CHAT.stickPeer = goC;
+      render();
+      setTimeout(function(){ chatJumpTo(goM.id); }, 120);
+    }
   } else if(action==='chat-open'){
     chatEnsureIdentity();
     STATE.chatWith = el.getAttribute('data-peer');
     STATE.chatNew = false; STATE.chatEdit = false; CHAT.search = '';
     chatMarkRead(STATE.chatWith);
+    CHAT.stick = true; CHAT.stickPeer = STATE.chatWith;
     render();
     chatScrollToEnd();
   } else if(action==='chat-back'){
@@ -15937,6 +16172,7 @@ document.addEventListener('click', function(e){
     STATE.employeeFilterProperty = '';
     STATE.employeeFilterRole = '';
     STATE.employeeFilterStatus = '';
+    STATE.employeeQuery = '';
     render();
   } else if(action==='add-department'){
     openModal(addDepartmentModalHtml());
@@ -16673,6 +16909,9 @@ document.addEventListener('click', function(e){
   } else if(action==='retry-checkin-camera'){
     CHECKIN_CAMERA_STATUS = 'idle';
     render();
+  } else if(action==='retry-checkin-location'){
+    CHECKIN_DRAFT.locationStatus = 'idle'; CHECKIN_DRAFT.location = null;
+    render();
   } else if(action==='select-checkin-condition'){
     CHECKIN_DRAFT.condition = el.getAttribute('data-value');
     render();
@@ -16749,6 +16988,10 @@ document.addEventListener('click', function(e){
   } else if(action==='submit-checkin'){
     var ckType = el.getAttribute('data-type');
     if(!CHECKIN_DRAFT.photoDataUrl){ toast('Ambil foto selfie dulu.'); return; }
+    if(!CHECKIN_DRAFT.location){
+      toast('Lokasi belum terdeteksi. Aktifkan GPS dan izinkan lokasi, lalu coba lagi.');
+      CHECKIN_DRAFT.locationStatus = 'idle'; render(); return;
+    }
     var empIdCk = SESSION.empId;
     var rkLines = ckType==='out' ? ckrkEntries() : [];
     if(ckType==='out' && !rkLines.length && !rekapTodayEntries(empIdCk).length){ toast('Tulis Rekap Kerja hari ini dulu sebelum absen pulang.'); return; }
@@ -16787,14 +17030,21 @@ document.addEventListener('click', function(e){
       }
       rec.source = 'self';
       DB.attendance[ymCk][empIdCk][dayCk] = rec;
-      raiseAttendanceAlerts(empIdCk, ymCk, dayCk, ckType, timeCk, draftLoc, draftGeoMatch);
-      resetCheckinDraft();
-      return saveDB();
+      return attSaveVerified(ymCk, empIdCk, dayCk, ckType).then(function(okSaved){
+        if(!okSaved) throw new Error('absen-belum-tersimpan');
+        raiseAttendanceAlerts(empIdCk, ymCk, dayCk, ckType, timeCk, draftLoc, draftGeoMatch);
+        resetCheckinDraft();
+      });
     }).then(function(){
       toast((ckType==='in'?'Absen masuk':'Absen pulang')+' berhasil dikirim.');
       render();
     }).catch(function(err){
       console.error('submit-checkin error', err);
+      if(err && err.message==='absen-belum-tersimpan'){
+        toast('Absen belum tersimpan ke server. Foto & lokasi masih ada, ketuk Kirim lagi.');
+        render();
+        return;
+      }
       toast('Gagal mengirim absen, coba lagi.');
     });
   } else if(action==='view-attendance-proof'){
@@ -17133,6 +17383,14 @@ document.addEventListener('input', function(e){
   if(t.getAttribute && t.getAttribute('data-role')==='chat-input'){ CHAT.draft = t.value; t.style.height = 'auto'; t.style.height = Math.min(120, t.scrollHeight)+'px'; }
   if(t.getAttribute && t.getAttribute('data-role')==='cg-search'){ var cgq = t.value.toLowerCase(); Array.prototype.forEach.call(document.querySelectorAll('#cgList .cg-item'), function(it){ it.style.display = (it.getAttribute('data-name')||'').indexOf(cgq)!==-1 ? '' : 'none'; }); }
   if(t.id==='chatSearch'){ CHAT.search = t.value; var chatListEl = document.getElementById('chatList'); if(chatListEl) chatListEl.innerHTML = chatListHtml(); }
+  if(t.getAttribute && t.getAttribute('data-role')==='cm-search'){ chatMsgSearchRun(t.value); }
+  if(t.getAttribute && t.getAttribute('data-role')==='emp-search'){
+    var empCur = t.selectionStart;
+    STATE.employeeQuery = t.value;
+    render();
+    var empFocus = document.getElementById('employeeSearch');
+    if(empFocus){ empFocus.focus(); try{ empFocus.setSelectionRange(empCur, empCur); }catch(err){} }
+  }
   if(t.getAttribute && t.getAttribute('data-role')==='ann-search'){
     var cursorPos = t.selectionStart;
     getAnnouncementDraft().nameSearch = t.value;
