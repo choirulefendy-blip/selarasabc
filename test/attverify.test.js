@@ -13,7 +13,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   w.uploadAttachment=function(){ return Promise.resolve({key:'k',url:null}); };
   w.DB.employees=[{id:'S1',name:'Sari',department:'Marketing',active:true,username:'sari',password:'p',email:'sari@gmail.com'}];
   var ym=new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0'), day=new Date().getDate();
-  function prep(){ w.SESSION={role:'staff',empId:'S1'}; w.STATE.view='checkin'; w.CHECKIN_DRAFT.photoDataUrl='data:image/jpeg;base64,AAAA'; w.CHECKIN_DRAFT.location={lat:-7.9,lng:112.5,accuracy:10}; w.CHECKIN_DRAFT.condition='sehat'; w.render(); }
+  function prep(){ w.SESSION={role:'staff',empId:'S1'}; w.STATE.view='checkin'; w.CHECKIN_DRAFT.photoDataUrl='data:image/jpeg;base64,AAAA'; w.CHECKIN_DRAFT.locationStatus='ok'; w.CHECKIN_DRAFT.location={lat:-7.9,lng:112.5,accuracy:10}; w.CHECKIN_DRAFT.condition='sehat'; w.render(); }
   /* perangkat tanpa biometrik -> email */
   w.bioAvailable=function(){ return Promise.resolve(false); };
   prep(); q('[data-action="submit-checkin"][data-type="in"]').click(); await sleep(50);
