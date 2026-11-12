@@ -1292,6 +1292,18 @@
   .rk-opt input{margin-right:8px;}
   .rk-opt-inline{display:inline-flex;align-items:center;margin:0 6px 0 0;padding:7px 12px;}
   .rk-scale{display:flex;align-items:center;flex-wrap:wrap;gap:4px;}
+  .dt-list{display:flex;flex-direction:column;gap:8px;}
+  .dt-row{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;padding:12px;border:1px solid var(--border);border-radius:12px;background:var(--surface-container-low);cursor:pointer;font:inherit;color:inherit;}
+  .dt-row:hover{border-color:var(--primary);}
+  .dt-row.dt-on{background:color-mix(in srgb, var(--primary) 8%, var(--surface));border-color:var(--primary);}
+  .dt-check{flex-shrink:0;width:24px;height:24px;border-radius:7px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;color:#fff;margin-top:1px;}
+  .dt-row.dt-on .dt-check{background:var(--primary);border-color:var(--primary);}
+  .dt-body{flex:1;min-width:0;}
+  .dt-desc{display:block;font-size:14px;line-height:1.45;}
+  .dt-row.dt-on .dt-desc{text-decoration:line-through;opacity:.7;}
+  .dt-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px;}
+  .dt-time{font-size:11px;font-weight:700;background:var(--primary);color:#fff;padding:2px 8px;border-radius:999px;}
+  .dt-cat{font-size:11px;background:var(--surface-container-high,#e5e7f0);color:var(--text);padding:2px 8px;border-radius:999px;}
   .chat-msg{max-width:78%;display:flex;flex-direction:column;}
   .chat-msg.mine{align-self:flex-end;align-items:flex-end;}
   .chat-msg.theirs{align-self:flex-start;}
@@ -3143,6 +3155,8 @@ function seedData(){
     perfEntries:[],
     recruitTests:[],
     recruitApplicants:[],
+    dailyTasks:{},
+    dailyTaskChecks:{},
     overtimeRequests:[],
     officeLocations: [
       {id:'loc1', name:'Briggs Inn Batu', lat:-7.9010474, lng:112.5586311, address:'Jl. Ir. Soekarno No. 377, Mojorejo, Kec. Junrejo, Kota Batu, Jawa Timur 65326', radius:150},
@@ -3555,6 +3569,8 @@ function runDBMigrations(){
   if(!DB.perfEntries) DB.perfEntries = [];
   if(!DB.recruitTests) DB.recruitTests = [];
   if(!DB.recruitApplicants) DB.recruitApplicants = [];
+  if(!DB.dailyTaskChecks) DB.dailyTaskChecks = {};
+  dailyTasksSeedIfEmpty();
   if(!DB.overtimeRequests) DB.overtimeRequests = [];
   if(!DB.todos) DB.todos = [];
   if(!DB.projects) DB.projects = [];
@@ -4608,6 +4624,7 @@ function navItemsForBase(role){
       {v:'dashboard', label:'Dashboard'},
       {v:'ai-assistant', label:'Asisten AI'},
       {v:'employees', label:'Karyawan'},
+      {v:'daily-tasks', label:'Tugas Harian'},
       {v:'attendance', label:'Absensi & Pencocokan'},
       {v:'report', label:'Laporan & Grafik'},
       {v:'schedule-approval', label:'Persetujuan Jadwal'},
@@ -4644,6 +4661,7 @@ function navItemsForBase(role){
       {v:'schedule', label:'Atur Jadwal Tim'},
       {v:'kpi', label:'KPI Tim'},
       {v:'perf-me', label:'Performance Review'},
+      {v:'daily-tasks', label:'Tugas Harian'},
       {v:'assets', label:'Aset Inventaris'},
       {v:'privileges', label:'Hak Akses Staff'},
       {v:'leave-request', label:'Pengajuan Cuti'},
@@ -4669,6 +4687,7 @@ function navItemsForBase(role){
     {v:'my-schedule', label:'Jadwal Saya'},
     {v:'my-attendance', label:'Absensi Saya'},
     {v:'report', label:'Grafik Saya'},
+    {v:'daily-tasks', label:'Tugas Harian'},
     {v:'perf-me', label:'Performance Review'},
     {v:'leave-request', label:'Pengajuan Cuti'},
     {v:'overtime-request', label:'Pengajuan Lembur'},
@@ -4690,7 +4709,7 @@ function navItemsForBase(role){
 function navGroupsFor(role){
   if(role==='hr'){
     return {top:['dashboard','ai-assistant'], groups:[
-      {id:'sdm', label:'SDM', views:['employees','attendance','report','payroll','org','id-card','assets']},
+      {id:'sdm', label:'SDM', views:['employees','daily-tasks','attendance','report','payroll','org','id-card','assets']},
       {id:'persetujuan', label:'Persetujuan', views:['schedule-approval','kpi-approval','perf-review','leave-approval','overtime-approval','form-approval']},
       {id:'rekrutmen', label:'Rekrutmen', views:['recruit']},
       {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','articles','banners','sop']},
@@ -4700,7 +4719,7 @@ function navGroupsFor(role){
   }
   if(role==='hod'){
     return {top:['dashboard','ai-assistant','checkin'], groups:[
-      {id:'tim', label:'Tim Saya', views:['hod-attendance','report','schedule','kpi','perf-me','assets','privileges']},
+      {id:'tim', label:'Tim Saya', views:['hod-attendance','report','schedule','kpi','perf-me','daily-tasks','assets','privileges']},
       {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request']},
       {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','articles','sop','org']},
       {id:'tugas', label:'Tugas & Aktivitas', views:['todo','my-activity']},
@@ -4708,7 +4727,7 @@ function navGroupsFor(role){
     ]};
   }
   return {top:['dashboard','ai-assistant','checkin'], groups:[
-    {id:'jadwal', label:'Jadwal & Absensi', views:['my-schedule','my-attendance','report']},
+    {id:'jadwal', label:'Jadwal & Absensi', views:['my-schedule','my-attendance','report','daily-tasks']},
     {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request','perf-me']},
     {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','articles','sop','org']},
     {id:'tugas', label:'Tugas & Aktivitas', views:['todo','assets','my-activity']},
@@ -4770,7 +4789,7 @@ function viewTitle(v){
     'form-request':'Form & Approval', 'form-approval':'Form & Approval',
     checkin:'Absen', announcements:'Pengumuman', articles:'Artikel ABC', 'activity-log':'Riwayat Aktivitas',
     'schedule-approval':'Persetujuan Jadwal', 'hod-attendance':'Absensi Tim', report:'Laporan & Grafik',
-    'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI', 'perf-review':'Performance Review', 'perf-me':'Performance Review', 'recruit':'Selaras Rekrut',
+    'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI', 'perf-review':'Performance Review', 'perf-me':'Performance Review', 'recruit':'Selaras Rekrut', 'daily-tasks':'Tugas Harian',
     'overtime-request':'Pengajuan Lembur', 'overtime-approval':'Pengajuan Lembur',
     banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'Selaras Board', accounting:'Dashboard Accounting', person:'Profil', privileges:'Hak Akses Staff', assets:'Aset Inventaris', sop:'SOP & Peraturan', org:'Struktur Organisasi', 'id-card':'e-ID Card', 'hr-profile':'Profil Saya', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
   };
@@ -4798,6 +4817,7 @@ function renderShell(){
   var body = '';
   if(role==='hr'){
     if(STATE.view==='dashboard') body = renderPendingDevicesCard() + renderAdminDashboard() + renderArticlesStrip();
+    else if(STATE.view==='daily-tasks') body = renderDailyTasksAdmin();
     else if(STATE.view==='employees') body = renderEmployees();
     else if(STATE.view==='attendance') body = renderAttendancePage();
     else if(STATE.view==='schedule-approval') body = renderScheduleApprovalPage();
@@ -4836,6 +4856,7 @@ function renderShell(){
     else if(STATE.view==='schedule') body = renderSchedulePage();
     else if(STATE.view==='kpi') body = renderHodKpiPage();
     else if(STATE.view==='perf-me') body = renderPerfMePage();
+    else if(STATE.view==='daily-tasks') body = renderDailyTasksPage();
     else if(STATE.view==='leave-request') body = renderLeaveRequestPage();
     else if(STATE.view==='overtime-request') body = renderOvertimeRequestPage();
     else if(STATE.view==='form-request') body = renderFormRequestPage();
@@ -4864,6 +4885,7 @@ function renderShell(){
     else if(STATE.view==='my-attendance') body = renderStaffAttendance();
     else if(STATE.view==='report') body = renderReportPage();
     else if(STATE.view==='perf-me') body = renderPerfMePage();
+    else if(STATE.view==='daily-tasks') body = renderDailyTasksPage();
     else if(STATE.view==='leave-request') body = renderLeaveRequestPage();
     else if(STATE.view==='overtime-request') body = renderOvertimeRequestPage();
     else if(STATE.view==='form-request') body = renderFormRequestPage();
@@ -6488,7 +6510,7 @@ function renderHodDashboard(){
   if(!STATE.selectedHodEmp || emps.every(function(e){ return e.id!==STATE.selectedHodEmp; })) STATE.selectedHodEmp = emps[0].id;
   var empId = STATE.selectedHodEmp;
 
-  var todayCard = renderBannerCarousel() + deptShortcutsHtml() + renderBentoHero(hodEmp, 'hod');
+  var todayCard = renderBannerCarousel() + deptShortcutsHtml() + renderBentoHero(hodEmp, 'hod') + renderDailyTaskQuick();
 
   var summaryRows = emps.map(function(e){
     var s = getMonthSummary(e.id, ym).totals;
@@ -7169,6 +7191,7 @@ function renderStaffDashboard(){
   renderBannerCarousel()+
   deptShortcutsHtml()+
   renderBentoHero(emp, 'staff')+
+  renderDailyTaskQuick()+
   actionsHtml+
   '<div class="grid grid-4">'+
     '<div class="stat-card"><div class="label">Hadir</div><div class="value">'+s.hadir+'</div><div class="sub">'+monthLabel(ym)+'</div></div>'+
@@ -11457,6 +11480,162 @@ function employeesInDepts(list){
 /* Pintas Dashboard Sales / Accounting.
    Dashboard: sudah ada di grid shortcut bento (staf/HOD) & One Tap Access (HR) -> kosong.
    Halaman Selaras Board ('board'): pil departemen. */
+/* ============================== TUGAS HARIAN (per departemen) ==============================
+   Checklist tugas harian tiap departemen (dari dokumen SOP). Centang reset otomatis tiap hari. */
+var DEFAULT_DAILY_TASKS = {
+  'Public Area': [['07.00-07.15','Briefing, ambil kunci, trolley, & chemical','Persiapan'],['07.15-08.30','Mopping, vacuuming, & pembersihan kaca pintu (Lobi & Pintu Utama)','Lobi'],['08.30-09.30','Sanitasi toilet, cermin, & restock tisu/sabun (Toilet Umum)','Toilet'],['09.30-11.00','Dusting furniture, lap tombol lift & handrail (Koridor & Lift)','Koridor'],['11.00-12.00','Menyapu teras, buang sampah asbak, & cek parkiran (Outdoor)','Outdoor'],['13.00-14.30','Check-up toilet berkala & area ruang rapat','Toilet'],['14.30-15.30','Detailing (lap kaca, sarang laba-laba, polishing)','Detailing'],['15.30-16.00','Buang sampah akhir, bersihkan alat, & handover','Closing']],
+  'Service Restoran': [['Opening','Attendance, grooming check, & pre-service briefing','Opening'],['Opening','Sanitize meja/kursi & kelengkapan cutlery/condiment','Opening'],['Opening','Cek kebersihan toilet tamu & restock tisu/sabun','Opening'],['Service','Menyambut tamu, taking order, & upselling menu','Service'],['Service','Menyajikan makanan/minuman & clear up piring kotor','Service'],['Service','Mengantar bil/pembayaran ke kasir & kembalian','Service'],['Closing','Polishing gelas & cutlery untuk shift berikutnya','Closing'],['Closing','Pembersihan lantai & buang sampah area resto','Closing'],['Closing','Cek purna operasional (Lampu, AC, Musik, Kunci)','Closing']],
+  'Marketing Communication': [['08.30-09.00','Social listening & media monitoring brand/kompetitor','Branding'],['09.00-10.00','Publish konten harian & balas komen/DM','Social Media'],['10.00-11.30','Koordinasi dengan KOL/influencer & media partner','Partnership'],['11.30-12.30','Briefing materi visual/video dengan tim kreatif','Content'],['13.30-14.30','Pembuatan press release / hubungan media','Public Relations'],['14.30-15.30','Monitoring performa paid ads / promo aktif','Advertising'],['15.30-16.30','Rekap analitik performa konten harian','Analytics'],['16.30-17.00','Finalisasi content calendar & planning esok','Strategy']],
+  'Housekeeping': [['07.00-08.00','Briefing, ambil master key, siapkan trolley, linen & amenities','Preparation'],['08.00-09.30','Kamar prioritas (VD) untuk check-in: stripping & trash removal','Rooms'],['09.30-11.00','Bed making & bathroom cleaning (restock toiletries)','Rooms'],['11.00-12.00','Dusting & vacuuming, final inspection (AC, aroma, barang tamu)','Rooms'],['12.00-13.00','Update status kamar (VR) ke Supervisor','Handover'],['13.00-14.30','Selesaikan kamar occupied/checkout, lost & found handling','Rooms'],['14.30-15.00','Laporkan kerusakan ke Engineering (maintenance report)','Report'],['15.00-16.00','Restock trolley, buang linen kotor, kembalikan kunci, handover','Closing']],
+  'Kitchen': [['Opening','Cek suhu chiller/freezer & kelayakan bahan','Opening'],['Opening','Mise en place (potong bahan, buat bumbu/saus)','Opening'],['Opening','Briefing pagi & konfirmasi special menu','Opening'],['Service','Memasak pesanan sesuai Standard Recipe','Service'],['Service','Penerapan Clean as You Go di meja kerja','Service'],['Closing','Sanitasi wadah & penempelan date label bahan','Closing'],['Closing','Deep cleaning alat masak, kompor, & lantai','Closing'],['Closing','Pencatatan waste log & market list esok hari','Closing'],['Closing','Cek keamanan akhir (Gas, Listrik, Air, Kunci)','Closing']],
+  'Finance': [['08.00-08.30','Cek mutasi internet banking & saldo petty cash','Cash'],['08.30-09.30','Rekonsiliasi setoran kasir/pendapatan kemarin','Revenue'],['09.30-11.00','Follow-up piutang (AR aging) & tagihan jatuh tempo','AR'],['11.00-12.00','Verifikasi dokumen tagihan vendor (AP matching)','AP'],['13.00-14.30','Input jurnal transaksi harian ke sistem','Bookkeeping'],['14.30-15.30','Proses reimbursement kas kecil & klaim','Disbursement'],['15.30-16.30','Rekonsiliasi bank harian','Control'],['16.30-17.00','Buat Daily Cash Position Report & arsip','Reporting']],
+  'HRD': [['08.00-09.00','Pengecekan absensi & pengajuan cuti harian','HR Ops'],['09.00-10.00','Membalas email karyawan & administrasi','Admin'],['10.00-11.30','Screening CV & jadwal/sesi interview kandidat','Recruitment'],['11.30-12.00','Koordinasi kandidat / user update','Recruitment'],['13.00-14.30','Update database HRIS / kontrak / BPJS','HR Ops'],['14.30-15.30','Onboarding / exit interview (jika ada)','Employee Dev'],['15.30-16.30','Evaluasi program harian / diskusi internal','Strategy'],['16.30-17.00','Briefing penutup & planning esok hari','Management']],
+  'Pengadaan': [['08.00-09.00','Review & verifikasi PR / Market List','Admin'],['09.00-10.30','Minta penawaran & negosiasi harga ke vendor','Sourcing'],['10.30-12.00','Penerbitan & pengiriman PO ke supplier','Procurement'],['13.00-14.30','Follow-up jadwal pengiriman barang harian','Logistics'],['14.30-15.30','Koordinasi penerimaan barang dengan Receiving','Inspection'],['15.30-16.30','3-Way Matching (PO + Surat Jalan + Invoice)','Finance Admin'],['16.30-17.00','Update status PO di sistem & planning esok','Reporting']],
+  'Engineering': [['07.30','Pencatatan meteran Listrik, Air, & Gas','Utility'],['08.00','Inspeksi Chiller, Boiler, & Pompa Air','Plant Room'],['08.30','Cek bahan bakar, oli, & tegangan baterai Genset','Genset'],['09.30','Penanganan Work Order (AC, plumbing, dll.)','Work Order'],['11.00','Inspeksi lampu & preventive maintenance','Public Area'],['13.30','Cek suhu chiller/freezer & jaringan gas dapur','Kitchen'],['14.30','Cek Panel Fire Alarm & Emergency Light','Safety'],['15.30','Update logbook, stok sparepart, & handover','Reporting']],
+  'Front Office': [['07.00-07.30','Briefing, cek logbook, & hitung cash float','Shift Start'],['07.30-08.00','Print Arrival/Departure List & cek status kamar','Admin'],['08.00-11.30','Penanganan proses Checkout & pembayaran tamu','Guest Service'],['11.30-13.00','Blocking room VIP/Grup & siapkan keycard','Pre-Arrival'],['13.00-14.00','Koordinasi kesiapan kamar VR ke Housekeeping','Coordination'],['14.00-16.30','Penanganan proses Check-in peak time','Guest Service'],['16.30-17.30','Balancing kasir, settlement EDC, & laporan shift','Finance'],['17.30-18.00','Update logbook & handover ke shift berikutnya','Shift End']]
+};
+var DAILY_DEPT_ALIASES = {
+  'marketing':'Marketing Communication','marketingcommunication':'Marketing Communication','marcomm':'Marketing Communication','mkt':'Marketing Communication',
+  'hr':'HRD','hrd':'HRD','humanresource':'HRD','humanresources':'HRD','sdm':'HRD','personalia':'HRD',
+  'fo':'Front Office','frontoffice':'Front Office','frontdesk':'Front Office','reception':'Front Office','receptionist':'Front Office',
+  'service':'Service Restoran','servicerestoran':'Service Restoran','waiter':'Service Restoran','waitress':'Service Restoran','restoran':'Service Restoran','restaurant':'Service Restoran','pramusaji':'Service Restoran','fnbservice':'Service Restoran',
+  'kitchen':'Kitchen','dapur':'Kitchen','cook':'Kitchen','chef':'Kitchen','fnbproduct':'Kitchen','fnbproduction':'Kitchen',
+  'housekeeping':'Housekeeping','hk':'Housekeeping','roomattendant':'Housekeeping',
+  'publicarea':'Public Area','pa':'Public Area',
+  'engineering':'Engineering','teknik':'Engineering','maintenance':'Engineering','me':'Engineering',
+  'finance':'Finance','keuangan':'Finance','accounting':'Finance','accounts':'Finance',
+  'pengadaan':'Pengadaan','purchasing':'Pengadaan','procurement':'Pengadaan','logistik':'Pengadaan'
+};
+function dailyNorm(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+function dailyTasksSeedIfEmpty(){
+  DB.dailyTasks = DB.dailyTasks || {};
+  if(Object.keys(DB.dailyTasks).length) return;
+  Object.keys(DEFAULT_DAILY_TASKS).forEach(function(dept){
+    DB.dailyTasks[dept] = {title:'Tugas Harian '+dept, updatedAt:new Date().toISOString(), items:DEFAULT_DAILY_TASKS[dept].map(function(r, i){ return {id:dailyNorm(dept).slice(0,6)+i, time:r[0], desc:r[1], cat:r[2]}; })};
+  });
+}
+function resolveDailyDept(dept){
+  if(!DB.dailyTasks) return null;
+  var keys = Object.keys(DB.dailyTasks), nd = dailyNorm(dept);
+  if(!nd) return null;
+  for(var i=0;i<keys.length;i++){ if(dailyNorm(keys[i])===nd) return keys[i]; }
+  var alias = DAILY_DEPT_ALIASES[nd];
+  if(alias && DB.dailyTasks[alias]) return alias;
+  for(var j=0;j<keys.length;j++){ var nk=dailyNorm(keys[j]); if(nk && (nk.indexOf(nd)!==-1 || nd.indexOf(nk)!==-1)) return keys[j]; }
+  return null;
+}
+function dailyItemsFor(dept){ var k = resolveDailyDept(dept); return k ? (DB.dailyTasks[k].items||[]) : []; }
+function dailyChecksRec(empId, date){
+  DB.dailyTaskChecks = DB.dailyTaskChecks || {};
+  var e = DB.dailyTaskChecks[empId] = DB.dailyTaskChecks[empId] || {};
+  return e[date] || null;
+}
+function dailyChecksDone(empId, date){ var r = dailyChecksRec(empId, date); return (r && r.done) || {}; }
+function dailyProgress(empId, date, dept){
+  var items = dailyItemsFor(dept), done = dailyChecksDone(empId, date);
+  var n = items.filter(function(it){ return done[it.id]; }).length;
+  return {done:n, total:items.length, pct:items.length?Math.round(n/items.length*100):0};
+}
+function dailyToggle(empId, date, itemId){
+  DB.dailyTaskChecks = DB.dailyTaskChecks || {};
+  var e = DB.dailyTaskChecks[empId] = DB.dailyTaskChecks[empId] || {};
+  var r = e[date] = e[date] || {done:{}, at:null};
+  r.done[itemId] = !r.done[itemId];
+  if(!r.done[itemId]) delete r.done[itemId];
+  r.at = new Date().toISOString();
+  /* sisakan 14 hari terakhir supaya data tidak membengkak */
+  var dates = Object.keys(e).sort();
+  if(dates.length > 14) dates.slice(0, dates.length-14).forEach(function(d){ delete e[d]; });
+}
+
+function renderDailyTaskQuick(){
+  if(!SESSION.empId) return '';
+  var emp = getEmployee(SESSION.empId); if(!emp) return '';
+  var k = resolveDailyDept(emp.department); if(!k) return '';
+  var pr = dailyProgress(emp.id, todayISO(), emp.department);
+  return '<button type="button" class="card daily-quick" data-action="nav" data-view="daily-tasks" style="width:100%;text-align:left;cursor:pointer;border:none;display:flex;align-items:center;gap:14px;">'+
+    '<span style="width:46px;height:46px;border-radius:12px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+iconSvg('clipboard',22)+'</span>'+
+    '<span style="flex:1;min-width:0;"><span style="font-weight:700;display:block;">Tugas Harian '+escapeHtml(emp.department||'')+'</span>'+
+      '<span class="muted" style="font-size:12.5px;">'+pr.done+' dari '+pr.total+' selesai hari ini</span>'+
+      '<span style="display:block;height:7px;border-radius:6px;background:var(--surface-container-high,#e5e7f0);margin-top:6px;overflow:hidden;"><span style="display:block;height:100%;width:'+pr.pct+'%;background:var(--primary);"></span></span>'+
+    '</span>'+
+    '<span style="flex-shrink:0;color:var(--primary);font-weight:700;">'+pr.pct+'%</span>'+
+  '</button>';
+}
+function renderDailyTasksPage(){
+  var emp = getEmployee(SESSION.empId);
+  if(!emp) return '<div class="card empty-state">Data tidak ditemukan.</div>';
+  var k = resolveDailyDept(emp.department);
+  if(!k) return '<div class="card empty-state" style="padding:24px;">Belum ada daftar Tugas Harian untuk departemen "'+escapeHtml(emp.department||'-')+'". Hubungi HR untuk menambahkannya.</div>';
+  var tpl = DB.dailyTasks[k], items = tpl.items||[], date = todayISO(), done = dailyChecksDone(emp.id, date);
+  var pr = dailyProgress(emp.id, date, emp.department);
+  var rows = items.map(function(it){
+    var on = !!done[it.id];
+    return '<button type="button" class="dt-row'+(on?' dt-on':'')+'" data-action="dt-toggle" data-id="'+it.id+'">'+
+      '<span class="dt-check">'+(on?'&#10003;':'')+'</span>'+
+      '<span class="dt-body"><span class="dt-desc">'+escapeHtml(it.desc)+'</span>'+
+        '<span class="dt-meta">'+(it.time?'<span class="dt-time">'+escapeHtml(it.time)+'</span>':'')+(it.cat?'<span class="dt-cat">'+escapeHtml(it.cat)+'</span>':'')+'</span></span>'+
+    '</button>';
+  }).join('');
+  var teamHtml = (SESSION.role==='hod') ? renderDailyTaskTeam(emp) : '';
+  return '<div class="card">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">'+
+      '<div class="card-title" style="margin:0;">'+escapeHtml(tpl.title||('Tugas Harian '+k))+'</div>'+
+      '<span class="badge '+(pr.pct===100?'badge-success':'badge-info')+'">'+pr.done+'/'+pr.total+' · '+pr.pct+'%</span>'+
+    '</div>'+
+    '<div class="muted" style="font-size:12.5px;margin:4px 0 12px;">'+formatDateID(date)+' · Centang tugas yang sudah selesai. Daftar ini otomatis tersetel ulang setiap hari.</div>'+
+    '<div class="dt-list">'+rows+'</div>'+
+  '</div>'+teamHtml;
+}
+function renderDailyTaskTeam(hodEmp){
+  var team = getTeamForHod(SESSION.empId).filter(function(e){ return e.id!==SESSION.empId; });
+  if(!team.length) return '';
+  var date = todayISO();
+  var rows = team.map(function(e){
+    var pr = dailyProgress(e.id, date, e.department);
+    return '<div class="dev-row"><div class="dev-main"><div class="dev-name">'+escapeHtml(e.name)+'</div>'+
+      '<div class="dev-meta">'+pr.done+'/'+pr.total+' tugas selesai</div></div>'+
+      '<span class="badge '+(pr.total && pr.pct===100?'badge-success':'badge-neutral')+'">'+pr.pct+'%</span></div>';
+  }).join('');
+  return '<div class="card"><div class="card-title">Progres Tim Hari Ini</div>'+rows+'</div>';
+}
+/* HR: kelola template + ringkasan per departemen */
+function renderDailyTasksAdmin(){
+  dailyTasksSeedIfEmpty();
+  var depts = Object.keys(DB.dailyTasks);
+  var date = todayISO();
+  var cards = depts.map(function(dept){
+    var tpl = DB.dailyTasks[dept], items = tpl.items||[];
+    var emps = (DB.employees||[]).filter(function(e){ return e.active!==false && resolveDailyDept(e.department)===dept; });
+    var avg = emps.length ? Math.round(emps.reduce(function(s,e){ return s + dailyProgress(e.id, date, e.department).pct; },0)/emps.length) : 0;
+    return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">'+
+      '<div><b>'+escapeHtml(dept)+'</b><div class="muted" style="font-size:12px;">'+items.length+' tugas · '+emps.length+' karyawan'+(emps.length?' · rata-rata '+avg+'% hari ini':'')+'</div></div>'+
+      '<button class="btn btn-ghost btn-sm" data-action="dt-edit" data-dept="'+escapeHtml(dept)+'">Edit Tugas</button></div></div>';
+  }).join('');
+  return '<div class="toolbar"><div class="toolbar-left"><span class="muted">Daftar tugas harian tiap departemen. Karyawan melihatnya sesuai departemennya.</span></div>'+
+    '<button class="btn btn-secondary" data-action="dt-new-dept">+ Departemen</button></div>'+ cards;
+}
+function dailyEditModalHtml(dept){
+  var tpl = DB.dailyTasks[dept]; if(!tpl) return '';
+  var items = tpl.items||[];
+  var rows = items.map(function(it, i){
+    return '<div class="list-row" style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">'+
+      '<span><b>'+(it.time?escapeHtml(it.time)+' · ':'')+'</b>'+escapeHtml(it.desc)+(it.cat?' <span class="muted">['+escapeHtml(it.cat)+']</span>':'')+'</span>'+
+      '<button class="btn btn-ghost btn-sm" data-action="dt-del-item" data-dept="'+escapeHtml(dept)+'" data-id="'+it.id+'" style="color:var(--danger);flex-shrink:0;">Hapus</button></div>';
+  }).join('') || '<div class="muted" style="font-size:13px;">Belum ada tugas.</div>';
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:560px;">'+
+    '<h3>Tugas Harian · '+escapeHtml(dept)+'</h3>'+
+    '<div style="max-height:40vh;overflow-y:auto;margin-bottom:10px;">'+rows+'</div>'+
+    '<div class="card-blue" style="padding:12px;border-radius:12px;">'+
+      '<div class="form-row"><div class="form-group" style="flex:0 0 120px;"><label>Waktu/Shift</label><input id="dti_time" placeholder="08.00-09.00"></div>'+
+        '<div class="form-group"><label>Kategori</label><input id="dti_cat" placeholder="mis. Opening"></div></div>'+
+      '<div class="form-group"><label>Deskripsi tugas</label><textarea id="dti_desc" rows="2"></textarea></div>'+
+      '<button class="btn btn-secondary btn-sm" data-action="dt-add-item" data-dept="'+escapeHtml(dept)+'">+ Tambah Tugas</button>'+
+    '</div>'+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Tutup</button></div>'+
+  '</div></div>';
+}
+
 function deptShortcutsHtml(where){
   if(where!=='board') return '';
   var out = '';
@@ -13880,6 +14059,12 @@ function mergeLiveData(remote){
   });
   if(remote.org && (remote.orgUpdatedAt||'') > (DB.orgUpdatedAt||'')){ DB.org = remote.org; DB.orgUpdatedAt = remote.orgUpdatedAt; }
   mergeLoginDevices(remote.loginDevices);
+  if(remote.dailyTasks){ DB.dailyTasks = DB.dailyTasks || {};
+    Object.keys(remote.dailyTasks).forEach(function(k){ var r = remote.dailyTasks[k], l = DB.dailyTasks[k];
+      if(!l || String(r.updatedAt||'') > String(l.updatedAt||'')) DB.dailyTasks[k] = r; }); }
+  if(remote.dailyTaskChecks){ DB.dailyTaskChecks = DB.dailyTaskChecks || {};
+    Object.keys(remote.dailyTaskChecks).forEach(function(emp){ var rr = remote.dailyTaskChecks[emp]||{}, ll = DB.dailyTaskChecks[emp] = DB.dailyTaskChecks[emp] || {};
+      Object.keys(rr).forEach(function(date){ var rd = rr[date], ld = ll[date]; if(!ld || String((rd&&rd.at)||'') > String((ld&&ld.at)||'')) ll[date] = rd; }); }); }
 
   /* absensi: ambil catatan check-in/out baru milik orang lain supaya tidak tertimpa saat menyimpan */
   var ra = remote.attendance || {};
@@ -17842,6 +18027,43 @@ document.addEventListener('click', function(e){
     if(rpaApp){ rpaApp.interviewAccepted = true; rpaApp.updatedAt = new Date().toISOString();
       recruitSaveApplicant(rpaApp, function(){ rpaSt.accepted = true; render(); }); }
     else { rpaSt.accepted = true; render(); }
+  } else if(action==='dt-toggle'){
+    if(!SESSION.empId) return;
+    dailyToggle(SESSION.empId, todayISO(), el.getAttribute('data-id'));
+    saveDB(true); render();
+  } else if(action==='dt-edit'){
+    if(SESSION.role!=='hr') return;
+    openModal(dailyEditModalHtml(el.getAttribute('data-dept')));
+  } else if(action==='dt-add-item'){
+    if(SESSION.role!=='hr') return;
+    var dtDept = el.getAttribute('data-dept'), dtTpl = DB.dailyTasks[dtDept]; if(!dtTpl) return;
+    var dtDesc = ((document.getElementById('dti_desc')||{}).value||'').trim();
+    if(!dtDesc){ toast('Isi deskripsi tugas dulu.'); return; }
+    dtTpl.items = dtTpl.items || [];
+    dtTpl.items.push({id:'i'+Date.now().toString(36), time:((document.getElementById('dti_time')||{}).value||'').trim(), desc:dtDesc, cat:((document.getElementById('dti_cat')||{}).value||'').trim()});
+    dtTpl.updatedAt = new Date().toISOString();
+    logActivity('Menambah tugas harian '+dtDept+'.');
+    saveDB().then(function(){ openModal(dailyEditModalHtml(dtDept)); });
+  } else if(action==='dt-del-item'){
+    if(SESSION.role!=='hr') return;
+    var ddDept = el.getAttribute('data-dept'), ddTpl = DB.dailyTasks[ddDept]; if(!ddTpl) return;
+    ddTpl.items = (ddTpl.items||[]).filter(function(it){ return it.id!==el.getAttribute('data-id'); });
+    ddTpl.updatedAt = new Date().toISOString();
+    saveDB().then(function(){ openModal(dailyEditModalHtml(ddDept)); });
+  } else if(action==='dt-new-dept'){
+    if(SESSION.role!=='hr') return;
+    openModal('<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:420px;"><h3>Tambah Departemen</h3>'+
+      '<div class="form-group"><label>Nama departemen</label><input id="dt_new_dept" placeholder="mis. Security"></div>'+
+      '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button><button class="btn btn-primary" data-action="dt-create-dept">Tambah</button></div></div></div>');
+  } else if(action==='dt-create-dept'){
+    if(SESSION.role!=='hr') return;
+    var ndName = ((document.getElementById('dt_new_dept')||{}).value||'').trim();
+    if(!ndName){ toast('Isi nama departemen.'); return; }
+    DB.dailyTasks = DB.dailyTasks || {};
+    if(DB.dailyTasks[ndName]){ toast('Departemen itu sudah ada.'); openModal(dailyEditModalHtml(ndName)); return; }
+    DB.dailyTasks[ndName] = {title:'Tugas Harian '+ndName, updatedAt:new Date().toISOString(), items:[]};
+    logActivity('Menambah departemen tugas harian "'+ndName+'".');
+    saveDB().then(function(){ openModal(dailyEditModalHtml(ndName)); });
   } else if(action==='ckv-cancel'){
     STATE.ckv = null; closeModal();
   } else if(action==='ckv-bio'){
