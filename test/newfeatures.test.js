@@ -52,41 +52,30 @@ function click(w,sel){ var el=typeof sel==='string'?w.document.querySelector(sel
   console.log('\n[Selaras Rekrut]');
   w.SESSION={role:'hr',empId:null}; w.STATE.recruitTab='tests'; w.STATE.view='recruit'; w.render(); await sleep(20);
   ok(!!d.querySelector('[data-action="recruit-new-test"]'), 'HR melihat tombol buat Selaras Test');
-  w.STATE.recruitEdit={id:null,title:'',position:'',intro:'',interview:{},questions:[]};
-  // add questions programmatically
-  w.STATE.recruitEdit.title='Rekrut Cook'; w.STATE.recruitEdit.position='Cook';
-  w.STATE.recruitEdit.interview={date:'2026-11-25',time:'10:00',address:'Briggs Inn Batu'};
-  w.STATE.recruitEdit.questions=[
-    {id:'Q1',section:'psikotest',type:'scale',q:'Saya suka bekerja tim'},
-    {id:'Q2',section:'iq',type:'mc',q:'2,4,6,?',options:['7','8','9'],correct:1},
-    {id:'Q3',section:'online',type:'mc',q:'Suhu simpan daging?',options:['Suhu ruang','Kulkas'],correct:1}
-  ];
-  // save via handler
+  // builder baru: soal dari bank, HR hanya pilih posisi & bagian
+  w.STATE.recruitEdit={id:null,title:'Rekrut Cook',positionKey:'cook',position:'Chef / Cook / Dapur',intro:'',interview:{date:'2026-11-25',time:'10:00',address:'Briggs Inn Batu'},sections:{psikotest:true,iq:true,online:true}};
   var saveBtn=d.createElement('button'); saveBtn.setAttribute('data-action','recruit-save-test'); d.body.appendChild(saveBtn);
   w.openModal(w.recruitTestModalHtml());
-  // capture reads from modal fields; ensure modal has our values
-  d.getElementById('rkt_title').value='Rekrut Cook'; d.getElementById('rkt_pos').value='Cook';
-  d.getElementById('rkt_iv_date').value='2026-11-25'; d.getElementById('rkt_iv_addr').value='Briggs Inn Batu';
+  d.getElementById('rkt_title').value='Rekrut Cook';
   click(w, saveBtn); await sleep(40);
   var test=(w.DB.recruitTests||[])[0];
-  ok(test && test.active && test.questions.length===3, 'Selaras Test tersimpan & aktif dengan 3 soal');
+  var expLen=w.RECRUIT_BANK.psikotest.length+w.RECRUIT_BANK.iq.length+w.RECRUIT_BANK.online.cook.length;
+  ok(test && test.active && test.questions.length===expLen, 'Selaras Test tersimpan & aktif dengan soal dari bank');
 
   // public candidate flow
   w.location.hash='#rekrut/'+test.id; w.SESSION={}; w.render(); await sleep(20);
   ok(w.recruitPublicRoute() && /Selaras Test/.test(d.getElementById('app').textContent), 'link publik menampilkan halaman Selaras Test tanpa login');
   click(w,'[data-action="recruit-pub-start"]'); await sleep(20);
-  d.getElementById('rkd_name').value='andi pratama';
-  // simulate uppercase handler
-  d.getElementById('rkd_name').value=d.getElementById('rkd_name').value.toUpperCase();
+  d.getElementById('rkd_name').value='ANDI PRATAMA';
   d.getElementById('rkd_phone').value='081234567890'; d.getElementById('rkd_email').value='andi@mail.com';
   d.getElementById('rkd_address').value='Jl. Mawar 1'; d.getElementById('rkd_birth').value='2000-01-01';
   click(w,'[data-action="recruit-pub-data"]'); await sleep(20);
   ok(w.STATE.recruitPub.step==='test' && w.STATE.recruitPub.data.name==='ANDI PRATAMA', 'data diri tersimpan & nama jadi KAPITAL');
-  // answer questions
-  click(w, d.querySelector('[name="rq_Q1"][value="4"]'));
-  click(w, d.querySelector('[name="rq_Q2"][value="1"]'));
-  click(w, d.querySelector('[name="rq_Q3"][value="1"]'));
-  // stub storageGet/saveDB to resolve locally
+  // jawab semua soal benar (mc -> correct, scale -> 5)
+  test.questions.forEach(function(q){
+    if(q.type==='scale'){ var s=d.querySelector('[name="rq_'+q.id+'"][value="5"]'); if(s) click(w,s); }
+    else { var m=d.querySelector('[name="rq_'+q.id+'"][value="'+q.correct+'"]'); if(m) click(w,m); }
+  });
   w.storageGet=function(){ return Promise.resolve({value:JSON.stringify(w.DB)}); };
   w.saveDB=function(){ return Promise.resolve(true); };
   click(w,'[data-action="recruit-pub-submit"]'); await sleep(80);
