@@ -1279,6 +1279,19 @@
   .chat-tobottom:hover{filter:brightness(.97);}
   .chat-thread-pane{position:relative;}
   .chat-msg-hit mark,.cm-hit mark{background:#CEFF1C;color:#14141A;border-radius:4px;padding:0 2px;}
+  .perf-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+  .perf-row-label{flex:1;min-width:150px;}
+  .perf-dots{display:flex;gap:6px;}
+  .perf-dot{width:34px;height:34px;border-radius:50%;border:1px solid var(--border);background:var(--surface-container-low);color:var(--text);font-weight:700;cursor:pointer;font:inherit;font-weight:700;}
+  .perf-dot.on{background:var(--primary);color:#fff;border-color:var(--primary);}
+  .card-lime{border-left:4px solid #CEFF1C;}
+  .rk-q{padding:10px 0;border-bottom:1px solid var(--border);}
+  .rk-q-text{font-size:14px;margin-bottom:8px;line-height:1.5;}
+  .rk-opt{display:block;padding:9px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:13.5px;background:var(--surface-container-low);}
+  .rk-opt:hover{border-color:var(--primary);}
+  .rk-opt input{margin-right:8px;}
+  .rk-opt-inline{display:inline-flex;align-items:center;margin:0 6px 0 0;padding:7px 12px;}
+  .rk-scale{display:flex;align-items:center;flex-wrap:wrap;gap:4px;}
   .chat-msg{max-width:78%;display:flex;flex-direction:column;}
   .chat-msg.mine{align-self:flex-end;align-items:flex-end;}
   .chat-msg.theirs{align-self:flex-start;}
@@ -2515,6 +2528,78 @@ function ckvDoBio(){
       toast('Verifikasi perangkat gagal/dibatalkan.'+(STATE.ckv.email?' Bisa pakai kode email.':''));
     });
 }
+/* ====================== GERBANG VERIFIKASI APPROVAL ======================
+   Setiap persetujuan/penolakan wajib lewat sidik jari / Face ID atau kode email. */
+var APV = null;        /* status modal verifikasi approval */
+var APV_PASS = false;  /* true saat aksi di-redispatch setelah terverifikasi */
+var APV_NOTE = '';     /* catatan (mis. SOP) yang diteruskan setelah modal diganti */
+var APPROVAL_GATE_ACTIONS = {
+  'approve-leave-request':1, 'reject-leave-request':1,
+  'approve-overtime-request':1, 'reject-overtime-request':1,
+  'approve-form-request':1, 'reject-form-request':1,
+  'approve-kpi-record':1, 'reject-kpi-record':1,
+  'approve-schedule':1, 'reject-schedule':1,
+  'sop-approve':1, 'sop-reject':1,
+  'preview-approve':1, 'preview-reject':1
+};
+function approvalVerifyOn(){ return !(DB && DB.settings && DB.settings.approveVerify===false); }
+function approvalActorEmp(){
+  if(SESSION.role==='hr'){
+    var hp = hrProfileTarget() || DB.hr || {};
+    return {id: hp.id ? ('hr:'+hp.id) : (SESSION.hrAccountId ? 'hra:'+SESSION.hrAccountId : 'hr'), name: hp.name||'HR Admin', username: hp.username||'hr', email: hp.email||((DB.hr||{}).email)||''};
+  }
+  var e = getEmployee(SESSION.empId);
+  return e ? {id:e.id, name:e.name, username:e.username||e.id, email:e.email||''} : null;
+}
+function approvalActionLabel(a){ return (a.indexOf('reject')!==-1) ? 'Penolakan' : 'Persetujuan'; }
+function approvalGateStart(el){
+  var actor = approvalActorEmp();
+  if(!actor){ toast('Akun tidak dikenali untuk verifikasi.'); return; }
+  APV = {el:el, action:el.getAttribute('data-action'), id:el.getAttribute('data-id'),
+         note:((document.getElementById('sop_rv_note')||{}).value||''),
+         actor:actor, step:'choose', bio:null, busy:false, email:actor.email||'', tries:0};
+  openModal(apvModalHtml());
+  bioAvailable().then(function(ok){ if(!APV) return; APV.bio = ok; openModal(apvModalHtml()); if(ok && isNativeApp()) apvDoBio(); });
+}
+function apvModalHtml(){
+  var v = APV; if(!v) return '';
+  var title = 'Verifikasi '+approvalActionLabel(v.action);
+  var body;
+  if(v.step==='code'){
+    body = '<p style="font-size:14px;margin:0 0 12px;">Kode 6 digit dikirim ke <b>'+escapeHtml(ckvMaskEmail(v.email))+'</b>.</p>'+
+      '<input id="apv_code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" style="width:100%;font-size:22px;letter-spacing:8px;text-align:center;font-weight:700;">'+
+      '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;"><button class="btn btn-primary" data-action="apv-check"'+(v.busy?' disabled':'')+'>Verifikasi</button><button class="btn btn-ghost" data-action="apv-email">Kirim ulang</button></div>';
+  } else {
+    var bioBtn = v.bio===null ? '<div class="muted" style="font-size:13px;margin-bottom:10px;">Memeriksa sensor perangkat...</div>'
+      : (v.bio ? '<button class="btn btn-primary" style="width:100%;margin-bottom:10px;" data-action="apv-bio"'+(v.busy?' disabled':'')+'>'+iconSvg('fingerprint',18)+' Sidik Jari / Face ID</button>' : '<div class="muted" style="font-size:13px;margin-bottom:10px;">Perangkat ini tidak mendukung sidik jari / Face ID.</div>');
+    var mailBtn = v.email ? '<button class="btn btn-secondary" style="width:100%;" data-action="apv-email"'+(v.busy?' disabled':'')+'>'+iconSvg('mail',16)+' Kirim kode ke email</button>'
+      : '<div class="muted" style="font-size:13px;">Email belum terdaftar untuk akun ini.</div>'+(v.bio===false ? '<button class="btn btn-secondary" style="width:100%;margin-top:10px;" data-action="apv-skip">Lanjut tanpa verifikasi (dicatat)</button>' : '');
+    body = '<p style="font-size:13.5px;color:var(--muted);margin:0 0 12px;">Konfirmasi identitasmu dulu sebelum memproses.</p>'+ bioBtn + mailBtn;
+  }
+  return '<div class="modal-overlay"><div class="modal" data-stop="1" style="max-width:400px;"><h3>'+title+'</h3>'+body+
+    '<div style="margin-top:14px;text-align:right;"><button class="btn btn-ghost btn-sm" data-action="apv-cancel">Batal</button></div></div></div>';
+}
+function apvDispatch(){
+  if(!APV) return;
+  var action = APV.action, id = APV.id, note = APV.note;
+  APV = null; closeModal();
+  APV_PASS = true; APV_NOTE = note || '';
+  var b = document.createElement('button');
+  b.setAttribute('data-action', action);
+  if(id) b.setAttribute('data-id', id);
+  b.style.display = 'none';
+  document.body.appendChild(b);
+  try{ b.click(); }catch(e){}
+  if(b.parentNode) b.parentNode.removeChild(b);
+  APV_PASS = false; APV_NOTE = '';
+}
+function apvDoBio(){
+  var v = APV; if(!v || v.busy) return;
+  v.busy = true; openModal(apvModalHtml());
+  Promise.resolve().then(function(){ return bioVerify(v.actor); }).then(function(){ apvDispatch(); })
+    .catch(function(){ if(!APV) return; APV.busy = false; openModal(apvModalHtml()); toast('Verifikasi gagal/dibatalkan.'+(APV.email?' Bisa pakai kode email.':'')); });
+}
+
 /* Simpan absen lalu pastikan benar-benar sudah ada di server.
    Sebelum menimpa, data server digabung dulu (mergeLiveData) supaya absen rekan lain
    yang baru masuk tidak ikut terhapus oleh penyimpanan dari perangkat ini. */
@@ -2989,6 +3074,10 @@ function seedData(){
     scheduleApprovals:[],
     kpiDefinitions: JSON.parse(JSON.stringify(DEFAULT_KPI_DEFINITIONS)),
     kpiRecords:[],
+    perfCycles:[],
+    perfEntries:[],
+    recruitTests:[],
+    recruitApplicants:[],
     overtimeRequests:[],
     officeLocations: [
       {id:'loc1', name:'Briggs Inn Batu', lat:-7.9010474, lng:112.5586311, address:'Jl. Ir. Soekarno No. 377, Mojorejo, Kec. Junrejo, Kota Batu, Jawa Timur 65326', radius:150},
@@ -3397,6 +3486,10 @@ function runDBMigrations(){
   if(!DB.scheduleApprovals) DB.scheduleApprovals = [];
   if(!DB.kpiDefinitions) DB.kpiDefinitions = JSON.parse(JSON.stringify(DEFAULT_KPI_DEFINITIONS));
   if(!DB.kpiRecords) DB.kpiRecords = [];
+  if(!DB.perfCycles) DB.perfCycles = [];
+  if(!DB.perfEntries) DB.perfEntries = [];
+  if(!DB.recruitTests) DB.recruitTests = [];
+  if(!DB.recruitApplicants) DB.recruitApplicants = [];
   if(!DB.overtimeRequests) DB.overtimeRequests = [];
   if(!DB.todos) DB.todos = [];
   if(!DB.projects) DB.projects = [];
@@ -3965,6 +4058,12 @@ function render(){
     afterRender();
     return;
   }
+  var rkRoute = recruitPublicRoute();
+  if(rkRoute){
+    app.innerHTML = renderRecruitPublic(rkRoute);
+    afterRender();
+    return;
+  }
   if(!SESSION.role){
     app.innerHTML = renderLogin();
     afterRender();
@@ -4063,6 +4162,7 @@ function syncSystemBars(force){
   }catch(e){}
 }
 document.addEventListener('visibilitychange', function(){ if(!document.hidden) try{ syncSystemBars(true); }catch(e){} });
+window.addEventListener('hashchange', function(){ if(STATE.loaded && recruitPublicRoute()) try{ render(); }catch(e){} });
 function afterRender(){
   try{ aiDecorateFields(); var aiLog = document.getElementById('aiLog'); if(aiLog) aiLog.scrollTop = aiLog.scrollHeight; }catch(e){}
   try{ cacheLoadingImage(); }catch(e){}
@@ -4437,6 +4537,8 @@ function navItemsForBase(role){
       {v:'report', label:'Laporan & Grafik'},
       {v:'schedule-approval', label:'Persetujuan Jadwal'},
       {v:'kpi-approval', label:'Persetujuan KPI'},
+      {v:'perf-review', label:'Performance Review'},
+      {v:'recruit', label:'Selaras Rekrut'},
       {v:'leave-approval', label:'Pengajuan Cuti'},
       {v:'overtime-approval', label:'Pengajuan Lembur'},
       {v:'form-approval', label:'Form & Approval'},
@@ -4512,7 +4614,8 @@ function navGroupsFor(role){
   if(role==='hr'){
     return {top:['dashboard','ai-assistant'], groups:[
       {id:'sdm', label:'SDM', views:['employees','attendance','report','payroll','org','id-card','assets']},
-      {id:'persetujuan', label:'Persetujuan', views:['schedule-approval','kpi-approval','leave-approval','overtime-approval','form-approval']},
+      {id:'persetujuan', label:'Persetujuan', views:['schedule-approval','kpi-approval','perf-review','leave-approval','overtime-approval','form-approval']},
+      {id:'rekrutmen', label:'Rekrutmen', views:['recruit']},
       {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','articles','banners','sop']},
       {id:'tugas', label:'Tugas & Aktivitas', views:['todo','accounting','activity-log']},
       {id:'sistem', label:'Sistem', views:['notif-settings','privileges','hr-profile','settings']}
@@ -4590,7 +4693,7 @@ function viewTitle(v){
     'form-request':'Form & Approval', 'form-approval':'Form & Approval',
     checkin:'Absen', announcements:'Pengumuman', articles:'Artikel ABC', 'activity-log':'Riwayat Aktivitas',
     'schedule-approval':'Persetujuan Jadwal', 'hod-attendance':'Absensi Tim', report:'Laporan & Grafik',
-    'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI',
+    'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI', 'perf-review':'Performance Review', 'recruit':'Selaras Rekrut',
     'overtime-request':'Pengajuan Lembur', 'overtime-approval':'Pengajuan Lembur',
     banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'Selaras Board', accounting:'Dashboard Accounting', person:'Profil', privileges:'Hak Akses Staff', assets:'Aset Inventaris', sop:'SOP & Peraturan', org:'Struktur Organisasi', 'id-card':'e-ID Card', 'hr-profile':'Profil Saya', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
   };
@@ -4622,6 +4725,8 @@ function renderShell(){
     else if(STATE.view==='attendance') body = renderAttendancePage();
     else if(STATE.view==='schedule-approval') body = renderScheduleApprovalPage();
     else if(STATE.view==='kpi-approval') body = renderKpiApprovalPage();
+    else if(STATE.view==='perf-review') body = renderPerfReviewPage();
+    else if(STATE.view==='recruit') body = renderRecruitPage();
     else if(STATE.view==='leave-approval') body = renderLeaveApprovalPage();
     else if(STATE.view==='overtime-approval') body = renderOvertimeApprovalPage();
     else if(STATE.view==='form-approval') body = renderFormApprovalPage();
@@ -4647,7 +4752,7 @@ function renderShell(){
     else if(STATE.view==='settings') body = renderSettingsPage();
     else body = renderAdminDashboard();
   } else if(role==='hod'){
-    if(STATE.view==='dashboard') body = renderHodDashboard() + (getTeamForHod(SESSION.empId).length ? renderAiInsightCard('hod') : '') + renderArticlesStrip();
+    if(STATE.view==='dashboard') body = renderPerfUserCard() + renderHodDashboard() + (getTeamForHod(SESSION.empId).length ? renderAiInsightCard('hod') : '') + renderArticlesStrip();
     else if(STATE.view==='checkin') body = renderCheckinPage();
     else if(STATE.view==='hod-attendance') body = renderHodAttendancePage();
     else if(STATE.view==='report') body = renderReportPage();
@@ -4675,7 +4780,7 @@ function renderShell(){
     else if(STATE.view==='notif-settings') body = renderNotifSettingsPage();
     else body = renderHodDashboard();
   } else {
-    if(STATE.view==='dashboard') body = renderStaffDashboard() + renderArticlesStrip();
+    if(STATE.view==='dashboard') body = renderPerfUserCard() + renderStaffDashboard() + renderArticlesStrip();
     else if(STATE.view==='checkin') body = renderCheckinPage();
     else if(STATE.view==='my-schedule') body = renderStaffSchedule();
     else if(STATE.view==='my-attendance') body = renderStaffAttendance();
@@ -8015,6 +8120,419 @@ function renderKpiApprovalPageBase(){
     '<div class="table-wrap"><table><thead><tr><th>Nama</th><th>Departemen</th><th>Periode</th><th class="num">Skor</th><th>Status</th><th>Aksi</th></tr></thead>'+
     '<tbody>'+(rows||'<tr><td colspan="6" class="empty-state">Belum ada KPI yang diajukan.</td></tr>')+'</tbody></table></div>'+
   '</div>';
+}
+
+/* ============================ PERFORMANCE REVIEW ============================
+   HR mengaktifkan satu siklus + judul. Staff menilai HOD-nya, HOD menilai staff-nya.
+   Penilaian staff->HOD ditampilkan anonim; HOD->staff menampilkan nama penilai (untuk HR). */
+var PERF_SCALE = ['', 'Sangat kurang', 'Kurang', 'Cukup', 'Baik', 'Sangat baik'];
+var PERF_CRITERIA = {
+  staff_to_hod: [
+    {k:'kepemimpinan', label:'Kepemimpinan & arahan', hint:'Memberi arah dan target yang jelas'},
+    {k:'komunikasi', label:'Komunikasi & keterbukaan', hint:'Mudah diajak bicara, menyampaikan info tepat waktu'},
+    {k:'dukungan', label:'Dukungan & bimbingan', hint:'Membantu saat ada kendala, membimbing berkembang'},
+    {k:'keadilan', label:'Keadilan & apresiasi', hint:'Adil dan menghargai kontribusi tim'},
+    {k:'keputusan', label:'Pengambilan keputusan', hint:'Mengambil keputusan tepat dan bertanggung jawab'}
+  ],
+  hod_to_staff: [
+    {k:'kualitas', label:'Kualitas kerja', hint:'Hasil kerja rapi, akurat, sesuai standar'},
+    {k:'disiplin', label:'Tanggung jawab & disiplin', hint:'Tepat waktu, menuntaskan tugas'},
+    {k:'inisiatif', label:'Inisiatif & proaktif', hint:'Tidak menunggu diperintah, mencari solusi'},
+    {k:'kerjasama', label:'Kerja sama tim', hint:'Mendukung rekan, komunikatif'},
+    {k:'komunikasi', label:'Komunikasi', hint:'Menyampaikan kabar/kendala dengan jelas'}
+  ]
+};
+function perfCriteriaFor(dir){ return PERF_CRITERIA[dir] || []; }
+function perfActiveCycle(){ return (DB.perfCycles||[]).filter(function(c){ return c.active && !c.deleted; }).sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); })[0] || null; }
+function perfCycleById(id){ return (DB.perfCycles||[]).filter(function(c){ return c.id===id; })[0] || null; }
+function perfEntry(cycleId, reviewerId, revieweeId){ return (DB.perfEntries||[]).filter(function(e){ return !e.deleted && e.cycleId===cycleId && e.reviewerId===reviewerId && e.revieweeId===revieweeId; })[0] || null; }
+/* Siapa yang harus dinilai oleh viewer saat ini */
+function perfTargetsFor(){
+  var cyc = perfActiveCycle(); if(!cyc) return [];
+  if(SESSION.role==='staff'){
+    var e = getEmployee(SESSION.empId); if(!e) return [];
+    return getDepartmentHods(e.department).filter(function(h){ return h!==SESSION.empId; }).map(function(h){ return {id:h, dir:'staff_to_hod'}; });
+  }
+  if(SESSION.role==='hod'){
+    var dept = (getEmployee(SESSION.empId)||{}).department;
+    var staff = (DB.employees||[]).filter(function(x){ return x.active!==false && x.department===dept && x.id!==SESSION.empId && getDepartmentHods(x.department).indexOf(x.id)===-1; });
+    return staff.map(function(s){ return {id:s.id, dir:'hod_to_staff'}; });
+  }
+  return [];
+}
+function perfResultsFor(revieweeId, cycleId){
+  var entries = (DB.perfEntries||[]).filter(function(e){ return !e.deleted && e.cycleId===cycleId && e.revieweeId===revieweeId; });
+  var sum = 0, n = 0;
+  entries.forEach(function(e){ if(e.avg){ sum += e.avg; n++; } });
+  return {entries:entries, avg:n?sum/n:0, count:n};
+}
+function perfCanReview(){ return perfActiveCycle() && (SESSION.role==='staff' || SESSION.role==='hod') && perfTargetsFor().length>0; }
+function perfPendingCount(){
+  var cyc = perfActiveCycle(); if(!cyc) return 0;
+  return perfTargetsFor().filter(function(t){ return !perfEntry(cyc.id, SESSION.empId, t.id); }).length;
+}
+
+/* Kartu di dashboard staff/HOD saat siklus aktif */
+function renderPerfUserCard(){
+  var cyc = perfActiveCycle(); if(!cyc) return '';
+  if(SESSION.role!=='staff' && SESSION.role!=='hod') return '';
+  var targets = perfTargetsFor();
+  var received = perfResultsFor(SESSION.empId, cyc.id);
+  if(!targets.length && !received.count) return '';
+  var rows = targets.map(function(t){
+    var done = perfEntry(cyc.id, SESSION.empId, t.id);
+    var nm = chatPeerName ? perfName(t.id) : perfName(t.id);
+    var role = t.dir==='staff_to_hod' ? 'Atasan (HOD)' : 'Anggota tim';
+    return '<div class="list-row" style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">'+
+      '<span><b>'+escapeHtml(nm)+'</b><br><span class="muted" style="font-size:12px;">'+role+'</span></span>'+
+      (done ? '<span class="badge badge-success">Selesai · '+done.avg.toFixed(1)+'</span>'
+            : '<button class="btn btn-primary btn-sm" data-action="perf-open" data-id="'+t.id+'" data-dir="'+t.dir+'">Beri Penilaian</button>')+
+    '</div>';
+  }).join('');
+  var recvHtml = received.count ? '<div class="muted" style="font-size:12.5px;margin-top:10px;">Penilaian untuk kamu: <b>'+received.avg.toFixed(1)+'/5</b> dari '+received.count+' penilai.</div>' : '';
+  return '<div class="card card-lime"><div class="card-title">Performance Review · '+escapeHtml(cyc.title)+'</div>'+
+    '<p class="muted" style="font-size:13px;margin:0 0 6px;">Beri penilaian jujur. Penilaian untuk atasan ditampilkan anonim.</p>'+
+    (rows || '<div class="muted" style="font-size:13px;">Tidak ada yang perlu kamu nilai saat ini.</div>')+
+    recvHtml+'</div>';
+}
+function perfName(id){ var e = getEmployee(id); return e ? e.name : (id==='hr' ? 'HR' : '(karyawan)'); }
+
+function perfReviewModalHtml(revieweeId, dir){
+  var cyc = perfActiveCycle(); if(!cyc) return '';
+  var crit = perfCriteriaFor(dir);
+  var existing = perfEntry(cyc.id, SESSION.empId, revieweeId);
+  var rows = crit.map(function(c){
+    var cur = existing && existing.scores ? (existing.scores[c.k]||0) : 0;
+    var opts = [1,2,3,4,5].map(function(n){
+      return '<button type="button" class="perf-dot'+(cur===n?' on':'')+'" data-action="perf-pick" data-crit="'+c.k+'" data-val="'+n+'" title="'+PERF_SCALE[n]+'">'+n+'</button>';
+    }).join('');
+    return '<div class="perf-row" data-crit-row="'+c.k+'"><div class="perf-row-label"><b>'+escapeHtml(c.label)+'</b><span class="muted" style="font-size:11.5px;display:block;">'+escapeHtml(c.hint)+'</span></div>'+
+      '<div class="perf-dots" data-crit-dots="'+c.k+'">'+opts+'</div></div>';
+  }).join('');
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:560px;">'+
+    '<h3>Penilaian: '+escapeHtml(perfName(revieweeId))+'</h3>'+
+    '<p class="muted" style="font-size:12.5px;margin:0 0 10px;">Skala 1 (Sangat kurang) sampai 5 (Sangat baik).</p>'+
+    '<div id="perfForm" data-reviewee="'+escapeHtml(revieweeId)+'" data-dir="'+dir+'">'+rows+
+      '<div class="form-group" style="margin-top:12px;"><label>Catatan / masukan (opsional)</label><textarea id="perf_comment" rows="3" placeholder="Hal yang sudah baik atau perlu ditingkatkan...">'+escapeHtml(existing&&existing.comment?existing.comment:'')+'</textarea></div>'+
+    '</div>'+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button>'+
+      '<button class="btn btn-primary" data-action="perf-save" data-id="'+escapeHtml(revieweeId)+'" data-dir="'+dir+'">Simpan Penilaian</button></div>'+
+  '</div></div>';
+}
+
+/* Halaman HR: kelola siklus + hasil + analisa AI */
+function renderPerfReviewPage(){
+  var cyc = perfActiveCycle();
+  var allCycles = (DB.perfCycles||[]).filter(function(c){ return !c.deleted; }).sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); });
+  var manage = '<div class="card card-blue"><div class="card-title">Pengaturan Performance Review</div>'+
+    (cyc ? '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;"><span>Sedang aktif: <b>'+escapeHtml(cyc.title)+'</b> <span class="muted">('+monthLabel(cyc.period)+')</span></span>'+
+            '<button class="btn btn-secondary btn-sm" data-action="perf-deactivate" data-id="'+cyc.id+'">Nonaktifkan</button></div>'
+          : '<p class="muted" style="font-size:13px;">Belum ada siklus aktif. Buat dan aktifkan di bawah.</p>')+
+    '<div class="form-row">'+
+      '<div class="form-group"><label>Judul Performance Review</label><input id="perf_title" placeholder="mis. Penilaian Kinerja Semester 2 2026" value=""></div>'+
+      '<div class="form-group"><label>Periode</label><input id="perf_period" type="month" value="'+todayISO().slice(0,7)+'"></div>'+
+    '</div>'+
+    '<button class="btn btn-primary" data-action="perf-create">Buat & Aktifkan</button>'+
+  '</div>';
+
+  var resultCyc = STATE.perfResultCycle ? perfCycleById(STATE.perfResultCycle) : cyc;
+  var cycSelect = allCycles.length ? '<select id="perfResultCycle" style="padding:9px 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface-container-low);font-weight:600;">'+
+    allCycles.map(function(c){ return '<option value="'+c.id+'"'+(resultCyc&&resultCyc.id===c.id?' selected':'')+'>'+escapeHtml(c.title)+(c.active?' (aktif)':'')+'</option>'; }).join('')+'</select>' : '';
+
+  var resultsCard = '';
+  if(resultCyc){
+    var people = (DB.employees||[]).filter(function(x){ return x.active!==false; });
+    var rows = people.map(function(p){
+      var r = perfResultsFor(p.id, resultCyc.id);
+      if(!r.count) return '';
+      var isHod = getDepartmentHods(p.department).indexOf(p.id)!==-1;
+      return '<tr><td>'+escapeHtml(p.name)+'</td><td>'+escapeHtml(p.department||'-')+'</td><td>'+(isHod?'HOD':'Staff')+'</td>'+
+        '<td class="num"><b>'+r.avg.toFixed(2)+'</b>/5</td><td class="num">'+r.count+'</td>'+
+        '<td><button class="btn btn-ghost btn-sm" data-action="perf-detail" data-id="'+p.id+'" data-cycle="'+resultCyc.id+'">Lihat</button></td></tr>';
+    }).filter(Boolean).join('');
+    var totalEntries = (DB.perfEntries||[]).filter(function(e){ return !e.deleted && e.cycleId===resultCyc.id; }).length;
+    resultsCard = '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">'+
+      '<div class="card-title" style="margin:0;">Hasil Penilaian</div>'+cycSelect+'</div>'+
+      '<p class="muted" style="font-size:12.5px;margin:6px 0 10px;">'+totalEntries+' penilaian masuk untuk "'+escapeHtml(resultCyc.title)+'".</p>'+
+      (aiEnabled() ? '<button class="btn btn-secondary btn-sm" data-action="perf-ai" data-cycle="'+resultCyc.id+'" style="margin-bottom:10px;">'+iconSvg('sparkles',16)+' Analisa dengan AI</button><div id="perfAiBox"></div>' : '')+
+      '<div class="table-wrap"><table><thead><tr><th>Nama</th><th>Departemen</th><th>Peran</th><th class="num">Rata-rata</th><th class="num">Penilai</th><th>Aksi</th></tr></thead>'+
+      '<tbody>'+(rows||'<tr><td colspan="6" class="empty-state">Belum ada penilaian masuk.</td></tr>')+'</tbody></table></div>'+
+    '</div>';
+  }
+  return manage + resultsCard;
+}
+function perfDetailModalHtml(revieweeId, cycleId){
+  var r = perfResultsFor(revieweeId, cycleId), cyc = perfCycleById(cycleId);
+  var dir = getDepartmentHods((getEmployee(revieweeId)||{}).department).indexOf(revieweeId)!==-1 ? 'staff_to_hod' : 'hod_to_staff';
+  var crit = perfCriteriaFor(dir);
+  var critAvg = crit.map(function(c){
+    var s=0,n=0; r.entries.forEach(function(e){ if(e.scores&&e.scores[c.k]){ s+=e.scores[c.k]; n++; } });
+    return '<tr><td>'+escapeHtml(c.label)+'</td><td class="num">'+(n?(s/n).toFixed(2):'-')+'</td></tr>';
+  }).join('');
+  var anon = dir==='staff_to_hod';
+  var comments = r.entries.filter(function(e){ return e.comment; }).map(function(e){
+    return '<div style="padding:8px 0;border-bottom:1px solid var(--border);"><b style="font-size:12px;">'+(anon?'Anonim':escapeHtml(perfName(e.reviewerId)))+'</b> <span class="badge badge-neutral">'+(e.avg?e.avg.toFixed(1):'-')+'</span><div style="font-size:13px;margin-top:2px;">'+escapeHtml(e.comment)+'</div></div>';
+  }).join('') || '<div class="muted" style="font-size:13px;">Tidak ada catatan tertulis.</div>';
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:600px;">'+
+    '<h3>'+escapeHtml(perfName(revieweeId))+' &mdash; '+escapeHtml(cyc?cyc.title:'')+'</h3>'+
+    '<p style="margin:0 0 10px;">Rata-rata keseluruhan: <b>'+r.avg.toFixed(2)+'/5</b> dari '+r.count+' penilai.</p>'+
+    '<div class="table-wrap"><table><thead><tr><th>Aspek</th><th class="num">Rata-rata</th></tr></thead><tbody>'+critAvg+'</tbody></table></div>'+
+    '<div class="card-title" style="font-size:14px;margin:14px 0 4px;">Catatan penilai</div>'+comments+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Tutup</button></div>'+
+  '</div></div>';
+}
+
+function perfAiContext(cycleId){
+  var cyc = perfCycleById(cycleId); if(!cyc) return '';
+  var lines = ['Siklus: '+cyc.title+' ('+monthLabel(cyc.period)+')'];
+  (DB.employees||[]).filter(function(x){ return x.active!==false; }).forEach(function(p){
+    var r = perfResultsFor(p.id, cyc.id); if(!r.count) return;
+    var isHod = getDepartmentHods(p.department).indexOf(p.id)!==-1;
+    lines.push('- '+p.name+' ('+(isHod?'HOD':'Staff')+', '+(p.department||'-')+'): rata-rata '+r.avg.toFixed(2)+'/5 dari '+r.count+' penilai.');
+    r.entries.filter(function(e){ return e.comment; }).slice(0,4).forEach(function(e){ lines.push('   catatan: '+e.comment); });
+  });
+  return lines.join('\n');
+}
+
+/* ============================== SELARAS REKRUT ==============================
+   HR membuat Selaras Test per posisi (Psikotest, IQ, Test Online). Calon membuka
+   link publik, isi data diri + tes, submit, lalu menyetujui jadwal interview offline.
+   Hasil lengkap + analisa AI tampil di Selaras Rekrut (akun HR). */
+var RECRUIT_SECTIONS = [{k:'psikotest', label:'Psikotest'}, {k:'iq', label:'Test IQ'}, {k:'online', label:'Test Online'}];
+var RECRUIT_STATUS = {submitted:{label:'Masuk', cls:'badge-info'}, interview:{label:'Lolos ke Interview', cls:'badge-success'}, hired:{label:'Diterima', cls:'badge-success'}, rejected:{label:'Tidak lolos', cls:'badge-danger'}};
+function recruitSectionLabel(k){ var s = RECRUIT_SECTIONS.filter(function(x){ return x.k===k; })[0]; return s?s.label:k; }
+function recruitTestById(id){ return (DB.recruitTests||[]).filter(function(t){ return t.id===id && !t.deleted; })[0] || null; }
+function recruitPublicBase(){ return (typeof APP_PUBLIC_URL!=='undefined' && APP_PUBLIC_URL) ? APP_PUBLIC_URL : (location.origin+location.pathname); }
+function recruitLink(t){ return recruitPublicBase()+'#rekrut/'+t.id; }
+function recruitScores(test, answers){
+  var res = {};
+  ['iq','online'].forEach(function(sec){
+    var qs = (test.questions||[]).filter(function(q){ return q.section===sec && q.type==='mc'; });
+    if(!qs.length) return;
+    var correct = 0; qs.forEach(function(q){ if(String(answers[q.id])===String(q.correct)) correct++; });
+    res[sec] = {correct:correct, total:qs.length, pct:qs.length?Math.round(correct/qs.length*100):0};
+  });
+  return res;
+}
+function recruitOverall(scores){ var ks = Object.keys(scores); if(!ks.length) return null; var s=0; ks.forEach(function(k){ s += scores[k].pct; }); return Math.round(s/ks.length); }
+function recruitSaveApplicant(appRec, cb){
+  storageGet('hrdb').then(function(res){
+    if(res && res.value){ try{ mergeLiveData(JSON.parse(res.value)); }catch(e){} }
+    DB.recruitApplicants = DB.recruitApplicants || [];
+    var ex = DB.recruitApplicants.filter(function(a){ return a.id===appRec.id; })[0];
+    if(ex){ for(var k in appRec) ex[k] = appRec[k]; } else DB.recruitApplicants.push(appRec);
+    return saveDB(true);
+  }).then(function(){ cb && cb(true); }).catch(function(){ cb && cb(false); });
+}
+
+/* ---------- Halaman publik untuk calon (tanpa login) ---------- */
+function recruitPublicRoute(){ var h = String(location.hash||'').replace(/^#/,''); var m = h.match(/^rekrut\/([A-Za-z0-9_-]+)/); return m ? {testId:m[1]} : null; }
+function recruitPubState(testId){
+  if(!STATE.recruitPub || STATE.recruitPub.testId!==testId) STATE.recruitPub = {testId:testId, step:'intro', data:{}, answers:{}, applicantId:null};
+  return STATE.recruitPub;
+}
+function renderRecruitPublic(route){
+  var t = recruitTestById(route.testId);
+  var wrap = function(inner){ return '<div style="max-width:620px;margin:0 auto;padding:24px 16px 60px;">'+inner+'</div>'; };
+  if(!t || !t.active){
+    return wrap('<div class="card" style="text-align:center;"><div style="font-size:40px;">&#128533;</div><h2>Tes tidak tersedia</h2><p class="muted">Link ini tidak aktif atau sudah ditutup. Silakan hubungi HR ABC Hospitality Group.</p></div>');
+  }
+  var st = recruitPubState(route.testId);
+  var head = '<div style="text-align:center;margin-bottom:18px;"><div style="font-weight:800;font-size:20px;color:var(--primary);">Selaras Test</div><div class="muted" style="font-size:13px;">ABC Hospitality Group &middot; Posisi: <b>'+escapeHtml(t.position||'-')+'</b></div></div>';
+  if(st.step==='intro'){
+    return wrap(head+'<div class="card"><h2 style="margin-top:0;">'+escapeHtml(t.title)+'</h2>'+
+      (t.intro?'<p style="font-size:14px;line-height:1.6;">'+escapeHtml(t.intro)+'</p>':'<p class="muted" style="font-size:14px;">Tes ini terdiri dari Psikotest, Test IQ, dan Test Online sesuai posisi. Isi dengan jujur. Siapkan waktu yang cukup.</p>')+
+      '<button class="btn btn-primary" style="width:100%;margin-top:8px;" data-action="recruit-pub-start">Mulai</button></div>');
+  }
+  if(st.step==='data'){
+    var d = st.data;
+    return wrap(head+'<div class="card"><div class="card-title">Data Diri</div>'+
+      '<p class="muted" style="font-size:12.5px;margin-top:0;">Semua wajib diisi. Nama otomatis menjadi HURUF KAPITAL.</p>'+
+      '<div class="form-group"><label>Nama Lengkap</label><input id="rkd_name" value="'+escapeHtml(d.name||'')+'" placeholder="NAMA LENGKAP" style="text-transform:uppercase;"></div>'+
+      '<div class="form-group"><label>Nomor Telepon / WhatsApp</label><input id="rkd_phone" inputmode="tel" value="'+escapeHtml(d.phone||'')+'" placeholder="08xxxxxxxxxx"></div>'+
+      '<div class="form-group"><label>Alamat Email</label><input id="rkd_email" type="email" value="'+escapeHtml(d.email||'')+'" placeholder="nama@email.com"></div>'+
+      '<div class="form-group"><label>Alamat Rumah</label><textarea id="rkd_address" rows="2" placeholder="Alamat tempat tinggal">'+escapeHtml(d.address||'')+'</textarea></div>'+
+      '<div class="form-group"><label>Tanggal Lahir</label><input id="rkd_birth" type="date" value="'+escapeHtml(d.birthDate||'')+'"></div>'+
+      '<button class="btn btn-primary" style="width:100%;margin-top:6px;" data-action="recruit-pub-data">Lanjut ke Tes</button></div>');
+  }
+  if(st.step==='test'){
+    var secHtml = RECRUIT_SECTIONS.map(function(sec){
+      var qs = (t.questions||[]).filter(function(q){ return q.section===sec.k; });
+      if(!qs.length) return '';
+      var qHtml = qs.map(function(q, i){
+        var saved = st.answers[q.id];
+        var body;
+        if(q.type==='mc'){
+          body = (q.options||[]).map(function(op, oi){
+            return '<label class="rk-opt"><input type="radio" name="rq_'+q.id+'" value="'+oi+'"'+(String(saved)===String(oi)?' checked':'')+'> '+escapeHtml(op)+'</label>';
+          }).join('');
+        } else if(q.type==='scale'){
+          body = '<div class="rk-scale">'+[1,2,3,4,5].map(function(n){ return '<label class="rk-opt rk-opt-inline"><input type="radio" name="rq_'+q.id+'" value="'+n+'"'+(String(saved)===String(n)?' checked':'')+'> '+n+'</label>'; }).join('')+'<span class="muted" style="font-size:11px;margin-left:6px;">1=Sangat tidak setuju, 5=Sangat setuju</span></div>';
+        } else {
+          body = '<textarea name="rq_'+q.id+'" rows="2" placeholder="Jawaban kamu">'+escapeHtml(saved||'')+'</textarea>';
+        }
+        return '<div class="rk-q"><div class="rk-q-text"><b>'+(i+1)+'.</b> '+escapeHtml(q.q)+'</div>'+body+'</div>';
+      }).join('');
+      return '<div class="card"><div class="card-title">'+escapeHtml(sec.label)+'</div>'+qHtml+'</div>';
+    }).join('');
+    return wrap(head+'<form id="recruitForm">'+secHtml+
+      '<button type="button" class="btn btn-primary" style="width:100%;" data-action="recruit-pub-submit">Kirim Jawaban</button>'+
+      '<p class="muted" style="font-size:11.5px;text-align:center;margin-top:10px;">Pastikan semua jawaban sudah diisi sebelum mengirim.</p></form>');
+  }
+  if(st.step==='done'){
+    var iv = t.interview || {};
+    var ivDate = iv.date ? formatDateID(iv.date)+(iv.time?' pukul '+iv.time:'') : 'akan diinformasikan HR';
+    var accepted = st.accepted;
+    return wrap(head+'<div class="card" style="text-align:center;"><div style="font-size:44px;">&#9989;</div>'+
+      '<h2 style="margin:6px 0;">Terima kasih, '+escapeHtml((st.data.name||'').split(' ')[0]||'')+'!</h2>'+
+      '<p style="font-size:14px;">Jawaban kamu sudah kami terima. Tahap berikutnya adalah <b>Interview Offline</b>.</p>'+
+      '<div class="card-blue" style="text-align:left;padding:14px;border-radius:12px;margin:12px 0;">'+
+        '<div style="margin-bottom:6px;"><b>Jadwal:</b> '+escapeHtml(ivDate)+'</div>'+
+        '<div><b>Alamat:</b> '+escapeHtml(iv.address||'akan diinformasikan HR')+'</div>'+
+        (iv.note?'<div style="margin-top:6px;" class="muted">'+escapeHtml(iv.note)+'</div>':'')+
+      '</div>'+
+      (accepted
+        ? '<div class="badge badge-success" style="font-size:14px;padding:8px 14px;">Kamu sudah menyetujui kehadiran. Sampai jumpa!</div>'
+        : '<p style="font-size:13px;">Mohon konfirmasi kehadiranmu pada jadwal di atas.</p><button class="btn btn-primary" style="width:100%;" data-action="recruit-pub-accept">Saya Menyetujui & Akan Hadir</button>')+
+    '</div>');
+  }
+  return wrap('');
+}
+
+/* ---------- Halaman HR: Selaras Rekrut ---------- */
+function renderRecruitPage(){
+  var tab = STATE.recruitTab || 'applicants';
+  var tabs = '<div class="tab-switch" style="margin-bottom:14px;">'+
+    '<button class="'+(tab==='applicants'?'active':'')+'" data-action="recruit-tab" data-tab="applicants">Pelamar</button>'+
+    '<button class="'+(tab==='tests'?'active':'')+'" data-action="recruit-tab" data-tab="tests">Selaras Test</button>'+
+  '</div>';
+  return tabs + (tab==='tests' ? renderRecruitTests() : renderRecruitApplicants());
+}
+function renderRecruitTests(){
+  var rows = (DB.recruitTests||[]).filter(function(t){ return !t.deleted; }).sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); }).map(function(t){
+    var qn = (t.questions||[]).length;
+    return '<div class="card"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start;">'+
+      '<div><b>'+escapeHtml(t.title)+'</b> '+(t.active?'<span class="badge badge-success">Aktif</span>':'<span class="badge badge-neutral">Nonaktif</span>')+
+        '<div class="muted" style="font-size:12.5px;">Posisi: '+escapeHtml(t.position||'-')+' &middot; '+qn+' soal</div></div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
+        '<button class="btn btn-ghost btn-sm" data-action="recruit-copy-link" data-id="'+t.id+'">Salin Link</button>'+
+        '<button class="btn btn-ghost btn-sm" data-action="recruit-edit-test" data-id="'+t.id+'">Edit</button>'+
+        '<button class="btn btn-ghost btn-sm" data-action="recruit-toggle-test" data-id="'+t.id+'">'+(t.active?'Nonaktifkan':'Aktifkan')+'</button>'+
+      '</div></div>'+
+      '<div class="muted" style="font-size:11.5px;margin-top:8px;word-break:break-all;">'+escapeHtml(recruitLink(t))+'</div>'+
+    '</div>';
+  }).join('');
+  return '<div class="toolbar"><div class="toolbar-left"><span class="muted">Buat tes per posisi, lalu bagikan linknya ke calon.</span></div>'+
+    '<button class="btn btn-primary" data-action="recruit-new-test">+ Buat Selaras Test</button></div>'+
+    (rows || '<div class="card empty-state">Belum ada Selaras Test. Buat yang pertama.</div>');
+}
+function renderRecruitApplicants(){
+  var q = (STATE.recruitQuery||'').trim().toLowerCase();
+  var list = (DB.recruitApplicants||[]).filter(function(a){ return !a.deleted; })
+    .filter(function(a){ return !q || (a.name||'').toLowerCase().indexOf(q)!==-1 || (a.position||'').toLowerCase().indexOf(q)!==-1; })
+    .sort(function(a,b){ return (b.submittedAt||'').localeCompare(a.submittedAt||''); });
+  var rows = list.map(function(a){
+    var meta = RECRUIT_STATUS[a.status] || RECRUIT_STATUS.submitted;
+    var ov = a.overall!=null ? a.overall+'%' : '-';
+    return '<tr><td>'+escapeHtml(a.name||'-')+(a.interviewAccepted?' <span title="Setuju hadir">&#9989;</span>':'')+'</td>'+
+      '<td>'+escapeHtml(a.position||'-')+'</td><td class="num">'+ov+'</td>'+
+      '<td><span class="badge '+meta.cls+'">'+meta.label+'</span></td>'+
+      '<td>'+formatDateID(String(a.submittedAt||'').slice(0,10))+'</td>'+
+      '<td><button class="btn btn-ghost btn-sm" data-action="recruit-view" data-id="'+a.id+'">Lihat</button></td></tr>';
+  }).join('');
+  return '<div class="toolbar"><div class="toolbar-left">'+
+    '<input id="recruitSearch" data-role="recruit-search" type="search" placeholder="Cari nama / posisi..." value="'+escapeHtml(STATE.recruitQuery||'')+'" style="padding:9px 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface-container-low);min-width:200px;font:inherit;">'+
+    '<span class="muted">'+list.length+' pelamar</span></div></div>'+
+    '<div class="card"><div class="table-wrap"><table><thead><tr><th>Nama</th><th>Posisi</th><th class="num">Skor</th><th>Status</th><th>Tanggal</th><th>Aksi</th></tr></thead>'+
+    '<tbody>'+(rows||'<tr><td colspan="6" class="empty-state">Belum ada pelamar yang mengisi tes.</td></tr>')+'</tbody></table></div></div>';
+}
+function recruitTestModalHtml(){
+  var e = STATE.recruitEdit; if(!e) return '';
+  var iv = e.interview || {};
+  var qList = (e.questions||[]).map(function(q, i){
+    var extra = q.type==='mc' ? ' <span class="muted">('+(q.options||[]).length+' pilihan, benar: '+((q.options||[])[q.correct]||'-')+')</span>' : (q.type==='scale'?' <span class="muted">(skala 1-5)</span>':' <span class="muted">(isian)</span>');
+    return '<div class="list-row" style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">'+
+      '<span>['+recruitSectionLabel(q.section)+'] '+escapeHtml(q.q)+extra+'</span>'+
+      '<button class="btn btn-ghost btn-sm" data-action="recruit-del-q" data-qid="'+q.id+'" style="color:var(--danger);flex-shrink:0;">Hapus</button></div>';
+  }).join('') || '<div class="muted" style="font-size:13px;">Belum ada soal.</div>';
+  var secOpts = RECRUIT_SECTIONS.map(function(s){ return '<option value="'+s.k+'">'+s.label+'</option>'; }).join('');
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:640px;">'+
+    '<h3>'+(e.id?'Edit':'Buat')+' Selaras Test</h3>'+
+    '<div class="form-row"><div class="form-group"><label>Judul</label><input id="rkt_title" value="'+escapeHtml(e.title||'')+'" placeholder="mis. Rekrutmen Cook Oktober 2026"></div>'+
+      '<div class="form-group"><label>Posisi / Bagian</label><input id="rkt_pos" value="'+escapeHtml(e.position||'')+'" placeholder="mis. Cook, Front Office"></div></div>'+
+    '<div class="form-group"><label>Pengantar (opsional)</label><textarea id="rkt_intro" rows="2" placeholder="Petunjuk singkat untuk calon">'+escapeHtml(e.intro||'')+'</textarea></div>'+
+    '<div class="card-title" style="font-size:14px;margin:6px 0;">Jadwal Interview Offline</div>'+
+    '<div class="form-row"><div class="form-group"><label>Tanggal</label><input id="rkt_iv_date" type="date" value="'+escapeHtml(iv.date||'')+'"></div>'+
+      '<div class="form-group"><label>Jam</label><input id="rkt_iv_time" type="time" value="'+escapeHtml(iv.time||'')+'"></div></div>'+
+    '<div class="form-group"><label>Alamat Interview</label><textarea id="rkt_iv_addr" rows="2" placeholder="Alamat lokasi interview">'+escapeHtml(iv.address||'')+'</textarea></div>'+
+    '<div class="form-group"><label>Catatan (opsional)</label><input id="rkt_iv_note" value="'+escapeHtml(iv.note||'')+'" placeholder="mis. bawa CV & berpakaian rapi"></div>'+
+    '<div class="card-title" style="font-size:14px;margin:12px 0 4px;">Soal ('+(e.questions||[]).length+')</div>'+
+    '<div style="max-height:180px;overflow-y:auto;margin-bottom:10px;">'+qList+'</div>'+
+    '<div class="card-blue" style="padding:12px;border-radius:12px;">'+
+      '<div class="form-row"><div class="form-group" style="flex:0 0 130px;"><label>Bagian</label><select id="rkq_sec">'+secOpts+'</select></div>'+
+        '<div class="form-group" style="flex:0 0 150px;"><label>Tipe</label><select id="rkq_type"><option value="mc">Pilihan ganda</option><option value="scale">Skala 1-5</option><option value="text">Isian</option></select></div></div>'+
+      '<div class="form-group"><label>Pertanyaan</label><textarea id="rkq_q" rows="2"></textarea></div>'+
+      '<div class="form-group"><label>Pilihan jawaban (satu per baris, untuk Pilihan ganda)</label><textarea id="rkq_opts" rows="3" placeholder="Pilihan A&#10;Pilihan B&#10;Pilihan C"></textarea></div>'+
+      '<div class="form-group"><label>Nomor pilihan yang benar (1, 2, 3, ... — untuk IQ/Test Online)</label><input id="rkq_correct" inputmode="numeric" placeholder="mis. 2"></div>'+
+      '<button class="btn btn-secondary btn-sm" data-action="recruit-add-q">+ Tambah Soal</button>'+
+    '</div>'+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button>'+
+      '<button class="btn btn-primary" data-action="recruit-save-test">Simpan Test</button></div>'+
+  '</div></div>';
+}
+function recruitApplicantModalHtml(id){
+  var a = (DB.recruitApplicants||[]).filter(function(x){ return x.id===id; })[0];
+  if(!a) return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1"><div class="empty-state">Data tidak ditemukan.</div></div></div>';
+  var t = recruitTestById(a.testId) || {questions:[]};
+  var scoreHtml = Object.keys(a.scores||{}).map(function(sec){ var s = a.scores[sec]; return '<span class="badge badge-info" style="margin-right:6px;">'+recruitSectionLabel(sec)+': '+s.correct+'/'+s.total+' ('+s.pct+'%)</span>'; }).join('') || '<span class="muted">Tidak ada bagian berskor.</span>';
+  var ansHtml = RECRUIT_SECTIONS.map(function(sec){
+    var qs = (t.questions||[]).filter(function(q){ return q.section===sec.k; });
+    if(!qs.length) return '';
+    var rows = qs.map(function(q){
+      var ans = (a.answers||{})[q.id];
+      var disp;
+      if(q.type==='mc'){ var pick=(q.options||[])[ans]; var right=String(ans)===String(q.correct); disp = (pick!=null?escapeHtml(pick):'(kosong)')+(sec.k!=='psikotest'?(right?' <span style="color:var(--success);">&#10003;</span>':' <span style="color:var(--danger);">&#10007;</span>'):''); }
+      else if(q.type==='scale'){ disp = (ans!=null?ans+'/5':'(kosong)'); }
+      else disp = ans ? escapeHtml(ans) : '(kosong)';
+      return '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;"><div class="muted">'+escapeHtml(q.q)+'</div><div><b>'+disp+'</b></div></div>';
+    }).join('');
+    return '<div class="card-title" style="font-size:13.5px;margin:12px 0 2px;">'+sec.label+'</div>'+rows;
+  }).join('');
+  var statusBtns = ['interview','hired','rejected'].map(function(s){ var m=RECRUIT_STATUS[s]; return '<button class="btn btn-ghost btn-sm" data-action="recruit-status" data-id="'+a.id+'" data-status="'+s+'"'+(a.status===s?' disabled':'')+'>'+m.label+'</button>'; }).join(' ');
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:680px;">'+
+    '<h3>'+escapeHtml(a.name||'-')+'</h3>'+
+    '<div class="muted" style="font-size:13px;margin-bottom:8px;">'+escapeHtml(a.position||'-')+' &middot; '+formatDateID(String(a.submittedAt||'').slice(0,10))+(a.interviewAccepted?' &middot; <span style="color:var(--success);">Setuju hadir interview</span>':'')+'</div>'+
+    '<div class="card-blue" style="padding:12px;border-radius:12px;font-size:13px;margin-bottom:10px;">'+
+      '<div><b>Telepon:</b> '+escapeHtml(a.phone||'-')+'</div><div><b>Email:</b> '+escapeHtml(a.email||'-')+'</div>'+
+      '<div><b>Alamat:</b> '+escapeHtml(a.address||'-')+'</div><div><b>Tanggal lahir:</b> '+(a.birthDate?formatDateID(a.birthDate):'-')+'</div></div>'+
+    '<div style="margin-bottom:8px;">'+scoreHtml+(a.overall!=null?' <span class="badge badge-neutral">Keseluruhan: '+a.overall+'%</span>':'')+'</div>'+
+    (aiEnabled() ? '<button class="btn btn-secondary btn-sm" data-action="recruit-ai" data-id="'+a.id+'" style="margin-bottom:8px;">'+iconSvg('sparkles',15)+' Analisa dengan AI</button><div id="recruitAiBox"></div>' : '')+
+    '<div style="max-height:34vh;overflow-y:auto;">'+ansHtml+'</div>'+
+    '<div class="card-title" style="font-size:13.5px;margin:12px 0 4px;">Keputusan</div><div style="display:flex;gap:6px;flex-wrap:wrap;">'+statusBtns+'</div>'+
+    '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Tutup</button></div>'+
+  '</div></div>';
+}
+function recruitCaptureEdit(){
+  var e = STATE.recruitEdit; if(!e) return;
+  var g = function(id){ var el = document.getElementById(id); return el ? el.value : undefined; };
+  if(g('rkt_title')!==undefined) e.title = g('rkt_title').trim();
+  if(g('rkt_pos')!==undefined) e.position = g('rkt_pos').trim();
+  if(g('rkt_intro')!==undefined) e.intro = g('rkt_intro').trim();
+  e.interview = e.interview || {};
+  if(g('rkt_iv_date')!==undefined) e.interview.date = g('rkt_iv_date');
+  if(g('rkt_iv_time')!==undefined) e.interview.time = g('rkt_iv_time');
+  if(g('rkt_iv_addr')!==undefined) e.interview.address = g('rkt_iv_addr').trim();
+  if(g('rkt_iv_note')!==undefined) e.interview.note = g('rkt_iv_note').trim();
+}
+function recruitAiContext(a){
+  var t = recruitTestById(a.testId) || {questions:[]};
+  var lines = ['Posisi dilamar: '+(a.position||'-'), 'Nama: '+(a.name||'-')+', usia dari tgl lahir: '+(a.birthDate||'-')];
+  Object.keys(a.scores||{}).forEach(function(sec){ var s=a.scores[sec]; lines.push(recruitSectionLabel(sec)+': '+s.correct+'/'+s.total+' ('+s.pct+'%)'); });
+  (t.questions||[]).filter(function(q){ return q.section==='psikotest' || q.type==='text'; }).forEach(function(q){
+    var ans=(a.answers||{})[q.id]; if(ans==null||ans==='') return;
+    lines.push('['+recruitSectionLabel(q.section)+'] '+q.q+' -> '+(q.type==='scale'?ans+'/5':ans));
+  });
+  return lines.join('\n');
 }
 
 function rejectKpiModalHtml(recordId){
@@ -13148,7 +13666,7 @@ function mergeLiveData(remote){
     });
     DB.workStatus = wsOut;
   }
-  ['articles','projects','timesheets','agenda','accJournals','accPOs','accPetty','sops','notifBroadcasts','notifSchedules','assets','chatGroups'].forEach(function(k){
+  ['articles','projects','timesheets','agenda','accJournals','accPOs','accPetty','sops','notifBroadcasts','notifSchedules','assets','chatGroups','perfCycles','perfEntries','recruitTests','recruitApplicants'].forEach(function(k){
     DB[k] = mergeById(DB[k], remote[k], function(x){ return x.updatedAt || x.createdAt || ''; });
   });
   if(remote.accCats){ DB.accCats = DB.accCats || {}; Object.keys(remote.accCats).forEach(function(pr){
@@ -13830,13 +14348,23 @@ function chatReadPush(conv, lastId){
 function chatReadsPull(){
   if(!chatRemote() || CHAT.noReads) return Promise.resolve(false);
   var me = CHAT.me, convs = [me].concat(chatMyGroups(me).map(function(g){ return 'g:'+g.id; }));
-  return chatRest('chat_reads?select=reader,conv,last_id&conv=in.('+encodeURIComponent(convs.map(function(c){ return '"'+c+'"'; }).join(','))+')').then(function(r){
-    if(r.status===404 || r.status===400){ CHAT.noReads = true; return []; }
-    return r.ok ? r.json() : [];
-  }).then(function(rows){
-    var map = {};
-    (rows||[]).forEach(function(x){ map[x.conv+'|'+x.reader] = x.last_id; });
-    CHAT.reads = map; return true;
+  /* q1: siapa yang membaca pesanku (untuk centang). q2: apa yang SUDAH kubaca di perangkat lain. */
+  var q1 = chatRest('chat_reads?select=reader,conv,last_id&conv=in.('+encodeURIComponent(convs.map(function(c){ return '"'+c+'"'; }).join(','))+')');
+  var q2 = chatRest('chat_reads?select=reader,conv,last_id&reader=eq.'+encodeURIComponent(me));
+  return Promise.all([q1, q2]).then(function(rs){
+    if(rs[0].status===404 || rs[0].status===400){ CHAT.noReads = true; return null; }
+    return Promise.all([ rs[0].ok ? rs[0].json() : [], rs[1].ok ? rs[1].json() : [] ]);
+  }).then(function(parts){
+    if(!parts || CHAT.me!==me) return false;
+    var rows = parts[0]||[], mine = parts[1]||[], map = {};
+    rows.forEach(function(x){ map[x.conv+'|'+x.reader] = x.last_id; });
+    mine.forEach(function(x){ map[x.conv+'|'+x.reader] = x.last_id; });
+    CHAT.reads = map;
+    /* gabungkan status "dibaca" milikku dari perangkat lain supaya tidak muncul belum dibaca lagi */
+    var changed = false;
+    mine.forEach(function(x){ if((x.last_id||0) > (CHAT.readMap[x.conv]||0)){ CHAT.readMap[x.conv] = x.last_id; changed = true; } });
+    if(changed){ chatSaveReadMap(me); updateBellBadge(); if(STATE.view==='chat') updateChatDom(); }
+    return true;
   }).catch(function(){ return false; });
 }
 function chatPresencePush(){
@@ -14315,7 +14843,8 @@ function chatPoll(){
   if(Date.now()-CHAT.lastPresencePush > 45000) chatPresencePush();
   var side = [];
   if(Date.now()-CHAT.lastPresencePull > (STATE.view==='chat' ? 20000 : 60000)) side.push(chatPresencePull());
-  if(STATE.view==='chat' && Date.now()-CHAT.lastReadsPull > 8000){ CHAT.lastReadsPull = Date.now(); side.push(chatReadsPull()); }
+  /* tarik status "dibaca" tiap ~10 dtk di semua layar supaya badge belum-dibaca sinkron antar perangkat */
+  if(Date.now()-CHAT.lastReadsPull > 10000){ CHAT.lastReadsPull = Date.now(); side.push(chatReadsPull()); }
   return chatFetch(me, CHAT.lastId).then(function(rows){
     CHAT.busy = false;
     if(CHAT.me!==me) return false;
@@ -14740,6 +15269,12 @@ document.addEventListener('click', function(e){
   if(!el) return;
   if(el.tagName==='A') e.preventDefault();
   var action = el.getAttribute('data-action');
+
+  /* approval wajib verifikasi: buka gerbang dulu, lalu aksi di-redispatch setelah lolos */
+  if(APPROVAL_GATE_ACTIONS[action] && !APV_PASS && approvalVerifyOn()){
+    approvalGateStart(el);
+    return;
+  }
 
   try{
 
@@ -15944,7 +16479,7 @@ document.addEventListener('click', function(e){
   } else if(action==='sop-approve' || action==='sop-reject'){
     var apD = (DB.sops||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0];
     if(!apD || SESSION.role!=='hr') return;
-    var apNote = ((document.getElementById('sop_rv_note')||{}).value||'').trim().slice(0,300), apNow = new Date().toISOString(), apBy = currentActorLabel();
+    var apNote = ((document.getElementById('sop_rv_note')||{}).value||APV_NOTE||'').trim().slice(0,300), apNow = new Date().toISOString(), apBy = currentActorLabel();
     var apRev = apD.pendingRev && apD.pendingRev.status==='pending' ? apD.pendingRev : null;
     var apHod = (apRev ? apRev.issuer : apD.issuer) || {};
     var hodIds = apD.dept ? getDepartmentHods(apD.dept) : [];
@@ -16926,6 +17461,190 @@ document.addEventListener('click', function(e){
       el.classList.add('active');
     }
     updateLiveA4Preview('leave');
+  } else if(action==='apv-cancel'){
+    APV = null; closeModal();
+  } else if(action==='apv-bio'){
+    apvDoBio();
+  } else if(action==='apv-skip'){
+    apvDispatch();
+  } else if(action==='apv-email'){
+    var av = APV; if(!av || !av.email) return;
+    if(av.sentAt && Date.now()-av.sentAt < 45000){ toast('Tunggu sebentar sebelum kirim ulang.'); return; }
+    var avCode = String(Math.floor(100000 + Math.random()*900000));
+    av.busy = true; openModal(apvModalHtml());
+    egHash(avCode, av.actor.id+'|approve').then(function(h){
+      return sendEmailApi(av.email, 'Kode persetujuan ABC Selaras: '+avCode, 'Halo '+av.actor.name+', kode verifikasi untuk memproses '+approvalActionLabel(av.action).toLowerCase()+' adalah '+avCode+'. Berlaku 10 menit. Abaikan jika ini bukan kamu.', 'dashboard', {kind:'code', code:avCode}).then(function(r){
+        if(!APV) return;
+        av.busy = false;
+        if(!r.ok){ openModal(apvModalHtml()); toast(r.error==='not-configured' ? 'Layanan email belum aktif.' : 'Gagal mengirim kode: '+r.error); return; }
+        av.step='code'; av.hash=h; av.exp=Date.now()+10*60000; av.sentAt=Date.now(); av.tries=0;
+        openModal(apvModalHtml()); toast('Kode dikirim ke email.');
+        var ci = document.getElementById('apv_code'); if(ci) ci.focus();
+      });
+    });
+  } else if(action==='apv-check'){
+    var ac = APV; if(!ac || !ac.hash) return;
+    var acVal = (document.getElementById('apv_code').value||'').replace(/\D/g,'');
+    if(Date.now() > ac.exp){ ac.step='choose'; ac.hash=null; openModal(apvModalHtml()); toast('Kode kedaluwarsa. Kirim ulang.'); return; }
+    if(++ac.tries > 5){ ac.step='choose'; ac.hash=null; openModal(apvModalHtml()); toast('Terlalu banyak percobaan.'); return; }
+    egHash(acVal, ac.actor.id+'|approve').then(function(h){ if(h!==ac.hash){ toast('Kode salah.'); return; } apvDispatch(); });
+  } else if(action==='perf-open'){
+    openModal(perfReviewModalHtml(el.getAttribute('data-id'), el.getAttribute('data-dir')));
+  } else if(action==='perf-pick'){
+    var ppK = el.getAttribute('data-crit'), ppV = el.getAttribute('data-val');
+    var ppGrp = document.querySelector('[data-crit-dots="'+ppK+'"]');
+    if(ppGrp) Array.prototype.forEach.call(ppGrp.querySelectorAll('.perf-dot'), function(d){ d.classList.toggle('on', d.getAttribute('data-val')===ppV); });
+  } else if(action==='perf-save'){
+    var psCyc = perfActiveCycle(); if(!psCyc){ toast('Siklus tidak aktif.'); return; }
+    var psReviewee = el.getAttribute('data-id'), psDir = el.getAttribute('data-dir');
+    var psCrit = perfCriteriaFor(psDir), psScores = {}, psSum = 0, psOk = true;
+    psCrit.forEach(function(c){ var on = document.querySelector('[data-crit-dots="'+c.k+'"] .perf-dot.on'); if(!on){ psOk = false; } else { psScores[c.k] = +on.getAttribute('data-val'); psSum += psScores[c.k]; } });
+    if(!psOk){ toast('Lengkapi semua aspek penilaian dulu.'); return; }
+    var psAvg = psSum/psCrit.length;
+    var psComment = ((document.getElementById('perf_comment')||{}).value||'').trim().slice(0,500);
+    var psEx = perfEntry(psCyc.id, SESSION.empId, psReviewee);
+    if(psEx){ psEx.scores = psScores; psEx.avg = psAvg; psEx.comment = psComment; psEx.updatedAt = new Date().toISOString(); }
+    else DB.perfEntries.push({id:uid('PR'), cycleId:psCyc.id, reviewerId:SESSION.empId, revieweeId:psReviewee, direction:psDir, scores:psScores, avg:psAvg, comment:psComment, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()});
+    logActivity('Mengisi Performance Review untuk "'+perfName(psReviewee)+'".');
+    saveDB().then(function(){ closeModal(); toast('Penilaian tersimpan. Terima kasih!'); render(); });
+  } else if(action==='perf-create'){
+    if(SESSION.role!=='hr') return;
+    var pcTitle = ((document.getElementById('perf_title')||{}).value||'').trim();
+    var pcPeriod = ((document.getElementById('perf_period')||{}).value||'').slice(0,7);
+    if(!pcTitle){ toast('Isi judul Performance Review dulu.'); return; }
+    (DB.perfCycles||[]).forEach(function(c){ if(c.active){ c.active = false; c.updatedAt = new Date().toISOString(); } });
+    DB.perfCycles.push({id:uid('PC'), title:pcTitle, period:pcPeriod||todayISO().slice(0,7), active:true, createdAt:new Date().toISOString(), createdBy:currentActorLabel()});
+    logActivity('Mengaktifkan Performance Review "'+pcTitle+'".');
+    (DB.employees||[]).filter(function(x){ return x.active!==false; }).forEach(function(x){ addNotification({type:'emp', empId:x.id}, 'Performance Review "'+pcTitle+'" telah dibuka. Mohon isi penilaian di dashboard kamu.', 'perf'); });
+    saveDB().then(function(){ toast('Performance Review aktif.'); render(); });
+  } else if(action==='perf-deactivate'){
+    var pdCyc = perfCycleById(el.getAttribute('data-id')); if(!pdCyc) return;
+    pdCyc.active = false; pdCyc.updatedAt = new Date().toISOString();
+    logActivity('Menutup Performance Review "'+pdCyc.title+'".');
+    saveDB().then(function(){ toast('Performance Review ditutup.'); render(); });
+  } else if(action==='perf-detail'){
+    openModal(perfDetailModalHtml(el.getAttribute('data-id'), el.getAttribute('data-cycle')));
+  } else if(action==='perf-ai'){
+    if(!aiConfigured()){ toast('Server AI belum dipasang.'); return; }
+    var paBox = document.getElementById('perfAiBox');
+    if(paBox) paBox.innerHTML = '<div class="muted" style="font-size:13px;">'+iconSvg('sparkles',14)+' Menganalisa dengan AI...</div>';
+    aiCall('asisten', {messages:[{role:'user', text:'Berikut ringkasan hasil Performance Review karyawan (skala 1-5). Buat analisa singkat Bahasa Indonesia: (1) kekuatan tim, (2) hal yang perlu diperhatikan, (3) 2-3 saran tindak lanjut untuk HR. Ringkas, tanpa menyebut angka satu per satu.\n\n'+perfAiContext(el.getAttribute('data-cycle'))}], context:''}).then(function(j){
+      if(paBox) paBox.innerHTML = '<div class="card-blue" style="padding:12px;border-radius:12px;white-space:pre-wrap;font-size:13.5px;margin-bottom:10px;">'+escapeHtml(j.text||'')+'</div>';
+    }).catch(function(err){ if(paBox) paBox.innerHTML = '<div style="font-size:13px;color:var(--danger);">'+escapeHtml(err.message)+'</div>'; });
+  } else if(action==='recruit-tab'){
+    STATE.recruitTab = el.getAttribute('data-tab'); render();
+  } else if(action==='recruit-new-test'){
+    STATE.recruitEdit = {id:null, title:'', position:'', intro:'', interview:{}, questions:[]};
+    openModal(recruitTestModalHtml());
+  } else if(action==='recruit-edit-test'){
+    var reT = recruitTestById(el.getAttribute('data-id')); if(!reT) return;
+    STATE.recruitEdit = JSON.parse(JSON.stringify(reT));
+    if(!STATE.recruitEdit.interview) STATE.recruitEdit.interview = {};
+    openModal(recruitTestModalHtml());
+  } else if(action==='recruit-add-q'){
+    recruitCaptureEdit();
+    var rqSec = (document.getElementById('rkq_sec')||{}).value||'psikotest';
+    var rqType = (document.getElementById('rkq_type')||{}).value||'mc';
+    var rqQ = ((document.getElementById('rkq_q')||{}).value||'').trim();
+    if(!rqQ){ toast('Isi pertanyaannya dulu.'); return; }
+    var rqNew = {id:uid('Q'), section:rqSec, type:rqType, q:rqQ};
+    if(rqType==='mc'){
+      var rqOpts = ((document.getElementById('rkq_opts')||{}).value||'').split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
+      if(rqOpts.length<2){ toast('Pilihan ganda butuh minimal 2 pilihan.'); return; }
+      rqNew.options = rqOpts;
+      var rqC = parseInt(((document.getElementById('rkq_correct')||{}).value||'').replace(/\D/g,''),10);
+      rqNew.correct = (rqSec!=='psikotest' && rqC>=1 && rqC<=rqOpts.length) ? (rqC-1) : (rqSec!=='psikotest'?0:-1);
+    }
+    STATE.recruitEdit.questions.push(rqNew);
+    openModal(recruitTestModalHtml());
+  } else if(action==='recruit-del-q'){
+    recruitCaptureEdit();
+    var rdQid = el.getAttribute('data-qid');
+    STATE.recruitEdit.questions = (STATE.recruitEdit.questions||[]).filter(function(q){ return q.id!==rdQid; });
+    openModal(recruitTestModalHtml());
+  } else if(action==='recruit-save-test'){
+    recruitCaptureEdit();
+    var rsE = STATE.recruitEdit;
+    if(!rsE.title){ toast('Isi judul test dulu.'); return; }
+    if(!rsE.position){ toast('Isi posisi/bagian dulu.'); return; }
+    if(!(rsE.questions||[]).length){ toast('Tambahkan minimal satu soal.'); return; }
+    if(rsE.id){
+      var rsT = recruitTestById(rsE.id);
+      if(rsT){ rsT.title=rsE.title; rsT.position=rsE.position; rsT.intro=rsE.intro; rsT.interview=rsE.interview; rsT.questions=rsE.questions; rsT.updatedAt=new Date().toISOString(); }
+    } else {
+      rsE.id = uid('RT'); rsE.active = true; rsE.createdAt = new Date().toISOString(); rsE.updatedAt = rsE.createdAt;
+      DB.recruitTests.push(rsE);
+    }
+    logActivity('Menyimpan Selaras Test "'+rsE.title+'".');
+    STATE.recruitEdit = null;
+    saveDB().then(function(){ closeModal(); toast('Selaras Test tersimpan.'); render(); });
+  } else if(action==='recruit-copy-link'){
+    var rcT = recruitTestById(el.getAttribute('data-id')); if(!rcT) return;
+    var rcLink = recruitLink(rcT);
+    if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(rcLink).then(function(){ toast('Link disalin.'); }, function(){ toast(rcLink); }); }
+    else toast(rcLink);
+  } else if(action==='recruit-toggle-test'){
+    var rtT = recruitTestById(el.getAttribute('data-id')); if(!rtT) return;
+    rtT.active = !rtT.active; rtT.updatedAt = new Date().toISOString();
+    saveDB().then(function(){ toast(rtT.active?'Test diaktifkan.':'Test dinonaktifkan.'); render(); });
+  } else if(action==='recruit-view'){
+    openModal(recruitApplicantModalHtml(el.getAttribute('data-id')));
+  } else if(action==='recruit-status'){
+    var rvA = (DB.recruitApplicants||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0]; if(!rvA) return;
+    rvA.status = el.getAttribute('data-status'); rvA.updatedAt = new Date().toISOString();
+    logActivity('Memperbarui status pelamar "'+rvA.name+'" menjadi '+(RECRUIT_STATUS[rvA.status]||{}).label+'.');
+    saveDB().then(function(){ toast('Status diperbarui.'); openModal(recruitApplicantModalHtml(rvA.id)); render(); });
+  } else if(action==='recruit-ai'){
+    if(!aiConfigured()){ toast('Server AI belum dipasang.'); return; }
+    var raA = (DB.recruitApplicants||[]).filter(function(x){ return x.id===el.getAttribute('data-id'); })[0]; if(!raA) return;
+    var raBox = document.getElementById('recruitAiBox');
+    if(raBox) raBox.innerHTML = '<div class="muted" style="font-size:13px;">'+iconSvg('sparkles',14)+' Menganalisa dengan AI...</div>';
+    aiCall('asisten', {messages:[{role:'user', text:'Berikut hasil tes seorang calon karyawan. Buat analisa singkat Bahasa Indonesia untuk HR: (1) kelebihan, (2) hal yang perlu didalami saat interview, (3) rekomendasi (lanjut interview / dipertimbangkan / belum sesuai). Jujur dan seimbang.\n\n'+recruitAiContext(raA)}], context:''}).then(function(j){
+      if(raBox) raBox.innerHTML = '<div class="card-blue" style="padding:12px;border-radius:12px;white-space:pre-wrap;font-size:13.5px;margin-bottom:8px;">'+escapeHtml(j.text||'')+'</div>';
+    }).catch(function(err){ if(raBox) raBox.innerHTML = '<div style="font-size:13px;color:var(--danger);">'+escapeHtml(err.message)+'</div>'; });
+  } else if(action==='recruit-pub-start'){
+    var rpsSt = STATE.recruitPub; if(rpsSt){ rpsSt.step = 'data'; render(); }
+  } else if(action==='recruit-pub-data'){
+    var rpdSt = STATE.recruitPub; if(!rpdSt) return;
+    var rpName = ((document.getElementById('rkd_name')||{}).value||'').trim().toUpperCase().replace(/\s+/g,' ');
+    var rpPhone = ((document.getElementById('rkd_phone')||{}).value||'').trim();
+    var rpEmail = ((document.getElementById('rkd_email')||{}).value||'').trim();
+    var rpAddr = ((document.getElementById('rkd_address')||{}).value||'').trim();
+    var rpBirth = ((document.getElementById('rkd_birth')||{}).value||'').trim();
+    if(rpName.length<3){ toast('Isi nama lengkap.'); return; }
+    if(rpPhone.replace(/\D/g,'').length<8){ toast('Nomor telepon tidak valid.'); return; }
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(rpEmail)){ toast('Alamat email tidak valid.'); return; }
+    if(rpAddr.length<4){ toast('Isi alamat rumah.'); return; }
+    if(!rpBirth){ toast('Isi tanggal lahir.'); return; }
+    rpdSt.data = {name:rpName, phone:rpPhone, email:rpEmail, address:rpAddr, birthDate:rpBirth};
+    rpdSt.step = 'test'; render(); window.scrollTo(0,0);
+  } else if(action==='recruit-pub-submit'){
+    var rpSt = STATE.recruitPub; if(!rpSt) return;
+    var rpTest = recruitTestById(rpSt.testId); if(!rpTest){ toast('Tes tidak ditemukan.'); return; }
+    var rpAns = {}, rpMiss = 0;
+    (rpTest.questions||[]).forEach(function(q){
+      var val;
+      if(q.type==='text'){ var ta = document.querySelector('[name="rq_'+q.id+'"]'); val = ta ? ta.value.trim() : ''; }
+      else { var ch = document.querySelector('[name="rq_'+q.id+'"]:checked'); val = ch ? ch.value : ''; }
+      if(val===''||val==null) rpMiss++; else rpAns[q.id] = val;
+    });
+    if(rpMiss>0){ toast('Masih ada '+rpMiss+' soal yang belum dijawab.'); return; }
+    var rpScores = recruitScores(rpTest, rpAns);
+    var rpApp = {id:uid('RA'), testId:rpTest.id, position:rpTest.position||'', name:rpSt.data.name, phone:rpSt.data.phone, email:rpSt.data.email, address:rpSt.data.address, birthDate:rpSt.data.birthDate, answers:rpAns, scores:rpScores, overall:recruitOverall(rpScores), status:'submitted', interviewAccepted:false, submittedAt:new Date().toISOString()};
+    rpSt.applicantId = rpApp.id;
+    toast('Mengirim jawaban...');
+    recruitSaveApplicant(rpApp, function(ok){
+      if(!ok){ toast('Gagal mengirim. Periksa koneksi lalu coba lagi.'); return; }
+      (DB.employees||[]); addNotification({type:'hr'}, 'Pelamar baru: '+rpApp.name+' ('+rpApp.position+') telah menyelesaikan Selaras Test.', 'recruit');
+      saveDB(true);
+      rpSt.step = 'done'; render(); window.scrollTo(0,0);
+    });
+  } else if(action==='recruit-pub-accept'){
+    var rpaSt = STATE.recruitPub; if(!rpaSt || !rpaSt.applicantId) return;
+    var rpaApp = (DB.recruitApplicants||[]).filter(function(x){ return x.id===rpaSt.applicantId; })[0];
+    if(rpaApp){ rpaApp.interviewAccepted = true; rpaApp.updatedAt = new Date().toISOString();
+      recruitSaveApplicant(rpaApp, function(){ rpaSt.accepted = true; render(); }); }
+    else { rpaSt.accepted = true; render(); }
   } else if(action==='ckv-cancel'){
     STATE.ckv = null; closeModal();
   } else if(action==='ckv-bio'){
@@ -17384,6 +18103,12 @@ document.addEventListener('input', function(e){
   if(t.getAttribute && t.getAttribute('data-role')==='cg-search'){ var cgq = t.value.toLowerCase(); Array.prototype.forEach.call(document.querySelectorAll('#cgList .cg-item'), function(it){ it.style.display = (it.getAttribute('data-name')||'').indexOf(cgq)!==-1 ? '' : 'none'; }); }
   if(t.id==='chatSearch'){ CHAT.search = t.value; var chatListEl = document.getElementById('chatList'); if(chatListEl) chatListEl.innerHTML = chatListHtml(); }
   if(t.getAttribute && t.getAttribute('data-role')==='cm-search'){ chatMsgSearchRun(t.value); }
+  if(t.id==='rkd_name'){ var rnp=t.selectionStart; t.value=t.value.toUpperCase(); try{ t.setSelectionRange(rnp,rnp); }catch(e){} }
+  if(t.getAttribute && t.getAttribute('data-role')==='recruit-search'){
+    var rsCur = t.selectionStart;
+    STATE.recruitQuery = t.value; render();
+    var rsF = document.getElementById('recruitSearch'); if(rsF){ rsF.focus(); try{ rsF.setSelectionRange(rsCur, rsCur); }catch(err){} }
+  }
   if(t.getAttribute && t.getAttribute('data-role')==='emp-search'){
     var empCur = t.selectionStart;
     STATE.employeeQuery = t.value;
@@ -17685,6 +18410,11 @@ document.addEventListener('change', function(e){
   if(t.id === 'kpiEmpSelect'){
     STATE.selectedKpiEmp = t.value;
     KPI_FILL_DRAFT = null;
+    render();
+    return;
+  }
+  if(t.id === 'perfResultCycle'){
+    STATE.perfResultCycle = t.value;
     render();
     return;
   }
