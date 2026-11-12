@@ -2267,12 +2267,75 @@ function deviceTouch(isLogin){
   if(!isLogin && d && !deviceIsActive(d)) return false;
   d = map[id] = d || {firstAt:now};
   d.label = info.label; d.os = info.os; d.kind = info.kind; d.mobile = info.mobile; d.lastAt = now;
+  d.cls = d.cls || (info.mobile ? 'mobile' : 'desktop');
+  if(d.status!=='pending' && d.status!=='rejected') d.status = 'approved';
   if(isLogin || !d.loginAt) d.loginAt = now;
   var ids = Object.keys(map).sort(function(a,b){ return String(map[b].lastAt||'').localeCompare(String(map[a].lastAt||'')); });
   ids.slice(DEVICE_MAX_PER_ACCOUNT).forEach(function(x){ if(x!==id) delete map[x]; });
   return true;
 }
 function deviceLoginRecorded(){ try{ if(deviceTouch(true)) saveDB(true); }catch(e){} }
+/* ---- Batas perangkat: maks 1 HP + 1 PC/browser per karyawan. Perangkat ke-3 butuh persetujuan HR ----
+   Mencegah titip absen. 'cls': 'mobile' (HP/APK) atau 'desktop' (PC/laptop/browser). */
+function deviceLimitOn(){ return !(DB && DB.settings && DB.settings.deviceLimit===false); }
+function deviceClassOf(d){ return d.cls || (d.mobile===false ? 'desktop' : 'mobile'); }
+function deviceCurrentClass(){ return describeDevice().mobile ? 'mobile' : 'desktop'; }
+function deviceApprovedActive(key){
+  var map = (DB.loginDevices && DB.loginDevices[key]) || {};
+  return Object.keys(map).map(function(id){ var d = map[id]; d.id = id; return d; })
+    .filter(function(d){ return deviceIsActive(d) && d.status!=='pending' && d.status!=='rejected'; });
+}
+function deviceLoginGate(empId){
+  if(!deviceLimitOn()) return {ok:true};
+  var key = 'emp:'+empId, id = currentDeviceId(), cls = deviceCurrentClass();
+  var map = (DB.loginDevices && DB.loginDevices[key]) || {}, mine = map[id];
+  if(mine && deviceIsActive(mine) && mine.status!=='pending' && mine.status!=='rejected') return {ok:true, cls:cls};
+  var approvedOther = deviceApprovedActive(key).filter(function(d){ return d.id!==id; });
+  var sameKind = approvedOther.filter(function(d){ return deviceClassOf(d)===cls; });
+  if(!sameKind.length && approvedOther.length < 2) return {ok:true, cls:cls};
+  return {ok:false, cls:cls};
+}
+function deviceRequestPending(emp, cls){
+  var key = 'emp:'+emp.id, id = currentDeviceId(), now = new Date().toISOString(), info = describeDevice();
+  return storageGet('hrdb').then(function(res){
+    if(res && res.value){ try{ mergeLiveData(JSON.parse(res.value)); }catch(e){} }
+    DB.loginDevices = DB.loginDevices || {};
+    var map = DB.loginDevices[key] = DB.loginDevices[key] || {};
+    var wasPending = map[id] && map[id].status==='pending';
+    var d = map[id] = map[id] || {firstAt:now};
+    d.label = info.label; d.os = info.os; d.kind = info.kind; d.mobile = info.mobile; d.cls = cls;
+    d.lastAt = now; d.loginAt = d.loginAt || now; d.status = 'pending'; d.requestedAt = now; d.requestEmp = emp.id; d.revokedAt = null;
+    if(!wasPending) addNotification({type:'hr'}, 'Permintaan perangkat baru: '+emp.name+' ingin login dari '+info.label+' ('+(cls==='mobile'?'HP':'PC/Browser')+'). Setujui di menu Karyawan atau Dashboard.', 'device-approval');
+    return saveDB(true);
+  }).catch(function(){ return false; });
+}
+function pendingDeviceRequests(){
+  var out = [], ld = DB.loginDevices || {};
+  Object.keys(ld).forEach(function(key){
+    if(key.indexOf('emp:')!==0) return;
+    var map = ld[key] || {};
+    Object.keys(map).forEach(function(id){ var d = map[id]; if(d.status==='pending' && !(d.revokedAt && String(d.revokedAt)>=String(d.loginAt||''))){ out.push({key:key, id:id, empId:key.slice(4), d:d}); } });
+  });
+  out.sort(function(a,b){ return String(b.d.requestedAt||'').localeCompare(String(a.d.requestedAt||'')); });
+  return out;
+}
+function renderPendingDevicesCard(){
+  var pend = pendingDeviceRequests(); if(!pend.length) return '';
+  var rows = pend.map(function(p){
+    var emp = getEmployee(p.empId);
+    return '<div class="dev-row" style="align-items:center;">'+
+      '<span class="dev-ic">'+iconSvg(deviceClassOf(p.d)==='mobile'?'smartphone':'monitor',18)+'</span>'+
+      '<div class="dev-main"><div class="dev-name">'+escapeHtml(emp?emp.name:p.empId)+' <span class="dev-badge">'+(deviceClassOf(p.d)==='mobile'?'HP':'PC/Browser')+'</span></div>'+
+      '<div class="dev-meta">'+escapeHtml(p.d.label||'Perangkat')+' · '+escapeHtml(timeAgoID(p.d.requestedAt).toLowerCase())+'</div></div>'+
+      '<span style="display:flex;gap:6px;flex-shrink:0;"><button class="btn btn-ghost btn-sm" data-action="device-approve" data-key="'+escapeHtml(p.key)+'" data-id="'+escapeHtml(p.id)+'" style="color:var(--success);">Setujui</button>'+
+      '<button class="btn btn-ghost btn-sm" data-action="device-reject" data-key="'+escapeHtml(p.key)+'" data-id="'+escapeHtml(p.id)+'" style="color:var(--danger);">Tolak</button></span>'+
+    '</div>';
+  }).join('');
+  return '<div class="card dev-card" style="border-left:4px solid var(--warning,#f0ad4e);">'+
+    '<div class="card-title" style="display:flex;align-items:center;gap:8px;">'+iconSvg('smartphone',18)+' Permintaan Perangkat Baru ('+pend.length+')</div>'+
+    '<div class="muted" style="font-size:12.5px;margin-bottom:10px;">Karyawan dibatasi 1 HP + 1 PC/browser. Permintaan di bawah melebihi batas itu — setujui hanya jika memang milik karyawan tersebut. Menyetujui akan mengeluarkan perangkat lamanya yang sejenis.</div>'+
+    rows+'</div>';
+}
 /* perangkat ini dikeluarkan dari akun lain? -> logout otomatis */
 function deviceCheckRevoked(){
   var key = sessionAccountKey(); if(!key) return false;
@@ -2315,15 +2378,17 @@ function renderDevicesCard(key, opts){
   if(me && !list.some(function(d){ return d.id===cur; })){ deviceTouch(true); list = accountDevices(key); }
   var active = list.filter(deviceIsActive), others = active.filter(function(d){ return !(me && d.id===cur); });
   var row = function(d){
-    var isCur = me && d.id===cur, on = deviceIsActive(d);
-    var ic = d.mobile===false || /Windows|macOS|Linux|Chromebook/.test(d.os||'') ? 'monitor' : 'smartphone';
+    var isCur = me && d.id===cur, on = deviceIsActive(d), pend = d.status==='pending' && on;
+    var ic = deviceClassOf(d)==='desktop' ? 'monitor' : 'smartphone';
+    var meta = pend ? 'Menunggu persetujuan HR · diminta '+escapeHtml(timeAgoID(d.requestedAt||d.lastAt).toLowerCase())
+      : (on ? 'Aktif '+escapeHtml(isCur ? 'sekarang' : timeAgoID(d.lastAt).toLowerCase()) : 'Dikeluarkan '+escapeHtml(timeAgoID(d.revokedAt).toLowerCase())+(d.revokedBy ? ' oleh '+escapeHtml(d.revokedBy) : ''));
     return '<div class="dev-row'+(on?'':' is-off')+'">'+
       '<span class="dev-ic">'+iconSvg(ic, 18)+'</span>'+
       '<div class="dev-main"><div class="dev-name">'+escapeHtml(d.label||'Perangkat')+
-        (isCur ? ' <span class="dev-badge">Perangkat ini</span>' : '')+(on ? '' : ' <span class="dev-badge off">Dikeluarkan</span>')+'</div>'+
-        '<div class="dev-meta">'+(on ? 'Aktif '+escapeHtml(isCur ? 'sekarang' : timeAgoID(d.lastAt).toLowerCase()) : 'Dikeluarkan '+escapeHtml(timeAgoID(d.revokedAt).toLowerCase())+(d.revokedBy ? ' oleh '+escapeHtml(d.revokedBy) : ''))+
-        ' · Login '+escapeHtml(formatDeviceTime(d.loginAt||d.firstAt))+'</div></div>'+
-      (on && !isCur && canManageDevicesOf(key) ? '<button class="btn btn-ghost btn-sm" data-action="device-revoke" data-key="'+escapeHtml(key)+'" data-id="'+escapeHtml(d.id)+'">Keluarkan</button>' : '')+
+        (isCur ? ' <span class="dev-badge">Perangkat ini</span>' : '')+(pend ? ' <span class="dev-badge">Menunggu</span>' : (on ? '' : ' <span class="dev-badge off">Dikeluarkan</span>'))+'</div>'+
+        '<div class="dev-meta">'+meta+' · Login '+escapeHtml(formatDeviceTime(d.loginAt||d.firstAt))+'</div></div>'+
+      (pend && SESSION.role==='hr' ? '<span style="display:flex;gap:6px;flex-shrink:0;"><button class="btn btn-ghost btn-sm" data-action="device-approve" data-key="'+escapeHtml(key)+'" data-id="'+escapeHtml(d.id)+'" style="color:var(--success);">Setujui</button><button class="btn btn-ghost btn-sm" data-action="device-reject" data-key="'+escapeHtml(key)+'" data-id="'+escapeHtml(d.id)+'" style="color:var(--danger);">Tolak</button></span>'
+        : (on && !isCur && !pend && canManageDevicesOf(key) ? '<button class="btn btn-ghost btn-sm" data-action="device-revoke" data-key="'+escapeHtml(key)+'" data-id="'+escapeHtml(d.id)+'">Keluarkan</button>' : ''))+
     '</div>';
   };
   return '<div class="card dev-card">'+
@@ -4359,6 +4424,16 @@ function renderLegalPage(){
 function renderLogin(){
   var tab = STATE.loginTab;
   if(STATE.legalPage) return renderLegalPage();
+  if(STATE.devicePending){
+    var dp = STATE.devicePending;
+    return '<div class="center-screen"><div class="card" style="max-width:420px;width:100%;margin:16px;text-align:center;">'+
+      '<div style="font-size:44px;">&#128274;</div>'+
+      '<h2 style="margin:6px 0;">Perangkat Baru Terdeteksi</h2>'+
+      '<p style="font-size:14px;line-height:1.6;">Akun <b>'+escapeHtml(dp.name||'')+'</b> sudah terdaftar di 1 HP dan 1 PC/browser. Login dari perangkat '+(dp.cls==='mobile'?'HP':'PC/browser')+' ini perlu <b>persetujuan HR</b> dulu.</p>'+
+      '<p class="muted" style="font-size:13px;">Permintaan sudah dikirim ke HR. Hubungi HR untuk menyetujui, lalu coba login kembali. Ini untuk mencegah titip absen.</p>'+
+      '<button class="btn btn-primary" style="width:100%;margin-top:8px;" data-action="device-pending-retry">Coba Login Lagi</button>'+
+    '</div></div>';
+  }
 
   var tabsHtml = ['hr','staff'].map(function(tb){
     var lbl = tb==='hr' ? 'HR' : 'Staff / HOD';
@@ -4568,6 +4643,7 @@ function navItemsForBase(role){
       {v:'report', label:'Laporan & Grafik'},
       {v:'schedule', label:'Atur Jadwal Tim'},
       {v:'kpi', label:'KPI Tim'},
+      {v:'perf-me', label:'Performance Review'},
       {v:'assets', label:'Aset Inventaris'},
       {v:'privileges', label:'Hak Akses Staff'},
       {v:'leave-request', label:'Pengajuan Cuti'},
@@ -4593,6 +4669,7 @@ function navItemsForBase(role){
     {v:'my-schedule', label:'Jadwal Saya'},
     {v:'my-attendance', label:'Absensi Saya'},
     {v:'report', label:'Grafik Saya'},
+    {v:'perf-me', label:'Performance Review'},
     {v:'leave-request', label:'Pengajuan Cuti'},
     {v:'overtime-request', label:'Pengajuan Lembur'},
     {v:'form-request', label:'Form & Approval'},
@@ -4623,7 +4700,7 @@ function navGroupsFor(role){
   }
   if(role==='hod'){
     return {top:['dashboard','ai-assistant','checkin'], groups:[
-      {id:'tim', label:'Tim Saya', views:['hod-attendance','report','schedule','kpi','assets','privileges']},
+      {id:'tim', label:'Tim Saya', views:['hod-attendance','report','schedule','kpi','perf-me','assets','privileges']},
       {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request']},
       {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','articles','sop','org']},
       {id:'tugas', label:'Tugas & Aktivitas', views:['todo','my-activity']},
@@ -4632,7 +4709,7 @@ function navGroupsFor(role){
   }
   return {top:['dashboard','ai-assistant','checkin'], groups:[
     {id:'jadwal', label:'Jadwal & Absensi', views:['my-schedule','my-attendance','report']},
-    {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request']},
+    {id:'pengajuan', label:'Pengajuan', views:['leave-request','overtime-request','form-request','perf-me']},
     {id:'komunikasi', label:'Komunikasi', views:['chat','announcements','articles','sop','org']},
     {id:'tugas', label:'Tugas & Aktivitas', views:['todo','assets','my-activity']},
     {id:'akun', label:'Akun Saya', views:['my-payslip','my-profile','id-card','notif-settings']}
@@ -4693,7 +4770,7 @@ function viewTitle(v){
     'form-request':'Form & Approval', 'form-approval':'Form & Approval',
     checkin:'Absen', announcements:'Pengumuman', articles:'Artikel ABC', 'activity-log':'Riwayat Aktivitas',
     'schedule-approval':'Persetujuan Jadwal', 'hod-attendance':'Absensi Tim', report:'Laporan & Grafik',
-    'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI', 'perf-review':'Performance Review', 'recruit':'Selaras Rekrut',
+    'kpi':'KPI Tim', 'kpi-approval':'Persetujuan KPI', 'perf-review':'Performance Review', 'perf-me':'Performance Review', 'recruit':'Selaras Rekrut',
     'overtime-request':'Pengajuan Lembur', 'overtime-approval':'Pengajuan Lembur',
     banners:'Banner', chat:'Chat', 'my-profile':'Profil Saya', todo:'Selaras Board', accounting:'Dashboard Accounting', person:'Profil', privileges:'Hak Akses Staff', assets:'Aset Inventaris', sop:'SOP & Peraturan', org:'Struktur Organisasi', 'id-card':'e-ID Card', 'hr-profile':'Profil Saya', 'my-activity':'Aktivitas Saya', 'notif-settings':'Pengaturan Notifikasi'
   };
@@ -4720,7 +4797,7 @@ function renderShell(){
 
   var body = '';
   if(role==='hr'){
-    if(STATE.view==='dashboard') body = renderAdminDashboard() + renderArticlesStrip();
+    if(STATE.view==='dashboard') body = renderPendingDevicesCard() + renderAdminDashboard() + renderArticlesStrip();
     else if(STATE.view==='employees') body = renderEmployees();
     else if(STATE.view==='attendance') body = renderAttendancePage();
     else if(STATE.view==='schedule-approval') body = renderScheduleApprovalPage();
@@ -4758,6 +4835,7 @@ function renderShell(){
     else if(STATE.view==='report') body = renderReportPage();
     else if(STATE.view==='schedule') body = renderSchedulePage();
     else if(STATE.view==='kpi') body = renderHodKpiPage();
+    else if(STATE.view==='perf-me') body = renderPerfMePage();
     else if(STATE.view==='leave-request') body = renderLeaveRequestPage();
     else if(STATE.view==='overtime-request') body = renderOvertimeRequestPage();
     else if(STATE.view==='form-request') body = renderFormRequestPage();
@@ -4785,6 +4863,7 @@ function renderShell(){
     else if(STATE.view==='my-schedule') body = renderStaffSchedule();
     else if(STATE.view==='my-attendance') body = renderStaffAttendance();
     else if(STATE.view==='report') body = renderReportPage();
+    else if(STATE.view==='perf-me') body = renderPerfMePage();
     else if(STATE.view==='leave-request') body = renderLeaveRequestPage();
     else if(STATE.view==='overtime-request') body = renderOvertimeRequestPage();
     else if(STATE.view==='form-request') body = renderFormRequestPage();
@@ -6799,6 +6878,8 @@ function renderSettingsPage(){
     '<div class="form-row"><div class="form-group"><label>Jatah Cuti Tahunan (hari / periode)</label><input type="number" min="0" id="s_leaveQuota" value="'+leaveQuotaDefault()+'"></div>'+
       '<div class="form-group"><label>Periode cuti mulai (bulan perpanjangan kontrak)</label><select id="s_leaveMonth">'+MONTHS_ID.map(function(mn, i){ return '<option value="'+(i+1)+'"'+(leaveResetMonth()===i+1?' selected':'')+'>'+mn+'</option>'; }).join('')+'</select></div></div>'+
     '<div class="checkbox-row"><input type="checkbox" id="s_attVerify"'+(attVerifyOn()?' checked':'')+'><label for="s_attVerify">Wajib verifikasi identitas saat absen (sidik jari / Face ID, atau kode email)</label></div>'+
+    '<div class="checkbox-row"><input type="checkbox" id="s_approveVerify"'+(approvalVerifyOn()?' checked':'')+'><label for="s_approveVerify">Wajib verifikasi identitas sebelum menyetujui/menolak pengajuan</label></div>'+
+    '<div class="checkbox-row"><input type="checkbox" id="s_deviceLimit"'+(deviceLimitOn()?' checked':'')+'><label for="s_deviceLimit">Batasi perangkat karyawan (maks 1 HP + 1 PC/browser; perangkat baru perlu persetujuan HR)</label></div>'+
     '<button class="btn btn-primary" data-action="save-payroll-settings">Simpan Aturan</button>'+
   '</div>'+
   '<div class="card">'+
@@ -8196,6 +8277,12 @@ function renderPerfUserCard(){
     recvHtml+'</div>';
 }
 function perfName(id){ var e = getEmployee(id); return e ? e.name : (id==='hr' ? 'HR' : '(karyawan)'); }
+function renderPerfMePage(){
+  var cyc = perfActiveCycle();
+  if(!cyc) return '<div class="card empty-state" style="padding:24px;">Belum ada Performance Review yang aktif. Kamu akan diberi tahu saat HR membukanya.</div>';
+  var card = renderPerfUserCard();
+  return card || '<div class="card empty-state" style="padding:24px;">Performance Review "'+escapeHtml(cyc.title)+'" sedang aktif, tapi belum ada orang yang perlu kamu nilai saat ini.</div>';
+}
 
 function perfReviewModalHtml(revieweeId, dir){
   var cyc = perfActiveCycle(); if(!cyc) return '';
@@ -8299,6 +8386,100 @@ function perfAiContext(cycleId){
    link publik, isi data diri + tes, submit, lalu menyetujui jadwal interview offline.
    Hasil lengkap + analisa AI tampil di Selaras Rekrut (akun HR). */
 var RECRUIT_SECTIONS = [{k:'psikotest', label:'Psikotest'}, {k:'iq', label:'Test IQ'}, {k:'online', label:'Test Online'}];
+var RECRUIT_POSITIONS = [
+  {k:'cook', label:'Chef / Cook / Dapur'},
+  {k:'fo', label:'Front Office / Receptionist'},
+  {k:'service', label:'Waiter / Service / Pramusaji'},
+  {k:'barista', label:'Barista / Kopi'},
+  {k:'housekeeping', label:'Housekeeping'},
+  {k:'umum', label:'Umum / Posisi lain'}
+];
+function recruitPositionLabel(k){ var p = RECRUIT_POSITIONS.filter(function(x){ return x.k===k; })[0]; return p?p.label:'Umum / Posisi lain'; }
+/* Bank soal bawaan ABC Selaras. HR tidak perlu menulis soal. o=pilihan, c=indeks jawaban benar (0-based). */
+var RECRUIT_BANK = {
+  psikotest: [
+    'Saya tetap tenang dan fokus saat pekerjaan sedang ramai.',
+    'Saya datang tepat waktu dan jarang terlambat.',
+    'Saya nyaman bekerja sama dalam tim.',
+    'Saya mau menerima masukan/kritik untuk berkembang.',
+    'Saya menyelesaikan tugas sampai tuntas walau tidak diawasi.',
+    'Saya jujur, termasuk saat melakukan kesalahan.',
+    'Saya ramah dan sabar menghadapi pelanggan yang sulit.',
+    'Saya bersedia belajar hal baru di luar tugas utama saya.',
+    'Saya menjaga kebersihan dan kerapian area kerja.',
+    'Saya bisa mengatur prioritas saat banyak pekerjaan sekaligus.'
+  ],
+  iq: [
+    {q:'Lanjutkan pola: 2, 4, 6, 8, ...?', o:['9','10','11','12'], c:1},
+    {q:'Lanjutkan pola: 1, 2, 4, 8, ...?', o:['12','14','16','18'], c:2},
+    {q:'Jika semua Mawar adalah Bunga, dan sebagian Bunga layu, maka...', o:['Semua Mawar layu','Sebagian Mawar mungkin layu','Tidak ada Mawar yang layu','Mawar bukan Bunga'], c:1},
+    {q:'Panas : Dingin = Terang : ...?', o:['Lampu','Siang','Gelap','Matahari'], c:2},
+    {q:'Angka berikutnya: 3, 6, 12, 24, ...?', o:['36','42','48','50'], c:2},
+    {q:'Jika hari ini Rabu, 3 hari lagi hari...?', o:['Jumat','Sabtu','Minggu','Senin'], c:1},
+    {q:'Manakah yang ganjil (beda sendiri)?', o:['Kucing','Anjing','Ayam','Meja'], c:3},
+    {q:'Sebuah barang Rp20.000 diskon 25%. Harga jadi?', o:['Rp12.000','Rp15.000','Rp16.000','Rp18.000'], c:1},
+    {q:'Lengkapi: A, C, E, G, ...?', o:['H','I','J','K'], c:1},
+    {q:'5 pekerja selesai 5 jam. 10 pekerja (kecepatan sama) selesai berapa jam?', o:['2,5 jam','5 jam','10 jam','1 jam'], c:0}
+  ],
+  online: {
+    umum: [
+      {q:'Sikap pertama saat ada keluhan tamu?', o:['Membela diri','Mendengarkan & minta maaf','Mengabaikan','Menyalahkan rekan'], c:1},
+      {q:'Jika kamu tidak tahu jawaban pertanyaan tamu, sebaiknya...', o:['Mengarang jawaban','Diam saja','Bilang akan cek & bantu carikan','Menyuruh tamu cari sendiri'], c:2},
+      {q:'Hal paling penting dalam pelayanan adalah...', o:['Cepat tapi kasar','Ramah, bersih, dan tepat','Murah saja','Mengobrol lama'], c:1},
+      {q:'Saat rekan berhalangan dan kerjaan menumpuk, kamu...', o:['Ikut pulang','Membantu sebisanya','Menyalahkan atasan','Diam menunggu perintah'], c:1},
+      {q:'Kebersihan diri saat bekerja di area tamu/makanan...', o:['Tidak penting','Sangat penting','Hanya saat ada bos','Sesekali'], c:1},
+      {q:'Jika melakukan kesalahan kecil yang tak terlihat, kamu...', o:['Menyembunyikannya','Melaporkan & memperbaiki','Menyalahkan orang lain','Pura-pura lupa'], c:1}
+    ],
+    cook: [
+      {q:'Suhu aman menyimpan bahan daging mentah?', o:['Suhu ruang','Chiller/kulkas (±4°C)','Dekat kompor','Di bawah sinar matahari'], c:1},
+      {q:'Mencegah kontaminasi silang, talenan daging & sayur sebaiknya...', o:['Dicampur','Dipisah','Tidak dicuci','Sama saja'], c:1},
+      {q:'FIFO dalam penyimpanan bahan artinya...', o:['Yang baru dipakai dulu','Yang lama dipakai dulu','Dibuang semua','Diacak'], c:1},
+      {q:'Jika bahan berbau tidak segar, kamu...', o:['Tetap pakai','Buang/laporkan','Tutup dengan bumbu','Diamkan'], c:1},
+      {q:'APD dasar di dapur antara lain...', o:['Sandal jepit','Celemek & penutup kepala','Perhiasan','Tanpa apa-apa'], c:1},
+      {q:'Minyak menyala/kebakaran kecil di wajan, pertama...', o:['Disiram air','Tutup dengan tutup panci/kain basah','Dikipas','Dibiarkan'], c:1}
+    ],
+    fo: [
+      {q:'Menyambut tamu di front office sebaiknya dengan...', o:['Cuek','Senyum & salam','Main HP','Menunggu disapa'], c:1},
+      {q:'Saat semua kamar penuh dan tamu tetap datang, kamu...', o:['Mengusir','Menjelaskan sopan & tawarkan alternatif','Diam','Marah'], c:1},
+      {q:'Data pribadi tamu harus...', o:['Disebar','Dijaga kerahasiaannya','Dibagikan ke teman','Diposting'], c:1},
+      {q:'Telepon masuk sebaiknya diangkat dalam...', o:['Dibiarkan lama','Beberapa dering, segera','Tidak diangkat','Setelah 5 menit'], c:1},
+      {q:'Tamu komplain kamar kotor, kamu...', o:['Menyangkal','Minta maaf & segera tindak lanjuti','Menyalahkan HK','Abaikan'], c:1},
+      {q:'Penampilan staf front office sebaiknya...', o:['Bebas','Rapi & bersih sesuai standar','Seadanya','Mencolok'], c:1}
+    ],
+    service: [
+      {q:'Membawa beberapa piring ke meja, utamakan...', o:['Kecepatan tanpa hati-hati','Aman, rapi, tidak tumpah','Sambil main HP','Berlari'], c:1},
+      {q:'Tamu bertanya menu, kamu sebaiknya...', o:['Tidak tahu','Menjelaskan & merekomendasikan','Menyuruh baca sendiri','Diam'], c:1},
+      {q:'Urutan melayani umumnya mendahulukan...', o:['Yang paling ramai bicara','Tamu sesuai urutan/kebutuhan','Teman sendiri','Yang terakhir datang'], c:1},
+      {q:'Jika salah antar pesanan, kamu...', o:['Memaksa tamu terima','Minta maaf & ganti yang benar','Menyalahkan dapur','Diam'], c:1},
+      {q:'Kebersihan meja setelah tamu selesai...', o:['Dibiarkan','Segera dibersihkan & ditata','Nanti saja','Tugas orang lain'], c:1},
+      {q:'Sikap saat tamu marah...', o:['Ikut marah','Tenang, dengarkan, bantu selesaikan','Pergi','Tertawa'], c:1}
+    ],
+    barista: [
+      {q:'Rasio umum espresso (double) sekitar...', o:['1 gram','18-20 gram','50 gram','100 gram'], c:1},
+      {q:'Susu untuk latte art dikukus hingga...', o:['Mendidih kasar','Microfoam halus & creamy','Dingin','Berbusa kasar'], c:1},
+      {q:'Agar kualitas kopi stabil, grinder perlu...', o:['Tidak diatur','Dikalibrasi/disesuaikan','Dibiarkan kotor','Diacak'], c:1},
+      {q:'Urutan prioritas saat antrean panjang...', o:['Mengobrol','Cepat, rapi, jaga kualitas','Asal jadi','Menunda'], c:1},
+      {q:'Kebersihan portafilter & area kerja...', o:['Tidak penting','Wajib dijaga','Sesekali','Saat ada bos'], c:1},
+      {q:'Tamu bilang kopinya terlalu asam, kamu...', o:['Membela diri','Tawarkan ganti & cek ekstraksi','Abaikan','Menyuruh tetap minum'], c:1}
+    ],
+    housekeeping: [
+      {q:'Urutan membersihkan kamar umumnya dari...', o:['Lantai dulu','Area tinggi ke rendah','Acak','Hanya yang terlihat'], c:1},
+      {q:'Menemukan barang tamu tertinggal, kamu...', o:['Mengambilnya','Lapor & simpan sesuai prosedur lost & found','Membuang','Diam'], c:1},
+      {q:'Bahan kimia pembersih sebaiknya...', o:['Dicampur semua','Dipakai sesuai takaran & label','Asal banyak','Tanpa sarung tangan'], c:1},
+      {q:'Linen/handuk kotor diperlakukan...', o:['Dipakai ulang','Diganti bersih setiap turnover','Dilipat saja','Dibiarkan'], c:1},
+      {q:'Tanda kamar sudah siap dijual...', o:['Masih berantakan','Bersih, rapi, lengkap','Bau','Lampu mati semua'], c:1},
+      {q:'Saat merusakkan barang kamar tanpa sengaja...', o:['Menyembunyikan','Melaporkan jujur','Menyalahkan tamu','Diam'], c:1}
+    ]
+  }
+};
+function recruitBuildQuestions(posKey, sections){
+  sections = sections || {psikotest:true, iq:true, online:true};
+  var qs = [];
+  if(sections.psikotest!==false) RECRUIT_BANK.psikotest.forEach(function(q, i){ qs.push({id:'bp'+i, section:'psikotest', type:'scale', q:q}); });
+  if(sections.iq!==false) RECRUIT_BANK.iq.forEach(function(q, i){ qs.push({id:'bi'+i, section:'iq', type:'mc', q:q.q, options:q.o, correct:q.c}); });
+  if(sections.online!==false){ var ob = RECRUIT_BANK.online[posKey] || RECRUIT_BANK.online.umum; ob.forEach(function(q, i){ qs.push({id:'bo'+i, section:'online', type:'mc', q:q.q, options:q.o, correct:q.c}); }); }
+  return qs;
+}
 var RECRUIT_STATUS = {submitted:{label:'Masuk', cls:'badge-info'}, interview:{label:'Lolos ke Interview', cls:'badge-success'}, hired:{label:'Diterima', cls:'badge-success'}, rejected:{label:'Tidak lolos', cls:'badge-danger'}};
 function recruitSectionLabel(k){ var s = RECRUIT_SECTIONS.filter(function(x){ return x.k===k; })[0]; return s?s.label:k; }
 function recruitTestById(id){ return (DB.recruitTests||[]).filter(function(t){ return t.id===id && !t.deleted; })[0] || null; }
@@ -8312,7 +8493,14 @@ function recruitScores(test, answers){
     var correct = 0; qs.forEach(function(q){ if(String(answers[q.id])===String(q.correct)) correct++; });
     res[sec] = {correct:correct, total:qs.length, pct:qs.length?Math.round(correct/qs.length*100):0};
   });
+  /* Psikotest: pernyataan positif skala 1-5, skor = rata-rata/5. */
+  var pq = (test.questions||[]).filter(function(q){ return q.section==='psikotest' && q.type==='scale'; });
+  if(pq.length){ var sum=0, n=0; pq.forEach(function(q){ var v = parseInt(answers[q.id],10); if(v>=1 && v<=5){ sum+=v; n++; } }); if(n) res.psikotest = {avg:Math.round(sum/n*10)/10, total:n, pct:Math.round(sum/n/5*100)}; }
   return res;
+}
+function recruitScoreLabel(sec, s){
+  if(sec==='psikotest') return 'Indeks '+(s.avg!=null?s.avg:'-')+'/5 ('+s.pct+'%)';
+  return s.correct+'/'+s.total+' ('+s.pct+'%)';
 }
 function recruitOverall(scores){ var ks = Object.keys(scores); if(!ks.length) return null; var s=0; ks.forEach(function(k){ s += scores[k].pct; }); return Math.round(s/ks.length); }
 function recruitSaveApplicant(appRec, cb){
@@ -8449,33 +8637,31 @@ function renderRecruitApplicants(){
 function recruitTestModalHtml(){
   var e = STATE.recruitEdit; if(!e) return '';
   var iv = e.interview || {};
-  var qList = (e.questions||[]).map(function(q, i){
-    var extra = q.type==='mc' ? ' <span class="muted">('+(q.options||[]).length+' pilihan, benar: '+((q.options||[])[q.correct]||'-')+')</span>' : (q.type==='scale'?' <span class="muted">(skala 1-5)</span>':' <span class="muted">(isian)</span>');
-    return '<div class="list-row" style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;">'+
-      '<span>['+recruitSectionLabel(q.section)+'] '+escapeHtml(q.q)+extra+'</span>'+
-      '<button class="btn btn-ghost btn-sm" data-action="recruit-del-q" data-qid="'+q.id+'" style="color:var(--danger);flex-shrink:0;">Hapus</button></div>';
-  }).join('') || '<div class="muted" style="font-size:13px;">Belum ada soal.</div>';
-  var secOpts = RECRUIT_SECTIONS.map(function(s){ return '<option value="'+s.k+'">'+s.label+'</option>'; }).join('');
-  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:640px;">'+
+  var sec = e.sections || {psikotest:true, iq:true, online:true};
+  var posKey = e.positionKey || 'umum';
+  var posOpts = RECRUIT_POSITIONS.map(function(p){ return '<option value="'+p.k+'"'+(posKey===p.k?' selected':'')+'>'+escapeHtml(p.label)+'</option>'; }).join('');
+  var onlineCount = (RECRUIT_BANK.online[posKey]||RECRUIT_BANK.online.umum).length;
+  var secRow = function(key, label, count){
+    var on = sec[key]!==false;
+    return '<label class="rk-opt rk-opt-inline" style="margin-bottom:6px;"><input type="checkbox" id="rkt_sec_'+key+'"'+(on?' checked':'')+'> '+label+' <span class="muted">('+count+' soal)</span></label>';
+  };
+  return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1" style="max-width:600px;">'+
     '<h3>'+(e.id?'Edit':'Buat')+' Selaras Test</h3>'+
+    '<p class="muted" style="font-size:12.5px;margin-top:0;">Soal sudah disiapkan otomatis oleh ABC Selaras. Kamu cukup mengatur judul, posisi, bagian tes, dan jadwal interview.</p>'+
     '<div class="form-row"><div class="form-group"><label>Judul</label><input id="rkt_title" value="'+escapeHtml(e.title||'')+'" placeholder="mis. Rekrutmen Cook Oktober 2026"></div>'+
-      '<div class="form-group"><label>Posisi / Bagian</label><input id="rkt_pos" value="'+escapeHtml(e.position||'')+'" placeholder="mis. Cook, Front Office"></div></div>'+
+      '<div class="form-group"><label>Posisi / Bagian</label><select id="rkt_pos">'+posOpts+'</select></div></div>'+
     '<div class="form-group"><label>Pengantar (opsional)</label><textarea id="rkt_intro" rows="2" placeholder="Petunjuk singkat untuk calon">'+escapeHtml(e.intro||'')+'</textarea></div>'+
+    '<div class="card-blue" style="padding:12px;border-radius:12px;margin-bottom:12px;"><b style="font-size:13px;">Bagian tes yang disertakan</b>'+
+      '<div style="margin-top:8px;display:flex;flex-direction:column;gap:2px;">'+
+        secRow('psikotest','Psikotest', RECRUIT_BANK.psikotest.length)+
+        secRow('iq','Test IQ', RECRUIT_BANK.iq.length)+
+        secRow('online','Test Online (sesuai posisi)', onlineCount)+
+      '</div><div class="muted" style="font-size:11.5px;margin-top:6px;">Test Online menyesuaikan posisi yang dipilih. IQ & Test Online dinilai otomatis; Psikotest menghasilkan indeks sikap kerja.</div></div>'+
     '<div class="card-title" style="font-size:14px;margin:6px 0;">Jadwal Interview Offline</div>'+
     '<div class="form-row"><div class="form-group"><label>Tanggal</label><input id="rkt_iv_date" type="date" value="'+escapeHtml(iv.date||'')+'"></div>'+
       '<div class="form-group"><label>Jam</label><input id="rkt_iv_time" type="time" value="'+escapeHtml(iv.time||'')+'"></div></div>'+
     '<div class="form-group"><label>Alamat Interview</label><textarea id="rkt_iv_addr" rows="2" placeholder="Alamat lokasi interview">'+escapeHtml(iv.address||'')+'</textarea></div>'+
     '<div class="form-group"><label>Catatan (opsional)</label><input id="rkt_iv_note" value="'+escapeHtml(iv.note||'')+'" placeholder="mis. bawa CV & berpakaian rapi"></div>'+
-    '<div class="card-title" style="font-size:14px;margin:12px 0 4px;">Soal ('+(e.questions||[]).length+')</div>'+
-    '<div style="max-height:180px;overflow-y:auto;margin-bottom:10px;">'+qList+'</div>'+
-    '<div class="card-blue" style="padding:12px;border-radius:12px;">'+
-      '<div class="form-row"><div class="form-group" style="flex:0 0 130px;"><label>Bagian</label><select id="rkq_sec">'+secOpts+'</select></div>'+
-        '<div class="form-group" style="flex:0 0 150px;"><label>Tipe</label><select id="rkq_type"><option value="mc">Pilihan ganda</option><option value="scale">Skala 1-5</option><option value="text">Isian</option></select></div></div>'+
-      '<div class="form-group"><label>Pertanyaan</label><textarea id="rkq_q" rows="2"></textarea></div>'+
-      '<div class="form-group"><label>Pilihan jawaban (satu per baris, untuk Pilihan ganda)</label><textarea id="rkq_opts" rows="3" placeholder="Pilihan A&#10;Pilihan B&#10;Pilihan C"></textarea></div>'+
-      '<div class="form-group"><label>Nomor pilihan yang benar (1, 2, 3, ... — untuk IQ/Test Online)</label><input id="rkq_correct" inputmode="numeric" placeholder="mis. 2"></div>'+
-      '<button class="btn btn-secondary btn-sm" data-action="recruit-add-q">+ Tambah Soal</button>'+
-    '</div>'+
     '<div class="modal-actions"><button class="btn btn-secondary" data-action="close-modal">Batal</button>'+
       '<button class="btn btn-primary" data-action="recruit-save-test">Simpan Test</button></div>'+
   '</div></div>';
@@ -8484,7 +8670,7 @@ function recruitApplicantModalHtml(id){
   var a = (DB.recruitApplicants||[]).filter(function(x){ return x.id===id; })[0];
   if(!a) return '<div class="modal-overlay" data-action="overlay-close"><div class="modal" data-stop="1"><div class="empty-state">Data tidak ditemukan.</div></div></div>';
   var t = recruitTestById(a.testId) || {questions:[]};
-  var scoreHtml = Object.keys(a.scores||{}).map(function(sec){ var s = a.scores[sec]; return '<span class="badge badge-info" style="margin-right:6px;">'+recruitSectionLabel(sec)+': '+s.correct+'/'+s.total+' ('+s.pct+'%)</span>'; }).join('') || '<span class="muted">Tidak ada bagian berskor.</span>';
+  var scoreHtml = Object.keys(a.scores||{}).map(function(sec){ var s = a.scores[sec]; return '<span class="badge badge-info" style="margin-right:6px;margin-bottom:4px;display:inline-block;">'+recruitSectionLabel(sec)+': '+recruitScoreLabel(sec, s)+'</span>'; }).join('') || '<span class="muted">Tidak ada bagian berskor.</span>';
   var ansHtml = RECRUIT_SECTIONS.map(function(sec){
     var qs = (t.questions||[]).filter(function(q){ return q.section===sec.k; });
     if(!qs.length) return '';
@@ -8515,9 +8701,14 @@ function recruitApplicantModalHtml(id){
 function recruitCaptureEdit(){
   var e = STATE.recruitEdit; if(!e) return;
   var g = function(id){ var el = document.getElementById(id); return el ? el.value : undefined; };
+  var chk = function(id){ var el = document.getElementById(id); return el ? el.checked : undefined; };
   if(g('rkt_title')!==undefined) e.title = g('rkt_title').trim();
-  if(g('rkt_pos')!==undefined) e.position = g('rkt_pos').trim();
+  if(g('rkt_pos')!==undefined){ e.positionKey = g('rkt_pos'); e.position = recruitPositionLabel(e.positionKey); }
   if(g('rkt_intro')!==undefined) e.intro = g('rkt_intro').trim();
+  e.sections = e.sections || {psikotest:true, iq:true, online:true};
+  if(chk('rkt_sec_psikotest')!==undefined) e.sections.psikotest = chk('rkt_sec_psikotest');
+  if(chk('rkt_sec_iq')!==undefined) e.sections.iq = chk('rkt_sec_iq');
+  if(chk('rkt_sec_online')!==undefined) e.sections.online = chk('rkt_sec_online');
   e.interview = e.interview || {};
   if(g('rkt_iv_date')!==undefined) e.interview.date = g('rkt_iv_date');
   if(g('rkt_iv_time')!==undefined) e.interview.time = g('rkt_iv_time');
@@ -8527,7 +8718,7 @@ function recruitCaptureEdit(){
 function recruitAiContext(a){
   var t = recruitTestById(a.testId) || {questions:[]};
   var lines = ['Posisi dilamar: '+(a.position||'-'), 'Nama: '+(a.name||'-')+', usia dari tgl lahir: '+(a.birthDate||'-')];
-  Object.keys(a.scores||{}).forEach(function(sec){ var s=a.scores[sec]; lines.push(recruitSectionLabel(sec)+': '+s.correct+'/'+s.total+' ('+s.pct+'%)'); });
+  Object.keys(a.scores||{}).forEach(function(sec){ var s=a.scores[sec]; lines.push(recruitSectionLabel(sec)+': '+recruitScoreLabel(sec, s)); });
   (t.questions||[]).filter(function(q){ return q.section==='psikotest' || q.type==='text'; }).forEach(function(q){
     var ans=(a.answers||{})[q.id]; if(ans==null||ans==='') return;
     lines.push('['+recruitSectionLabel(q.section)+'] '+q.q+' -> '+(q.type==='scale'?ans+'/5':ans));
@@ -15347,6 +15538,30 @@ document.addEventListener('click', function(e){
     dvTargets.forEach(function(x){ if(dvMap[x]){ dvMap[x].revokedAt = dvNow; dvMap[x].revokedBy = dvBy; } });
     try{ logActivity('Mengeluarkan '+dvTargets.length+' perangkat dari akun '+dvKey+'.'); }catch(e){}
     saveDB(); render(); toast(dvTargets.length+' perangkat dikeluarkan. Akan logout otomatis saat tersambung.');
+  } else if(action==='device-approve'){
+    if(SESSION.role!=='hr') return;
+    var daKey = el.getAttribute('data-key'), daId = el.getAttribute('data-id');
+    var daMap = (DB.loginDevices||{})[daKey] || {}, daD = daMap[daId]; if(!daD) return;
+    var daNow = new Date().toISOString(), daCls = deviceClassOf(daD);
+    /* keluarkan perangkat lama yang sejenis supaya tetap 1 HP + 1 PC */
+    Object.keys(daMap).forEach(function(k){ if(k===daId) return; var o = daMap[k]; if(deviceIsActive(o) && o.status!=='pending' && deviceClassOf(o)===daCls){ o.revokedAt = daNow; o.revokedBy = deviceActorName(); o.lastAt = daNow; } });
+    daD.status = 'approved'; daD.decidedAt = daNow; daD.lastAt = daNow; daD.revokedAt = null; daD.loginAt = daD.loginAt || daNow;
+    var daEmpId = daKey.indexOf('emp:')===0 ? daKey.slice(4) : null;
+    if(daEmpId) addNotification({type:'emp', empId:daEmpId}, 'Perangkat baru kamu ('+(daD.label||'')+') disetujui HR. Silakan login kembali.', 'device-approval');
+    logActivity('Menyetujui perangkat baru untuk '+(daEmpId?((getEmployee(daEmpId)||{}).name||daKey):daKey)+'.');
+    saveDB().then(function(){ toast('Perangkat disetujui.'); render(); });
+  } else if(action==='device-reject'){
+    if(SESSION.role!=='hr') return;
+    var drKey = el.getAttribute('data-key'), drId = el.getAttribute('data-id');
+    var drMap = (DB.loginDevices||{})[drKey] || {}, drD = drMap[drId]; if(!drD) return;
+    var drNow = new Date().toISOString();
+    drD.status = 'rejected'; drD.revokedAt = drNow; drD.revokedBy = deviceActorName(); drD.lastAt = drNow;
+    var drEmpId = drKey.indexOf('emp:')===0 ? drKey.slice(4) : null;
+    if(drEmpId) addNotification({type:'emp', empId:drEmpId}, 'Permintaan perangkat baru kamu ditolak HR. Hubungi HR bila ini keliru.', 'device-approval');
+    logActivity('Menolak perangkat baru untuk '+(drEmpId?((getEmployee(drEmpId)||{}).name||drKey):drKey)+'.');
+    saveDB().then(function(){ toast('Permintaan perangkat ditolak.'); render(); });
+  } else if(action==='device-pending-retry'){
+    STATE.devicePending = null; STATE.loginError = ''; render();
   } else if(action==='save-loading-image' || action==='reset-loading-image'){
     DB.settings = DB.settings || {};
     var ldDone = function(v){ DB.settings.loadingImage = v; cacheLoadingImage(); saveDB(); render(); toast(v ? 'Gambar layar memuat disimpan.' : 'Kembali ke logo bawaan.'); };
@@ -17534,45 +17749,27 @@ document.addEventListener('click', function(e){
   } else if(action==='recruit-tab'){
     STATE.recruitTab = el.getAttribute('data-tab'); render();
   } else if(action==='recruit-new-test'){
-    STATE.recruitEdit = {id:null, title:'', position:'', intro:'', interview:{}, questions:[]};
+    STATE.recruitEdit = {id:null, title:'', positionKey:'umum', position:recruitPositionLabel('umum'), intro:'', interview:{}, sections:{psikotest:true, iq:true, online:true}};
     openModal(recruitTestModalHtml());
   } else if(action==='recruit-edit-test'){
     var reT = recruitTestById(el.getAttribute('data-id')); if(!reT) return;
     STATE.recruitEdit = JSON.parse(JSON.stringify(reT));
     if(!STATE.recruitEdit.interview) STATE.recruitEdit.interview = {};
-    openModal(recruitTestModalHtml());
-  } else if(action==='recruit-add-q'){
-    recruitCaptureEdit();
-    var rqSec = (document.getElementById('rkq_sec')||{}).value||'psikotest';
-    var rqType = (document.getElementById('rkq_type')||{}).value||'mc';
-    var rqQ = ((document.getElementById('rkq_q')||{}).value||'').trim();
-    if(!rqQ){ toast('Isi pertanyaannya dulu.'); return; }
-    var rqNew = {id:uid('Q'), section:rqSec, type:rqType, q:rqQ};
-    if(rqType==='mc'){
-      var rqOpts = ((document.getElementById('rkq_opts')||{}).value||'').split('\n').map(function(x){ return x.trim(); }).filter(Boolean);
-      if(rqOpts.length<2){ toast('Pilihan ganda butuh minimal 2 pilihan.'); return; }
-      rqNew.options = rqOpts;
-      var rqC = parseInt(((document.getElementById('rkq_correct')||{}).value||'').replace(/\D/g,''),10);
-      rqNew.correct = (rqSec!=='psikotest' && rqC>=1 && rqC<=rqOpts.length) ? (rqC-1) : (rqSec!=='psikotest'?0:-1);
-    }
-    STATE.recruitEdit.questions.push(rqNew);
-    openModal(recruitTestModalHtml());
-  } else if(action==='recruit-del-q'){
-    recruitCaptureEdit();
-    var rdQid = el.getAttribute('data-qid');
-    STATE.recruitEdit.questions = (STATE.recruitEdit.questions||[]).filter(function(q){ return q.id!==rdQid; });
+    if(!STATE.recruitEdit.sections) STATE.recruitEdit.sections = {psikotest:true, iq:true, online:true};
+    if(!STATE.recruitEdit.positionKey) STATE.recruitEdit.positionKey = 'umum';
     openModal(recruitTestModalHtml());
   } else if(action==='recruit-save-test'){
     recruitCaptureEdit();
     var rsE = STATE.recruitEdit;
     if(!rsE.title){ toast('Isi judul test dulu.'); return; }
-    if(!rsE.position){ toast('Isi posisi/bagian dulu.'); return; }
-    if(!(rsE.questions||[]).length){ toast('Tambahkan minimal satu soal.'); return; }
+    var rsSec = rsE.sections || {psikotest:true, iq:true, online:true};
+    if(rsSec.psikotest===false && rsSec.iq===false && rsSec.online===false){ toast('Pilih minimal satu bagian tes.'); return; }
+    var rsQuestions = recruitBuildQuestions(rsE.positionKey||'umum', rsSec);
     if(rsE.id){
       var rsT = recruitTestById(rsE.id);
-      if(rsT){ rsT.title=rsE.title; rsT.position=rsE.position; rsT.intro=rsE.intro; rsT.interview=rsE.interview; rsT.questions=rsE.questions; rsT.updatedAt=new Date().toISOString(); }
+      if(rsT){ rsT.title=rsE.title; rsT.position=rsE.position; rsT.positionKey=rsE.positionKey; rsT.intro=rsE.intro; rsT.interview=rsE.interview; rsT.sections=rsSec; rsT.questions=rsQuestions; rsT.updatedAt=new Date().toISOString(); }
     } else {
-      rsE.id = uid('RT'); rsE.active = true; rsE.createdAt = new Date().toISOString(); rsE.updatedAt = rsE.createdAt;
+      rsE.questions = rsQuestions; rsE.id = uid('RT'); rsE.active = true; rsE.createdAt = new Date().toISOString(); rsE.updatedAt = rsE.createdAt;
       DB.recruitTests.push(rsE);
     }
     logActivity('Menyimpan Selaras Test "'+rsE.title+'".');
@@ -18072,6 +18269,8 @@ document.addEventListener('click', function(e){
     DB.settings.lateDeductionCap = Number(document.getElementById('s_cap').value)||0;
     if(document.getElementById('s_leaveQuota')){ DB.settings.leaveQuotaDays = Math.max(0, Number(document.getElementById('s_leaveQuota').value)||0); DB.settings.leaveResetMonth = Number(document.getElementById('s_leaveMonth').value)||6; }
     if(document.getElementById('s_attVerify')) DB.settings.attVerify = document.getElementById('s_attVerify').checked;
+    if(document.getElementById('s_approveVerify')) DB.settings.approveVerify = document.getElementById('s_approveVerify').checked;
+    if(document.getElementById('s_deviceLimit')) DB.settings.deviceLimit = document.getElementById('s_deviceLimit').checked;
     var sfEls = document.querySelectorAll('.s_flex');
     if(sfEls.length){ DB.settings.flexDepts = Array.prototype.filter.call(sfEls, function(x){ return x.checked; }).map(function(x){ return x.value; }); }
     logActivity('Mengubah aturan BPJS/potongan telat.');
@@ -18587,6 +18786,16 @@ function doStaffLogin(){
     var pass = passEl.value;
     var emp = DB.employees.find(function(e){ return e.active && e.username.trim().toLowerCase()===uname; });
     if(emp && emp.password===pass){
+      if(!empHasHrAccess(emp) && deviceLimitOn()){
+        var dGate = deviceLoginGate(emp.id);
+        if(!dGate.ok){
+          STATE.devicePending = {empId:emp.id, name:emp.name, cls:dGate.cls};
+          STATE.loginError = '';
+          render();
+          deviceRequestPending(emp, dGate.cls);
+          return;
+        }
+      }
       SESSION = empHasHrAccess(emp) ? hrModeSession(emp) : empModeSession(emp);
       STATE.view = 'dashboard'; STATE.loginError='';
       saveSessionToStorage(); deviceLoginRecorded();
