@@ -32,6 +32,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   ok(w.schedOffBadge({type:'libur',leave:'izin'}).indexOf('badge-leave')!==-1 && /Izin/.test(w.schedOffBadge({type:'libur',leave:'izin'})), 'badge Izin oranye');
   w.DB.leaveRequests=[{id:'L1',empId:'M1',type:'Sakit',startDate:ym+'-10',endDate:ym+'-10',status:'pending_hr',reason:'x'}];
   w.SESSION={role:'hr',empId:null,hrAccountId:null}; w.STATE.view='leave-approval'; w.render();
+  w.DB.settings=w.DB.settings||{}; w.DB.settings.approveVerify=false;
   var ab=d.querySelector('[data-action="approve-leave-request"][data-id="L1"]');
   if(ab){ ab.dispatchEvent(new w.MouseEvent('click',{bubbles:true})); await sleep(150); ok(w.DB.schedules[ym].M1[10] && w.DB.schedules[ym].M1[10].leave==='sakit', 'pengajuan Sakit yang disetujui tercatat sebagai Sakit di jadwal'); }
   else ok(true,'(tombol setuju tidak tampil di view ini)');

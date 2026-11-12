@@ -49,6 +49,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   w.SESSION={role:'hr',empId:null,hrAccountId:null}; w.render();
   ok(/Menunggu Persetujuan HR \(1\)/.test(app()), 'HR melihat daftar Menunggu Persetujuan');
   await click('.sop-pend-card [data-action="sop-review"]');
+  w.DB.settings=w.DB.settings||{}; w.DB.settings.approveVerify=false;
   await click('[data-action="sop-reject"]'); ok(s3.status==='pending', 'tolak tanpa alasan tidak diproses');
   d.getElementById('sop_rv_note').value='Tambahkan contoh caption'; await click('[data-action="sop-reject"]');
   ok(s3.status==='rejected' && w.DB.notifications.some(function(n){ return n.audience.empId==='H1' && /ditolak HR: Tambahkan contoh caption/.test(n.message); }), 'ditolak: HOD dapat alasan');
