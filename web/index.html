@@ -4273,6 +4273,8 @@ function afterRender(){
   if(SESSION.role){
     if(STATE.view==='chat'){ chatScrollToEnd(); chatBindScroll(); }
     try{ todoReminderSync(); }catch(e){}
+    /* migrasi sekali: ubah password plaintext lama menjadi hash saat online */
+    try{ if(STATE.loaded && !STATE.offline && !window.__pwSwept){ window.__pwSwept = true; pwSweep().then(function(ch){ if(ch) try{ saveDB(true); }catch(e){} }); } }catch(e){}
     if(STATE.loaded && !CHAT.loaded) chatPoll();
     updateNavChatBadge();
   }
@@ -5599,7 +5601,7 @@ function employeeModalHtml(emp){
       '</div>'+
       '<div class="form-row">'+
         '<div class="form-group"><label>Username (login staff)</label><input id="f_username" value="'+escapeHtml(e.username)+'"></div>'+
-        '<div class="form-group"><label>Password</label><input id="f_password" value="'+escapeHtml(e.password)+'"></div>'+
+        '<div class="form-group"><label>Password '+(e.id?'<span class="muted" style="font-weight:400;">(kosongkan jika tidak diganti)</span>':'')+'</label><input id="f_password" type="text" autocomplete="new-password" value="" placeholder="'+(e.id?'••••••• tersimpan':'Buat password')+'"></div>'+
       '</div>'+
       '<div class="form-group"><label>Properti (bisa lebih dari satu)</label>'+propCheckboxes+'</div>'+
       '<div class="form-row">'+
@@ -6818,7 +6820,7 @@ function renderSettingsPage(){
       '<div class="card-title">Akun HR</div>'+
       
       '<div class="form-group"><label>Username</label><input id="s_hruser" value="'+escapeHtml(hr.username)+'"></div>'+
-      '<div class="form-group"><label>Password</label><input id="s_hrpass" value="'+escapeHtml(hr.password)+'"></div>'+
+      '<div class="form-group"><label>Password <span class="muted" style="font-weight:400;">(kosongkan jika tidak diganti)</span></label><input id="s_hrpass" type="text" autocomplete="new-password" value="" placeholder="••••••• tersimpan"></div>'+
       '<div class="form-group"><label>Email (untuk notifikasi email, opsional)</label><input type="email" id="s_hremail" value="'+escapeHtml(hr.email||'')+'"></div>'+
       '<button class="btn btn-primary" data-action="save-hr-account">Simpan</button>'+
     '</div>'+
@@ -16959,9 +16961,9 @@ document.addEventListener('click', function(e){
     if(hpPass && hpPass.length<4){ toast('Password minimal 4 karakter.'); return; }
     hpT.name = document.getElementById('hp_name').value.trim() || 'HR Admin'; hpT.email = document.getElementById('hp_email').value.trim();
     hpT.title = document.getElementById('hp_title').value.trim(); hpT.phone = document.getElementById('hp_phone').value.trim(); hpT.username = hpUser;
-    if(hpPass) hpT.password = hpPass;
+    if(hpPass){ hpT.password = hpPass; delete hpT.passwordHash; }
     logActivity('Mengubah profil HR.');
-    saveDB().then(function(){ toast('Profil disimpan.'); render(); });
+    pwSweep().then(function(){ return saveDB(); }).then(function(){ toast('Profil disimpan.'); render(); });
   } else if(action==='hr-photo-remove'){
     var hrT = hrProfileTarget(); hrT.photoKey = null; hrT.photoUrl = null; saveDB().then(function(){ toast('Foto dihapus.'); render(); });
   } else if(action==='as-new'){
@@ -17160,7 +17162,6 @@ document.addEventListener('click', function(e){
       mealAllowance:Number(document.getElementById('f_mealAllowance').value)||0,
       transportAllowance:Number(document.getElementById('f_transportAllowance').value)||0,
       username:document.getElementById('f_username').value.trim(),
-      password:document.getElementById('f_password').value,
       bpjsKesehatanActive:document.getElementById('f_bpjsKes').checked,
       bpjsKetenagakerjaanActive:document.getElementById('f_bpjsTK').checked,
       bpjsTkNo:(document.getElementById('f_bpjsTkNo').value||'').replace(/[^0-9]/g,'').slice(0,20),
@@ -17169,17 +17170,20 @@ document.addEventListener('click', function(e){
       leaveQuota:document.getElementById('f_leaveQuota').value==='' ? null : Math.max(0, +document.getElementById('f_leaveQuota').value||0),
       active:document.getElementById('f_active').checked
     };
+    var fPass = document.getElementById('f_password').value;
     if(id){
       var existing = getEmployee(id);
       Object.assign(existing, data);
+      if(fPass){ existing.password = fPass; delete existing.passwordHash; } /* kosong = password tetap */
       logActivity('Mengubah data karyawan "'+name+'".');
     } else {
       data.id = uid('E');
       data.empCode = generateEmployeeCode(data);
+      data.password = fPass || '';
       DB.employees.push(data);
       logActivity('Menambahkan karyawan baru "'+name+'" (ID: '+data.empCode+').');
     }
-    saveDB().then(function(){ closeModal(); toast('Data karyawan disimpan.'); render(); });
+    pwSweep().then(function(){ return saveDB(); }).then(function(){ closeModal(); toast('Data karyawan disimpan.'); render(); });
   } else if(action==='toggle-active-employee'){
     var emp2 = getEmployee(el.getAttribute('data-id'));
     if(emp2.active && isHOD(emp2.id)){
@@ -18415,10 +18419,11 @@ document.addEventListener('click', function(e){
     saveDB().then(function(){ toast('Informasi perusahaan disimpan.'); render(); });
   } else if(action==='save-hr-account'){
     DB.hr.username = document.getElementById('s_hruser').value.trim() || DB.hr.username;
-    DB.hr.password = document.getElementById('s_hrpass').value || DB.hr.password;
+    var sHrPass = document.getElementById('s_hrpass').value;
+    if(sHrPass){ DB.hr.password = sHrPass; delete DB.hr.passwordHash; }
     DB.hr.email = document.getElementById('s_hremail').value.trim();
     logActivity('Mengubah akun HR.');
-    saveDB().then(function(){ toast('Akun HR diperbarui.'); render(); });
+    pwSweep().then(function(){ return saveDB(); }).then(function(){ toast('Akun HR diperbarui.'); render(); });
   } else if(action==='add-hr-account'){
     var newHrName = document.getElementById('newHrName').value.trim();
     var newHrUsername = document.getElementById('newHrUsername').value.trim();
@@ -18432,7 +18437,7 @@ document.addEventListener('click', function(e){
     DB.hrAccounts = DB.hrAccounts || [];
     DB.hrAccounts.push({id: uid('HRA'), name:newHrName, username:newHrUsername, password:newHrPassword, email:newHrEmail||''});
     logActivity('Menambahkan akun HR baru "'+newHrName+'".');
-    saveDB().then(function(){ toast('Akun HR ditambahkan.'); render(); });
+    pwSweep().then(function(){ return saveDB(); }).then(function(){ toast('Akun HR ditambahkan.'); render(); });
   } else if(action==='delete-hr-account'){
     var delHrId = el.getAttribute('data-id');
     var delHrAcct = (DB.hrAccounts||[]).find(function(a){ return a.id===delHrId; });
@@ -18963,6 +18968,52 @@ document.addEventListener('change', function(e){
   }
 });
 
+/* ---------- Password: hashing PBKDF2 (hilangkan plaintext tersimpan) ----------
+   Kompatibel akun lama: password plaintext tetap bisa login, lalu otomatis di-hash. */
+function pwRandomSalt(){
+  var a = new Uint8Array(16);
+  if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(a); else for(var i=0;i<a.length;i++) a[i]=Math.floor(Math.random()*256);
+  return Array.prototype.map.call(a, function(x){ return ('0'+x.toString(16)).slice(-2); }).join('');
+}
+function pwCryptoOk(){ return !!(window.crypto && crypto.subtle && crypto.subtle.deriveBits && window.TextEncoder); }
+function pwDerivePBKDF2(plain, saltHex){
+  var salt = new Uint8Array((saltHex.match(/.{2}/g)||[]).map(function(h){ return parseInt(h,16); }));
+  return crypto.subtle.importKey('raw', new TextEncoder().encode(String(plain)), {name:'PBKDF2'}, false, ['deriveBits'])
+    .then(function(key){ return crypto.subtle.deriveBits({name:'PBKDF2', salt:salt, iterations:100000, hash:'SHA-256'}, key, 256); })
+    .then(function(bits){ return Array.prototype.map.call(new Uint8Array(bits), function(x){ return ('0'+x.toString(16)).slice(-2); }).join(''); });
+}
+/* Cadangan deterministik bila WebCrypto tak tersedia (mis. lingkungan tes / browser sangat lama). */
+function pwFallbackDerive(plain, saltHex){
+  var str = saltHex+'|'+String(plain), h1 = 5381, h2 = 52711;
+  for(var i=0;i<str.length;i++){ var c = str.charCodeAt(i); h1 = ((h1<<5)+h1+c)|0; h2 = ((h2<<5)+h2+(c^0x5a))|0; }
+  return Promise.resolve((h1>>>0).toString(16)+(h2>>>0).toString(16));
+}
+function pwMake(plain){
+  var salt = pwRandomSalt();
+  if(pwCryptoOk()) return pwDerivePBKDF2(plain, salt).then(function(h){ return 'p1$'+salt+'$'+h; });
+  return pwFallbackDerive(plain, salt).then(function(h){ return 'p0$'+salt+'$'+h; });
+}
+function pwVerify(plain, rec){
+  if(!rec) return Promise.resolve(false);
+  var ph = rec.passwordHash;
+  if(ph && /^p1\$/.test(ph)){ var p = ph.split('$'); return pwDerivePBKDF2(plain, p[1]).then(function(h){ return h===p[2]; }).catch(function(){ return false; }); }
+  if(ph && /^p0\$/.test(ph)){ var q = ph.split('$'); return pwFallbackDerive(plain, q[1]).then(function(h){ return h===q[2]; }); }
+  if(typeof rec.password==='string' && rec.password!=='') return Promise.resolve(String(plain)===rec.password);
+  return Promise.resolve(false);
+}
+/* Ubah semua password plaintext yang masih tersimpan menjadi hash. Tidak menyimpan; pemanggil yang saveDB. */
+function pwSweep(){
+  var targets = [];
+  if(DB.hr && DB.hr.password && !DB.hr.passwordHash) targets.push(DB.hr);
+  (DB.employees||[]).forEach(function(e){ if(e.password && !e.passwordHash) targets.push(e); });
+  (DB.hrAccounts||[]).forEach(function(a){ if(a.password && !a.passwordHash) targets.push(a); });
+  if(!targets.length) return Promise.resolve(false);
+  return Promise.all(targets.map(function(r){ return pwMake(r.password).then(function(ph){ r.passwordHash=ph; delete r.password; }); })).then(function(){ return true; }).catch(function(){ return false; });
+}
+function pwAfterLogin(rec){ /* hash akun yang baru saja login jika masih plaintext */
+  if(rec && rec.password && !rec.passwordHash){ pwSweep().then(function(ch){ if(ch) try{ saveDB(true); }catch(e){} }); }
+}
+
 function doHrLogin(){
   try{
     var uEl = document.getElementById('li_hr_user');
@@ -18970,29 +19021,21 @@ function doHrLogin(){
     if(!uEl || !pEl) return;
     var u = uEl.value.trim();
     var p = pEl.value;
-    if(u===DB.hr.username && p===DB.hr.password){
-      SESSION = {role:'hr', empId:null, hrAccountId:null};
-      STATE.view = 'dashboard'; STATE.loginError='';
-      saveSessionToStorage(); deviceLoginRecorded();
-      render();
-      return;
-    }
-    var hrEmp = DB.employees.find(function(e){ return empHasHrAccess(e) && String(e.username||'').trim().toLowerCase()===u.toLowerCase() && e.password===p; });
-    if(hrEmp){
-      SESSION = hrModeSession(hrEmp);
-      STATE.view = 'dashboard'; STATE.loginError='';
-      saveSessionToStorage(); deviceLoginRecorded(); render(); return;
-    }
-    var extraAcct = (DB.hrAccounts||[]).find(function(a){ return a.username===u && a.password===p; });
-    if(extraAcct){
-      SESSION = {role:'hr', empId:null, hrAccountId:extraAcct.id};
-      STATE.view = 'dashboard'; STATE.loginError='';
-      saveSessionToStorage(); deviceLoginRecorded();
-      render();
-      return;
-    }
-    STATE.loginError = 'Username atau password HR salah.';
-    render();
+    var hrFinish = function(sess, rec){ pwAfterLogin(rec); SESSION = sess; STATE.view='dashboard'; STATE.loginError=''; saveSessionToStorage(); deviceLoginRecorded(); render(); };
+    pwVerify(p, (u===DB.hr.username ? DB.hr : null)).then(function(ok){
+      if(ok){ hrFinish({role:'hr', empId:null, hrAccountId:null}, DB.hr); return; }
+      var hrEmp = DB.employees.find(function(e){ return empHasHrAccess(e) && String(e.username||'').trim().toLowerCase()===u.toLowerCase(); });
+      return pwVerify(p, hrEmp).then(function(ok2){
+        if(ok2){ hrFinish(hrModeSession(hrEmp), hrEmp); return; }
+        var extraAcct = (DB.hrAccounts||[]).find(function(a){ return a.username===u; });
+        return pwVerify(p, extraAcct).then(function(ok3){
+          if(ok3){ hrFinish({role:'hr', empId:null, hrAccountId:extraAcct.id}, extraAcct); return; }
+          STATE.loginError = 'Username atau password HR salah.';
+          render();
+        });
+      });
+    }).catch(function(err){ console.error('doHrLogin error', err); STATE.loginError = 'Terjadi kesalahan saat login.'; render(); });
+    return;
   }catch(err){
     console.error('doHrLogin error', err);
     toast('Terjadi kesalahan saat login. Coba muat ulang halaman.');
@@ -19007,7 +19050,8 @@ function doStaffLogin(){
     var uname = userEl.value.trim().toLowerCase();
     var pass = passEl.value;
     var emp = DB.employees.find(function(e){ return e.active && e.username.trim().toLowerCase()===uname; });
-    if(emp && emp.password===pass){
+    pwVerify(pass, emp).then(function(ok){
+      if(!(emp && ok)){ STATE.loginError = 'Username atau password salah.'; render(); return; }
       if(!empHasHrAccess(emp) && deviceLimitOn()){
         var dGate = deviceLoginGate(emp.id);
         if(!dGate.ok){
@@ -19018,14 +19062,12 @@ function doStaffLogin(){
           return;
         }
       }
+      pwAfterLogin(emp);
       SESSION = empHasHrAccess(emp) ? hrModeSession(emp) : empModeSession(emp);
       STATE.view = 'dashboard'; STATE.loginError='';
       saveSessionToStorage(); deviceLoginRecorded();
       render();
-    } else {
-      STATE.loginError = 'Username atau password salah.';
-      render();
-    }
+    }).catch(function(err){ console.error('login verify error', err); STATE.loginError = 'Terjadi kesalahan saat login.'; render(); });
   }catch(err){
     console.error('doStaffLogin error', err);
     toast('Terjadi kesalahan saat login. Coba muat ulang halaman.');

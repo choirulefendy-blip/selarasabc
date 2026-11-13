@@ -24,7 +24,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   console.log('\n[Login & mode]');
   w.SESSION={role:null,empId:null}; w.render();
   var u=d.getElementById('li_staff_user'), pw=d.getElementById('li_staff_pass');
-  if(u){ u.value='ilin'; pw.value='p'; w.doStaffLogin(); } else { w.SESSION=w.hrModeSession(w.getEmployee('IL')); w.render(); }
+  if(u){ u.value='ilin'; pw.value='p'; w.doStaffLogin(); await sleep(60); } else { w.SESSION=w.hrModeSession(w.getEmployee('IL')); w.render(); }
   ok(w.SESSION.role==='hr' && w.SESSION.asEmpId==='IL', 'login dengan akun karyawan -> masuk Mode HR');
   ok(w.currentHrAccount().name==='Ilin Wulandari' && w.hrActorLabel()==='Ilin Wulandari (HR)', 'nama tetap Ilin (bukan "HR Admin")');
   ok(/Ilin Wulandari/.test(d.querySelector('.sidebar-user').textContent) && !!d.querySelector('[data-action="switch-mode"]'), 'sidebar: nama Ilin + tombol Mode Karyawan');
@@ -35,7 +35,7 @@ function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
   await click('[data-action="switch-mode"]'); ok(w.SESSION.role==='hr' && w.SESSION.asEmpId==='IL', 'kembali ke Mode HR');
   w.saveSessionToStorage(); w.SESSION={role:null}; w.restoreSessionFromStorage(); ok(w.SESSION.asEmpId==='IL' && w.SESSION.role==='hr', 'sesi tersimpan setelah refresh');
   w.SESSION={role:null}; w.render(); var hu=d.getElementById('li_hr_user');
-  if(hu){ hu.value='ilin'; d.getElementById('li_hr_pass').value='p'; w.doHrLogin(); ok(w.SESSION.asEmpId==='IL','login lewat tab HR pakai akun karyawan juga bisa'); } else ok(true,'(tab HR tidak tampil)');
+  if(hu){ hu.value='ilin'; d.getElementById('li_hr_pass').value='p'; w.doHrLogin(); await sleep(60); ok(w.SESSION.asEmpId==='IL','login lewat tab HR pakai akun karyawan juga bisa'); } else ok(true,'(tab HR tidak tampil)');
 
   console.log('\n[Nama orang tampil]');
   w.SESSION=w.hrModeSession(w.getEmployee('IL'));
