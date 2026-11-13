@@ -25,7 +25,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   console.log('\n[Login mencatat perangkat]');
   w.SESSION = {}; w.STATE.view = 'dashboard'; w.STATE.loginTab = 'staff'; w.render();
   d.getElementById('li_staff_user').value = 'sari'; d.getElementById('li_staff_pass').value = 'rahasia';
-  w.doStaffLogin(); await sleep(20);
+  w.doStaffLogin(); await sleep(80);
   var me = w.currentDeviceId(), rec = w.DB.loginDevices['emp:S1'][me];
   ok(w.SESSION.empId==='S1' && rec && rec.loginAt && rec.lastAt && rec.label===w.describeDevice().label, 'login staf: perangkat tercatat di akunnya');
   ok(saves>0, 'catatan perangkat disimpan ke server');
@@ -50,7 +50,7 @@ function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
   ok(w.deviceCheckRevoked() && !w.SESSION.role && /dikeluarkan dari perangkat ini/.test(app()), 'saat sinkron: perangkat ini keluar & muncul pesan di halaman login');
   ok(!w.localStorage.getItem('abcSelarasSession'), 'sesi tersimpan dihapus (tidak masuk lagi saat refresh)');
   await sleep(1100);
-  d.getElementById('li_staff_user').value = 'sari'; d.getElementById('li_staff_pass').value = 'rahasia'; w.doStaffLogin(); await sleep(20);
+  d.getElementById('li_staff_user').value = 'sari'; d.getElementById('li_staff_pass').value = 'rahasia'; w.doStaffLogin(); await sleep(80);
   ok(w.SESSION.empId==='S1' && w.deviceIsActive(w.DB.loginDevices['emp:S1'][me]), 'login ulang: perangkat aktif kembali');
 
   console.log('\n[Sinkron antar perangkat]');

@@ -50,6 +50,26 @@ async function registeredEmails(fresh = false): Promise<Set<string> | null> {
   } catch (_) { return null; }
 }
 
+async function rateLimitOk(email: string): Promise<boolean> {
+  if (!SUPABASE_URL || !SERVICE_KEY) return true;
+  const WINDOW = 3600_000, MAX = 20;
+  try {
+    const h = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" };
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/kv_store?key=eq.email_rate&select=value`, { headers: h });
+    const rows = r.ok ? await r.json() : [];
+    const data = JSON.parse(rows?.[0]?.value || "{}");
+    const now = Date.now();
+    const list = (data[email] || []).filter((t: number) => now - t < WINDOW);
+    if (list.length >= MAX) { data[email] = list; return false; }
+    list.push(now);
+    data[email] = list;
+    /* bersihkan entri lama agar tidak membengkak */
+    for (const k of Object.keys(data)) { data[k] = (data[k] || []).filter((t: number) => now - t < WINDOW); if (!data[k].length) delete data[k]; }
+    await fetch(`${SUPABASE_URL}/rest/v1/kv_store`, { method: "POST", headers: { ...h, Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ key: "email_rate", value: JSON.stringify(data), updated_at: new Date().toISOString() }) });
+    return true;
+  } catch (_) { return true; }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -61,7 +81,17 @@ serve(async (req) => {
     if (reg && !reg.has(String(to).trim().toLowerCase())) reg = await registeredEmails(true);
     if (reg && !reg.has(String(to).trim().toLowerCase())) return json({ ok: false, error: "Alamat email tidak terdaftar di ABC Selaras" }, 403);
 
-    const link = typeof url === "string" && url.startsWith("http") ? url : APP_URL + (url || "");
+    /* Rate limit: cegah email bombing — maks 20 email / penerima / jam. */
+    const rl = await rateLimitOk(String(to).trim().toLowerCase());
+    if (!rl) return json({ ok: false, error: "Terlalu banyak email ke alamat ini, coba lagi nanti." }, 429);
+
+    /* Batasi tautan hanya ke domain aplikasi (matikan vektor phishing via tautan luar). */
+    let link = APP_URL;
+    if (typeof url === "string" && url.startsWith("http")) {
+      try { const h = new URL(url).hostname.toLowerCase(); if (h === "abcselaras.my.id" || h.endsWith(".abcselaras.my.id")) link = url; } catch (_) { /* abaikan, pakai APP_URL */ }
+    } else if (typeof url === "string" && url) {
+      link = APP_URL + url.replace(/^\/+/, "");
+    }
     const sec = section && typeof section === "object" ? section : { label: kind === "code" ? "Verifikasi Email" : "ABC Selaras", icon: kind === "code" ? "🔐" : "🔔", color: "#3980C4" };
     const accent = /^#[0-9a-fA-F]{6}$/.test(String(sec.color || "")) ? sec.color : "#3980C4";
     const name = NAMES.get(String(to).trim().toLowerCase()) || "";
