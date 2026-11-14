@@ -14257,6 +14257,40 @@ function setTodoStatus(t, newStatus){
   }
 }
 
+/* Pindahkan kartu Board lalu PASTIKAN tersimpan di server.
+   Model data satu-blob rawan tertimpa perangkat/akun lain yang menyimpan salinan lama,
+   jadi: gabungkan data server terbaru dulu, terapkan perubahan kita di atasnya, simpan,
+   lalu verifikasi benar-benar tersimpan (retry bila perlu). */
+function todoPersistStatus(t, to){
+  setTodoStatus(t, to);   /* notifikasi & log cukup sekali di sini */
+  render();
+  var id = t.id;
+  var applyDirect = function(cur){
+    cur.status = to;
+    cur.updatedAt = new Date().toISOString();
+    cur.doneAt = (to==='done') ? cur.updatedAt : null;
+  };
+  var attempt = function(tries){
+    return storageGet('hrdb').then(function(res){
+      if(res && res.value){ try{ mergeLiveData(JSON.parse(res.value)); }catch(e){} }
+      var cur = getTodoById(id);
+      if(!cur) return false;
+      if(cur.status!==to) applyDirect(cur); else cur.updatedAt = new Date().toISOString();
+      return saveDB().then(function(){ return storageGet('hrdb'); }).then(function(r2){
+        var ok = false;
+        try{ ok = (JSON.parse(r2.value).todos||[]).some(function(x){ return x.id===id && x.status===to; }); }catch(e){}
+        if(ok){ render(); return true; }
+        if(tries < 2) return attempt(tries+1);
+        toast('Perpindahan kartu belum tersimpan ke server. Coba lagi.'); render(); return false;
+      });
+    }).catch(function(){
+      if(tries < 2) return attempt(tries+1);
+      toast('Gagal menyimpan perpindahan kartu.'); return false;
+    });
+  };
+  return attempt(0);
+}
+
 /* ====================================================================
    FOTO PROFIL, SIDEBAR BISA DISEMBUNYIKAN, DAN CHAT
    ==================================================================== */
@@ -16312,8 +16346,7 @@ document.addEventListener('click', function(e){
     var tsT = getTodoById(el.getAttribute('data-id'));
     var tsNew = el.getAttribute('data-status');
     if(!tsT || !todoCanMove(tsT) || !(TODO_STATUS[tsNew] || boardColsFor(todoDept(tsT)).some(function(c){ return c.id===tsNew; }))) return;
-    setTodoStatus(tsT, tsNew);
-    saveDB().then(function(){ render(); });
+    todoPersistStatus(tsT, tsNew);
   } else if(action==='delete-todo'){
     var dtT = getTodoById(el.getAttribute('data-id'));
     if(!dtT) return;
@@ -18608,8 +18641,7 @@ document.addEventListener('drop', function(e){
   var id = ''; try{ id = e.dataTransfer.getData('text/plain'); }catch(x){}
   var t = getTodoById(id), to = col.getAttribute('data-col');
   if(!t || t.status===to || !todoCanMove(t) || !boardColsFor(todoDept(t)).some(function(c){ return c.id===to; })) return;
-  setTodoStatus(t, to);
-  saveDB().then(function(){ render(); });
+  todoPersistStatus(t, to);
 });
 
 /* Touch Drag & Drop untuk Selaras Board (Smartphone / Tablet) */
@@ -18682,8 +18714,7 @@ document.addEventListener('drop', function(e){
     if(!wasActive || !col) return;
     var t = getTodoById(id), to = col.getAttribute('data-col');
     if(!t || t.status===to || !todoCanMove(t) || !boardColsFor(todoDept(t)).some(function(c){ return c.id===to; })) return;
-    setTodoStatus(t, to);
-    saveDB().then(function(){ render(); });
+    todoPersistStatus(t, to);
   }
   document.addEventListener('touchend', finishTouchDrag, {passive:true});
   document.addEventListener('touchcancel', clearTouchDrag, {passive:true});
@@ -18760,7 +18791,7 @@ document.addEventListener('change', function(e){
   if(t.getAttribute && t.getAttribute('data-role')==='todo-move'){
     var tmT = getTodoById(t.getAttribute('data-id')), tmTo = t.value;
     if(!tmT || !todoCanMove(tmT) || tmT.status===tmTo || !boardColsFor(todoDept(tmT)).some(function(c){ return c.id===tmTo; })) return;
-    setTodoStatus(tmT, tmTo); saveDB().then(function(){ render(); }); return;
+    todoPersistStatus(tmT, tmTo); return;
   }
   if(t.classList && (t.classList.contains('bc-label') || t.classList.contains('bc-color'))){
     bcReadInputs();
