@@ -3716,7 +3716,16 @@ function saveDB(silent){
     if(!silent) toast('Tidak bisa menyimpan: data belum berhasil dimuat dari server. Muat ulang halaman dan coba lagi.');
     return Promise.reject(new Error('Menolak menyimpan karena loadDB terakhir gagal (loadError).'));
   }
-  return storageSet('hrdb', JSON.stringify(DB)).catch(function(){
+  /* Gabungkan data server terbaru SEBELUM menimpa seluruh blob, supaya penyimpanan dari
+     perangkat ini tidak menghapus data milik orang lain (mis. absen yang baru masuk dari HP lain).
+     Akar masalahnya: semua data ada di satu baris, jadi tulisan dari salinan lama bisa menimpa. */
+  var canMerge = hasRemoteStorage() && BACKEND==='supabase';
+  var pre = canMerge ? remoteGet('hrdb').then(function(res){
+      if(res && res.value){ try{ mergeLiveData(JSON.parse(res.value)); }catch(e){} }
+    }).catch(function(){ /* gagal menarik: tetap lanjut menulis, jangan blokir */ }) : Promise.resolve();
+  return pre.then(function(){
+    return storageSet('hrdb', JSON.stringify(DB));
+  }).catch(function(){
     if(!silent) toast('Gagal menyimpan data.');
   });
 }
