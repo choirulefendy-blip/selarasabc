@@ -3140,6 +3140,7 @@ function seedData(){
     properties: DEFAULT_PROPERTIES.slice(),
     nextEmployeeSeq: 1,
     employees:[],
+    deletedEmployees:{},
     schedules:{},
     attendance:{},
     otherDeductions:{},
@@ -14050,6 +14051,19 @@ function mergeLiveData(remote){
   ['articles','projects','timesheets','agenda','accJournals','accPOs','accPetty','sops','notifBroadcasts','notifSchedules','assets','chatGroups','perfCycles','perfEntries','recruitTests','recruitApplicants'].forEach(function(k){
     DB[k] = mergeById(DB[k], remote[k], function(x){ return x.updatedAt || x.createdAt || ''; });
   });
+  /* pengajuan & KPI: gabungkan antar perangkat supaya pengajuan/keputusan tidak hilang tertimpa */
+  ['leaveRequests','overtimeRequests','formRequests','kpiRecords'].forEach(function(k){
+    DB[k] = mergeById(DB[k], remote[k], function(x){ return x.updatedAt || x.decidedAt || x.hrDecisionAt || x.submittedAt || x.createdAt || ''; });
+  });
+  /* karyawan: gabungkan tambah/ubah antar perangkat; penghapusan (tombstone) ikut tersebar & tidak hidup kembali */
+  DB.deletedEmployees = DB.deletedEmployees || {};
+  if(remote.deletedEmployees){ Object.keys(remote.deletedEmployees).forEach(function(id){
+    if(String(remote.deletedEmployees[id]||'') > String(DB.deletedEmployees[id]||'')) DB.deletedEmployees[id] = remote.deletedEmployees[id];
+  }); }
+  if(remote.employees){
+    var empMerged = mergeById(DB.employees, remote.employees, function(e){ return e.updatedAt || e.joinDate || ''; });
+    DB.employees = empMerged.filter(function(e){ var t = DB.deletedEmployees[e.id]; return !(t && String(t) >= String(e.updatedAt||'')); });
+  }
   if(remote.accCats){ DB.accCats = DB.accCats || {}; Object.keys(remote.accCats).forEach(function(pr){
     var cur = DB.accCats[pr] || [];
     (remote.accCats[pr]||[]).forEach(function(c){ if(cur.indexOf(c)===-1) cur.push(c); });
@@ -14145,7 +14159,7 @@ function refreshLiveData(){
     var fresh = myNotifications().filter(function(n){ return !before[n.id] && !n.read; });
     fresh.slice(0,3).forEach(function(n){ var nk = notifKind(n); systemNotify(nk.k==='hr' ? '📢 Pesan HR' : (nk.k==='sys' ? '⚠️ ABC Selaras' : 'ABC Selaras'), n.message); });
     if(fresh.length){ toast(fresh[0].message); }
-    var liveViews = ['dashboard','announcements','todo','my-activity','attendance','hod-attendance','banners'];
+    var liveViews = ['dashboard','announcements','todo','my-activity','attendance','hod-attendance','banners','employees'];
     if(liveViews.indexOf(STATE.view)!==-1 && liveSafeToRerender()) render();
     else updateBellBadge();
     return true;
@@ -17212,6 +17226,7 @@ document.addEventListener('click', function(e){
       leaveQuota:document.getElementById('f_leaveQuota').value==='' ? null : Math.max(0, +document.getElementById('f_leaveQuota').value||0),
       active:document.getElementById('f_active').checked
     };
+    data.updatedAt = new Date().toISOString();
     var fPass = document.getElementById('f_password').value;
     if(id){
       var existing = getEmployee(id);
@@ -17233,6 +17248,7 @@ document.addEventListener('click', function(e){
       return;
     }
     emp2.active = !emp2.active;
+    emp2.updatedAt = new Date().toISOString();
     logActivity((emp2.active?'Mengaktifkan':'Menonaktifkan')+' karyawan "'+emp2.name+'".');
     saveDB().then(function(){ toast(emp2.active?'Karyawan diaktifkan.':'Karyawan dinonaktifkan.'); render(); });
   } else if(action==='manage-hod'){
@@ -17259,6 +17275,8 @@ document.addEventListener('click', function(e){
       var idx = DB.employees.findIndex(function(x){ return x.id===el.getAttribute('data-id'); });
       if(idx!==-1){
         var deletedName = DB.employees[idx].name;
+        DB.deletedEmployees = DB.deletedEmployees || {};
+        DB.deletedEmployees[DB.employees[idx].id] = new Date().toISOString();
         purgeEmployeeData(DB.employees[idx].id);
         DB.employees.splice(idx,1);
         logActivity('Menghapus karyawan "'+deletedName+'".');
